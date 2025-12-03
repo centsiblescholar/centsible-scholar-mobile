@@ -13,13 +13,13 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { signOut } from '../../src/integrations/supabase/client';
-import { useStudentProfile } from '../../src/hooks/useStudentProfile';
+import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { useSubscriptionStatus } from '../../src/hooks/useSubscriptionStatus';
 import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
-  const { profile, isLoading: profileLoading, refetch: refetchProfile } = useStudentProfile();
+  const { profile, isLoading: profileLoading, refetch: refetchProfile, isStudent, isParent } = useUserProfile();
   const {
     isLoading: subscriptionLoading,
     isActive,
@@ -118,6 +118,12 @@ export default function SettingsScreen() {
             <View style={styles.row}>
               <Text style={styles.label}>Email</Text>
               <Text style={styles.value}>{user?.email}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Account Type</Text>
+              <View style={[styles.typeBadge, isParent ? styles.parentBadge : styles.studentBadge]}>
+                <Text style={styles.typeBadgeText}>{isParent ? 'Parent' : 'Student'}</Text>
+              </View>
             </View>
             {profile?.grade_level && (
               <View style={styles.row}>
@@ -288,6 +294,22 @@ const styles = StyleSheet.create({
   valueRed: {
     color: '#EF4444',
     fontWeight: '600',
+  },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  parentBadge: {
+    backgroundColor: '#EEF2FF',
+  },
+  studentBadge: {
+    backgroundColor: '#ECFDF5',
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4F46E5',
   },
   manageButton: {
     marginTop: 12,
