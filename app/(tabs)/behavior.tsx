@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useStudent } from '../../src/contexts/StudentContext';
 import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
 import { BehaviorScores } from '../../src/shared/types';
 import { calculateAssessmentAverageScore } from '../../src/shared/calculations';
@@ -46,7 +47,12 @@ const DEFAULT_SCORES: BehaviorScores = {
 
 export default function BehaviorScreen() {
   const { user } = useAuth();
-  const { assessments, todayAssessment, overallAverage, isLoading, saveAssessment, isSaving, refetch } = useBehaviorAssessments();
+  const { selectedStudent, isParentView } = useStudent();
+
+  // Use selected student's ID for parents, own ID for students
+  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+
+  const { assessments, todayAssessment, overallAverage, isLoading, saveAssessment, isSaving, refetch } = useBehaviorAssessments(targetUserId);
 
   const [scores, setScores] = useState<BehaviorScores>(
     todayAssessment || DEFAULT_SCORES
@@ -73,7 +79,7 @@ export default function BehaviorScreen() {
 
     try {
       await saveAssessment({
-        user_id: user!.id,
+        user_id: targetUserId!,
         date: new Date().toISOString().split('T')[0],
         scores,
         status,

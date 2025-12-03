@@ -55,21 +55,24 @@ async function submitGrade(grade: {
   }
 }
 
-export function useStudentGrades() {
+export function useStudentGrades(studentUserId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Use provided studentUserId or fall back to logged-in user's ID
+  const targetUserId = studentUserId || user?.id || '';
+
   const { data: grades = [], isLoading, error, refetch } = useQuery({
-    queryKey: studentGradesKeys.list(user?.id || ''),
-    queryFn: () => fetchStudentGrades(user!.id),
-    enabled: !!user,
+    queryKey: studentGradesKeys.list(targetUserId),
+    queryFn: () => fetchStudentGrades(targetUserId),
+    enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const submitMutation = useMutation({
     mutationFn: submitGrade,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(user!.id) });
+      queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(targetUserId) });
     },
   });
 

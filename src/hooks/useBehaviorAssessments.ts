@@ -74,21 +74,24 @@ async function saveAssessment(assessment: {
   }
 }
 
-export function useBehaviorAssessments() {
+export function useBehaviorAssessments(studentUserId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Use provided studentUserId or fall back to logged-in user's ID
+  const targetUserId = studentUserId || user?.id || '';
+
   const { data: assessments = [], isLoading, error, refetch } = useQuery({
-    queryKey: behaviorAssessmentKeys.list(user?.id || ''),
-    queryFn: () => fetchBehaviorAssessments(user!.id),
-    enabled: !!user,
+    queryKey: behaviorAssessmentKeys.list(targetUserId),
+    queryFn: () => fetchBehaviorAssessments(targetUserId),
+    enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const saveMutation = useMutation({
     mutationFn: saveAssessment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: behaviorAssessmentKeys.list(user!.id) });
+      queryClient.invalidateQueries({ queryKey: behaviorAssessmentKeys.list(targetUserId) });
     },
   });
 

@@ -1,18 +1,51 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+} from 'react-native';
 import { useState, useCallback } from 'react';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { useStudentProfile } from '../../src/hooks/useStudentProfile';
+import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
 import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
 import { calculateAllocation } from '../../src/shared/calculations';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { profile, isLoading: profileLoading } = useStudentProfile();
-  const { gradeEntries, totalReward, gpa, isLoading: gradesLoading, refetch: refetchGrades } = useStudentGrades();
-  const { overallAverage, assessments, isLoading: behaviorLoading, refetch: refetchBehavior } = useBehaviorAssessments();
+  const {
+    selectedStudent,
+    setSelectedStudent,
+    students,
+    isLoading: studentsLoading,
+    isParentView,
+  } = useStudent();
+
+  // For parents, use selected student's ID; for students, use their own ID
+  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+
+  const {
+    gradeEntries,
+    totalReward,
+    gpa,
+    isLoading: gradesLoading,
+    refetch: refetchGrades,
+  } = useStudentGrades(targetUserId);
+
+  const {
+    overallAverage,
+    assessments,
+    isLoading: behaviorLoading,
+    refetch: refetchBehavior,
+  } = useBehaviorAssessments(targetUserId);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [studentPickerVisible, setStudentPickerVisible] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -20,7 +53,7 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, [refetchGrades, refetchBehavior]);
 
-  const isLoading = profileLoading || gradesLoading || behaviorLoading;
+  const isLoading = studentsLoading || gradesLoading || behaviorLoading;
 
   // Calculate allocation breakdown
   const allocation = calculateAllocation(totalReward);
@@ -47,12 +80,29 @@ export default function DashboardScreen() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.greeting}>
-          Welcome{profile?.name ? `, ${profile.name.split(' ')[0]}` : ''}!
-        </Text>
+        {isParentView && students.length > 1 ? (
+          <TouchableOpacity
+            style={styles.studentSelector}
+            onPress={() => setStudentPickerVisible(true)}
+          >
+            <Text style={styles.greeting}>
+              {selectedStudent?.name || 'Select Student'}
+            </Text>
+            <Text style={styles.selectorChevron}>▼</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.greeting}>
+            Welcome{selectedStudent?.name ? `, ${selectedStudent.name.split(' ')[0]}` : ''}!
+          </Text>
+        )}
         <Text style={styles.email}>{user?.email}</Text>
-        {profile?.grade_level && (
-          <Text style={styles.gradeLevel}>Grade {profile.grade_level}</Text>
+        {selectedStudent?.grade_level && (
+          <Text style={styles.gradeLevel}>Grade {selectedStudent.grade_level}</Text>
+        )}
+        {isParentView && (
+          <View style={styles.parentBadge}>
+            <Text style={styles.parentBadgeText}>Parent View</Text>
+          </View>
         )}
       </View>
 
@@ -90,7 +140,9 @@ export default function DashboardScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Base Amount</Text>
           <Text style={styles.cardValue}>
-            {profile?.base_reward_amount ? formatCurrency(profile.base_reward_amount) : '--'}
+            {selectedStudent?.base_reward_amount
+              ? formatCurrency(selectedStudent.base_reward_amount)
+              : '--'}
           </Text>
           <Text style={styles.cardSubtitle}>Per grade</Text>
         </View>
@@ -141,6 +193,50 @@ export default function DashboardScreen() {
           </View>
         </View>
       )}
+
+      {/* Student Picker Modal */}
+      <Modal
+        visible={studentPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStudentPickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Student</Text>
+            <FlatList
+              data={students}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.studentOption,
+                    selectedStudent?.id === item.id && styles.studentOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedStudent(item);
+                    setStudentPickerVisible(false);
+                  }}
+                >
+                  <View>
+                    <Text style={styles.studentName}>{item.name}</Text>
+                    <Text style={styles.studentGrade}>Grade {item.grade_level}</Text>
+                  </View>
+                  {selectedStudent?.id === item.id && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setStudentPickerVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -176,6 +272,15 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#4F46E5',
   },
+  studentSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectorChevron: {
+    fontSize: 12,
+    color: '#C7D2FE',
+    marginLeft: 8,
+  },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -190,6 +295,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#C7D2FE',
     marginTop: 2,
+  },
+  parentBadge: {
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  parentBadgeText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
   },
   cardsContainer: {
     flexDirection: 'row',
@@ -320,5 +438,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#10B981',
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  studentOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  studentOptionSelected: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 2,
+    borderColor: '#4F46E5',
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  studentGrade: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  checkmark: {
+    fontSize: 20,
+    color: '#4F46E5',
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    marginTop: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

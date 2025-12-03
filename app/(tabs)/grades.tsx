@@ -12,16 +12,20 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
-import { useStudentProfile } from '../../src/hooks/useStudentProfile';
 import { GRADE_MULTIPLIERS } from '../../src/shared/calculations/constants';
 
 const GRADES = ['A', 'B', 'C', 'D', 'F'] as const;
 
 export default function GradesScreen() {
   const { user } = useAuth();
-  const { profile } = useStudentProfile();
-  const { grades, gradeEntries, totalReward, gpa, isLoading, submitGrade, isSubmitting, refetch } = useStudentGrades();
+  const { selectedStudent, isParentView } = useStudent();
+
+  // Use selected student's ID for parents, own ID for students
+  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+
+  const { grades, gradeEntries, totalReward, gpa, isLoading, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
@@ -45,11 +49,11 @@ export default function GradesScreen() {
       return;
     }
 
-    const amount = parseFloat(baseAmount) || profile?.base_reward_amount || 50;
+    const amount = parseFloat(baseAmount) || selectedStudent?.base_reward_amount || 50;
 
     try {
       await submitGrade({
-        student_user_id: user!.id,
+        student_user_id: targetUserId!,
         subject: subject.trim(),
         grade: selectedGrade,
         base_amount: amount,
@@ -204,11 +208,11 @@ export default function GradesScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
-                Base Amount (default: {formatCurrency(profile?.base_reward_amount || 50)})
+                Base Amount (default: {formatCurrency(selectedStudent?.base_reward_amount || 50)})
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder={`${profile?.base_reward_amount || 50}`}
+                placeholder={`${selectedStudent?.base_reward_amount || 50}`}
                 value={baseAmount}
                 onChangeText={setBaseAmount}
                 keyboardType="decimal-pad"
