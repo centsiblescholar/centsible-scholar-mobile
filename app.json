@@ -21,10 +21,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.centsiblescholar.app",
       "buildNumber": "1",
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app does not use the camera.",
-        "NSPhotoLibraryUsageDescription": "This app does not access photos."
-      }
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "associatedDomains": ["applinks:centsiblescholar.com"]
     },
     "android": {
       "adaptiveIcon": {

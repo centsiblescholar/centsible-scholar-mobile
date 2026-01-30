@@ -63,6 +63,23 @@ export default function SettingsScreen() {
     Linking.openURL('https://centsiblescholar.com/settings');
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data including grades, behavior records, and subscription.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            Linking.openURL('https://centsiblescholar.com/settings/delete-account');
+          },
+        },
+      ]
+    );
+  };
+
   const isLoading = profileLoading || subscriptionLoading;
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
@@ -209,19 +226,37 @@ export default function SettingsScreen() {
               <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.linkRow, styles.linkRowLast]}
+              style={styles.linkRow}
               onPress={() => Linking.openURL('https://centsiblescholar.com/privacy')}
             >
               <Text style={styles.linkText}>Privacy Policy</Text>
               <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.linkRow, styles.linkRowLast]}
+              onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}
+            >
+              <Text style={styles.linkText}>Terms of Service</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Sign Out Button */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        {/* Account Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
+              <Text style={styles.signOutRowText}>Sign Out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.deleteRow, styles.linkRowLast]}
+              onPress={handleDeleteAccount}
+            >
+              <Text style={styles.deleteRowText}>Delete Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={{ height: 40 }} />
       </View>
@@ -353,5 +388,23 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
+  },
+  signOutRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  signOutRowText: {
+    fontSize: 16,
+    color: '#4F46E5',
+    fontWeight: '500',
+  },
+  deleteRow: {
+    paddingVertical: 12,
+  },
+  deleteRowText: {
+    fontSize: 16,
+    color: '#DC2626',
+    fontWeight: '500',
   },
 });
