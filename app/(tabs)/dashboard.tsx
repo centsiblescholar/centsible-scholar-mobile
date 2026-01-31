@@ -14,6 +14,8 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
 import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
+import { useEducationBonus } from '../../src/hooks/useEducationBonus';
+import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
 import { calculateAllocation } from '../../src/shared/calculations';
 
 export default function DashboardScreen() {
@@ -44,16 +46,44 @@ export default function DashboardScreen() {
     refetch: refetchBehavior,
   } = useBehaviorAssessments(targetUserId);
 
+  // Get base reward amount for bonus calculations
+  const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
+
+  // Education bonus hook
+  const {
+    accuracyPercentage,
+    bonusAmount: educationBonusAmount,
+    currentTier: educationTier,
+    totalQuestions: qodTotal,
+    correctAnswers: qodCorrect,
+    isLoading: educationLoading,
+    refetch: refetchEducation,
+  } = useEducationBonus(targetUserId, baseRewardAmount);
+
+  // Behavior bonus hook
+  const {
+    bonusAmount: behaviorBonusAmount,
+    currentTier: behaviorTier,
+    qualifiesForBonus,
+    isLoading: behaviorBonusLoading,
+    refetch: refetchBehaviorBonus,
+  } = useBehaviorBonus(targetUserId, baseRewardAmount);
+
   const [refreshing, setRefreshing] = useState(false);
   const [studentPickerVisible, setStudentPickerVisible] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchGrades(), refetchBehavior()]);
+    await Promise.all([
+      refetchGrades(),
+      refetchBehavior(),
+      refetchEducation(),
+      refetchBehaviorBonus(),
+    ]);
     setRefreshing(false);
-  }, [refetchGrades, refetchBehavior]);
+  }, [refetchGrades, refetchBehavior, refetchEducation, refetchBehaviorBonus]);
 
-  const isLoading = studentsLoading || gradesLoading || behaviorLoading;
+  const isLoading = studentsLoading || gradesLoading || behaviorLoading || educationLoading || behaviorBonusLoading;
 
   // Calculate allocation breakdown
   const allocation = calculateAllocation(totalReward);
@@ -145,6 +175,64 @@ export default function DashboardScreen() {
               : '--'}
           </Text>
           <Text style={styles.cardSubtitle}>Per grade</Text>
+        </View>
+      </View>
+
+      {/* Bonus Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Bonuses</Text>
+        <View style={styles.bonusCardsContainer}>
+          {/* Education Bonus Card */}
+          <View style={[styles.bonusCard, educationBonusAmount > 0 && styles.bonusCardActive]}>
+            <View style={styles.bonusHeader}>
+              <Text style={styles.bonusIcon}>📚</Text>
+              <Text style={styles.bonusTitle}>Education</Text>
+            </View>
+            <Text style={[styles.bonusValue, educationBonusAmount > 0 && styles.bonusValueActive]}>
+              {educationBonusAmount > 0 ? formatCurrency(educationBonusAmount) : '--'}
+            </Text>
+            {qodTotal > 0 ? (
+              <>
+                <Text style={styles.bonusAccuracy}>{accuracyPercentage}% accuracy</Text>
+                <Text style={styles.bonusDetail}>
+                  {qodCorrect}/{qodTotal} correct
+                </Text>
+                {educationTier && (
+                  <View style={[styles.tierBadge, styles.tierBadgeEducation]}>
+                    <Text style={styles.tierBadgeText}>{educationTier}</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={styles.bonusDetail}>Answer QOD to earn</Text>
+            )}
+          </View>
+
+          {/* Behavior Bonus Card */}
+          <View style={[styles.bonusCard, behaviorBonusAmount > 0 && styles.bonusCardActive]}>
+            <View style={styles.bonusHeader}>
+              <Text style={styles.bonusIcon}>⭐</Text>
+              <Text style={styles.bonusTitle}>Behavior</Text>
+            </View>
+            <Text style={[styles.bonusValue, behaviorBonusAmount > 0 && styles.bonusValueActive]}>
+              {behaviorBonusAmount > 0 ? formatCurrency(behaviorBonusAmount) : '--'}
+            </Text>
+            {assessments.length > 0 ? (
+              <>
+                <Text style={styles.bonusAccuracy}>{overallAverage.toFixed(2)} avg score</Text>
+                <Text style={styles.bonusDetail}>
+                  {qualifiesForBonus ? 'Qualified' : 'Need 3.0+ to qualify'}
+                </Text>
+                {behaviorTier && (
+                  <View style={[styles.tierBadge, styles.tierBadgeBehavior]}>
+                    <Text style={styles.tierBadgeText}>{behaviorTier}</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={styles.bonusDetail}>Complete assessments</Text>
+            )}
+          </View>
         </View>
       </View>
 
@@ -494,5 +582,78 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  bonusCardsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  bonusCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  bonusCardActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  bonusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bonusIcon: {
+    fontSize: 18,
+    marginRight: 6,
+  },
+  bonusTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+  },
+  bonusValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  bonusValueActive: {
+    color: '#10B981',
+  },
+  bonusAccuracy: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  bonusDetail: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  tierBadge: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  tierBadgeEducation: {
+    backgroundColor: '#DBEAFE',
+  },
+  tierBadgeBehavior: {
+    backgroundColor: '#FEF3C7',
+  },
+  tierBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });

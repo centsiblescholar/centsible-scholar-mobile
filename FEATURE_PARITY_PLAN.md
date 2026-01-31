@@ -240,10 +240,10 @@ These features are better suited for web-only:
 4. ✅ QOD accuracy tracking
 
 ### Phase 2: Core Parity (2-3 weeks)
-5. 💰 Earnings/Budget screen
-6. 📊 Behavior analytics with charts
-7. 📈 Grade history charts
-8. 🎯 Savings goals
+5. ✅ Earnings/Budget screen
+6. ✅ Behavior analytics with charts
+7. ✅ Grade history charts
+8. ✅ Savings goals
 
 ### Phase 3: Enhanced Features (3-4 weeks)
 9. 📅 Term tracking

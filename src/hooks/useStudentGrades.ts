@@ -22,16 +22,40 @@ export const studentGradesKeys = {
   list: (userId: string) => [...studentGradesKeys.all, 'list', userId] as const,
 };
 
-async function fetchStudentGrades(userId: string): Promise<StudentGrade[]> {
-  const { data, error } = await supabase
+async function fetchStudentGrades(studentId: string): Promise<StudentGrade[]> {
+  // First try to get grades by student_user_id (for students with their own accounts)
+  let { data, error } = await supabase
     .from('student_grades')
     .select('*')
-    .eq('student_user_id', userId)
+    .eq('student_user_id', studentId)
     .order('submitted_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching student grades:', error);
     throw error;
+  }
+
+  // If no results, this might be a parent viewing a student profile
+  // Try fetching from dashboard_grades using user_id (parent) and student_id
+  if (!data || data.length === 0) {
+    const { data: dashboardData, error: dashError } = await supabase
+      .from('dashboard_grades')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false });
+
+    if (!dashError && dashboardData) {
+      // Map dashboard_grades to StudentGrade format
+      return dashboardData.map((g) => ({
+        id: g.id,
+        student_user_id: g.student_id,
+        subject: g.class_name,
+        grade: g.grade,
+        base_amount: g.base_amount,
+        status: 'approved',
+        submitted_at: g.created_at,
+      }));
+    }
   }
 
   return data || [];

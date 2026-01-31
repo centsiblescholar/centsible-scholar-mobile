@@ -10,11 +10,15 @@ import {
   ActivityIndicator,
   Modal,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
 import { GRADE_MULTIPLIERS } from '../../src/shared/calculations/constants';
+
+const screenWidth = Dimensions.get('window').width;
 
 const GRADES = ['A', 'B', 'C', 'D', 'F'] as const;
 
@@ -32,6 +36,51 @@ export default function GradesScreen() {
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [baseAmount, setBaseAmount] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'grades' | 'analytics'>('grades');
+
+  // Calculate grade distribution for pie chart
+  const getGradeDistribution = () => {
+    const distribution: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    gradeEntries.forEach((entry) => {
+      if (distribution[entry.grade] !== undefined) {
+        distribution[entry.grade]++;
+      }
+    });
+
+    return Object.entries(distribution)
+      .filter(([_, count]) => count > 0)
+      .map(([grade, count]) => ({
+        name: grade,
+        count,
+        color: getGradeColor(grade),
+        legendFontColor: '#374151',
+        legendFontSize: 12,
+      }));
+  };
+
+  // Calculate earnings by subject for bar chart
+  const getSubjectEarnings = () => {
+    const subjects: Record<string, number> = {};
+    gradeEntries.forEach((entry) => {
+      if (subjects[entry.className]) {
+        subjects[entry.className] += entry.rewardAmount;
+      } else {
+        subjects[entry.className] = entry.rewardAmount;
+      }
+    });
+
+    const sorted = Object.entries(subjects)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+
+    return {
+      labels: sorted.map(([name]) => name.length > 8 ? name.substring(0, 8) + '...' : name),
+      data: sorted.map(([_, amount]) => amount),
+    };
+  };
+
+  const gradeDistribution = getGradeDistribution();
+  const subjectEarnings = getSubjectEarnings();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -109,49 +158,199 @@ export default function GradesScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Grades</Text>
-
-          {gradeEntries.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No grades yet</Text>
-              <Text style={styles.emptyDescription}>
-                Tap the button below to add your first grade and start earning rewards!
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.gradesList}>
-              {gradeEntries.map((grade) => (
-                <View key={grade.id} style={styles.gradeCard}>
-                  <View style={styles.gradeInfo}>
-                    <Text style={styles.gradeSubject}>{grade.className}</Text>
-                    <Text style={styles.gradeBase}>Base: {formatCurrency(grade.baseAmount)}</Text>
-                  </View>
-                  <View style={styles.gradeRight}>
-                    <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(grade.grade) }]}>
-                      <Text style={styles.gradeLetter}>{grade.grade}</Text>
-                    </View>
-                    <Text style={styles.gradeReward}>{formatCurrency(grade.rewardAmount)}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
+        {/* Tab Toggle */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'grades' && styles.tabActive]}
+            onPress={() => setActiveTab('grades')}
+          >
+            <Text style={[styles.tabText, activeTab === 'grades' && styles.tabTextActive]}>
+              Grades
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'analytics' && styles.tabActive]}
+            onPress={() => setActiveTab('analytics')}
+          >
+            <Text style={[styles.tabText, activeTab === 'analytics' && styles.tabTextActive]}>
+              Analytics
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.rewardScale}>
-          <Text style={styles.scaleTitle}>Reward Scale</Text>
-          <View style={styles.scaleRow}>
-            {GRADES.map((g) => (
-              <View key={g} style={styles.scaleItem}>
-                <View style={[styles.scaleBadge, { backgroundColor: getGradeColor(g) }]}>
-                  <Text style={styles.scaleGrade}>{g}</Text>
-                </View>
-                <Text style={styles.scalePercent}>{(GRADE_MULTIPLIERS[g] * 100).toFixed(0)}%</Text>
+        {activeTab === 'analytics' ? (
+          /* Analytics View */
+          <View style={styles.analyticsContainer}>
+            {gradeEntries.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No Data Yet</Text>
+                <Text style={styles.emptyDescription}>
+                  Add grades to see your analytics
+                </Text>
               </View>
-            ))}
+            ) : (
+              <>
+                {/* Grade Distribution */}
+                <View style={styles.chartCard}>
+                  <Text style={styles.chartTitle}>Grade Distribution</Text>
+                  <Text style={styles.chartSubtitle}>{gradeEntries.length} grades total</Text>
+                  {gradeDistribution.length > 0 && (
+                    <PieChart
+                      data={gradeDistribution}
+                      width={screenWidth - 64}
+                      height={180}
+                      chartConfig={{
+                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                      }}
+                      accessor="count"
+                      backgroundColor="transparent"
+                      paddingLeft="15"
+                      absolute
+                    />
+                  )}
+                </View>
+
+                {/* Earnings by Subject */}
+                {subjectEarnings.labels.length > 0 && (
+                  <View style={styles.chartCard}>
+                    <Text style={styles.chartTitle}>Earnings by Subject</Text>
+                    <Text style={styles.chartSubtitle}>Top subjects by reward</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <BarChart
+                        data={{
+                          labels: subjectEarnings.labels,
+                          datasets: [{ data: subjectEarnings.data }],
+                        }}
+                        width={Math.max(screenWidth - 64, subjectEarnings.labels.length * 80)}
+                        height={200}
+                        yAxisLabel="$"
+                        yAxisSuffix=""
+                        chartConfig={{
+                          backgroundColor: '#fff',
+                          backgroundGradientFrom: '#fff',
+                          backgroundGradientTo: '#fff',
+                          decimalPlaces: 0,
+                          color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                          labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                          barPercentage: 0.7,
+                        }}
+                        style={{ marginVertical: 8, borderRadius: 16 }}
+                        fromZero
+                        showValuesOnTopOfBars
+                      />
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Summary Stats */}
+                <View style={styles.statsCard}>
+                  <Text style={styles.statsTitle}>Performance Summary</Text>
+                  <View style={styles.statsGrid}>
+                    <View style={styles.statsGridItem}>
+                      <Text style={styles.statsGridValue}>{gradeEntries.length}</Text>
+                      <Text style={styles.statsGridLabel}>Total Grades</Text>
+                    </View>
+                    <View style={styles.statsGridItem}>
+                      <Text style={styles.statsGridValue}>{gpa.toFixed(2)}</Text>
+                      <Text style={styles.statsGridLabel}>GPA</Text>
+                    </View>
+                    <View style={styles.statsGridItem}>
+                      <Text style={[styles.statsGridValue, styles.statsGridValueGreen]}>
+                        {formatCurrency(totalReward)}
+                      </Text>
+                      <Text style={styles.statsGridLabel}>Total Earned</Text>
+                    </View>
+                    <View style={styles.statsGridItem}>
+                      <Text style={styles.statsGridValue}>
+                        {gradeEntries.length > 0
+                          ? formatCurrency(totalReward / gradeEntries.length)
+                          : '--'}
+                      </Text>
+                      <Text style={styles.statsGridLabel}>Avg/Grade</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Grade Breakdown */}
+                <View style={styles.breakdownCard}>
+                  <Text style={styles.breakdownTitle}>Grade Breakdown</Text>
+                  {GRADES.map((g) => {
+                    const count = gradeEntries.filter((e) => e.grade === g).length;
+                    const percent = gradeEntries.length > 0 ? (count / gradeEntries.length) * 100 : 0;
+                    return (
+                      <View key={g} style={styles.breakdownRow}>
+                        <View style={styles.breakdownLeft}>
+                          <View style={[styles.breakdownBadge, { backgroundColor: getGradeColor(g) }]}>
+                            <Text style={styles.breakdownGrade}>{g}</Text>
+                          </View>
+                          <Text style={styles.breakdownCount}>{count} grade{count !== 1 ? 's' : ''}</Text>
+                        </View>
+                        <View style={styles.breakdownRight}>
+                          <View style={styles.breakdownBarBg}>
+                            <View
+                              style={[
+                                styles.breakdownBar,
+                                { width: `${percent}%`, backgroundColor: getGradeColor(g) },
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.breakdownPercent}>{percent.toFixed(0)}%</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            )}
           </View>
-        </View>
+        ) : (
+          /* Grades List View */
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Your Grades</Text>
+
+              {gradeEntries.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>No grades yet</Text>
+                  <Text style={styles.emptyDescription}>
+                    Tap the button below to add your first grade and start earning rewards!
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.gradesList}>
+                  {gradeEntries.map((grade) => (
+                    <View key={grade.id} style={styles.gradeCard}>
+                      <View style={styles.gradeInfo}>
+                        <Text style={styles.gradeSubject}>{grade.className}</Text>
+                        <Text style={styles.gradeBase}>Base: {formatCurrency(grade.baseAmount)}</Text>
+                      </View>
+                      <View style={styles.gradeRight}>
+                        <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(grade.grade) }]}>
+                          <Text style={styles.gradeLetter}>{grade.grade}</Text>
+                        </View>
+                        <Text style={styles.gradeReward}>{formatCurrency(grade.rewardAmount)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.rewardScale}>
+              <Text style={styles.scaleTitle}>Reward Scale</Text>
+              <View style={styles.scaleRow}>
+                {GRADES.map((g) => (
+                  <View key={g} style={styles.scaleItem}>
+                    <View style={[styles.scaleBadge, { backgroundColor: getGradeColor(g) }]}>
+                      <Text style={styles.scaleGrade}>{g}</Text>
+                    </View>
+                    <Text style={styles.scalePercent}>{(GRADE_MULTIPLIERS[g] * 100).toFixed(0)}%</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <TouchableOpacity
@@ -486,5 +685,152 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  tabTextActive: {
+    color: '#4F46E5',
+  },
+  analyticsContainer: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  statsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  statsGridItem: {
+    width: '50%',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  statsGridValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  statsGridValueGreen: {
+    color: '#10B981',
+  },
+  statsGridLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  breakdownCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  breakdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  breakdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 100,
+  },
+  breakdownBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  breakdownGrade: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  breakdownCount: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  breakdownRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  breakdownBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  breakdownBar: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  breakdownPercent: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    width: 36,
+    textAlign: 'right',
   },
 });

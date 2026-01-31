@@ -10,15 +10,16 @@ export const behaviorAssessmentKeys = {
   list: (userId: string) => [...behaviorAssessmentKeys.all, 'list', userId] as const,
 };
 
-async function fetchBehaviorAssessments(userId: string): Promise<BehaviorAssessment[]> {
+async function fetchBehaviorAssessments(studentId: string): Promise<BehaviorAssessment[]> {
   const today = new Date();
   const eighteenWeeksAgo = new Date();
   eighteenWeeksAgo.setDate(eighteenWeeksAgo.getDate() - 126); // 18 weeks
 
-  const { data, error } = await supabase
+  // Try fetching by user_id first (for students with their own accounts)
+  let { data, error } = await supabase
     .from('behavior_assessments')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', studentId)
     .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
     .lte('date', today.toISOString().split('T')[0])
     .order('date', { ascending: false });
@@ -26,6 +27,21 @@ async function fetchBehaviorAssessments(userId: string): Promise<BehaviorAssessm
   if (error) {
     console.error('Error fetching behavior assessments:', error);
     throw error;
+  }
+
+  // If no results, try by student_id (for parent-managed students)
+  if (!data || data.length === 0) {
+    const { data: studentData, error: studentError } = await supabase
+      .from('behavior_assessments')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
+      .lte('date', today.toISOString().split('T')[0])
+      .order('date', { ascending: false });
+
+    if (!studentError && studentData) {
+      return studentData;
+    }
   }
 
   return data || [];

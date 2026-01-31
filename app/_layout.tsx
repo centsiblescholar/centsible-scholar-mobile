@@ -34,6 +34,37 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="edit-profile"
+              options={{
+                title: 'Edit Profile',
+                presentation: 'modal',
+              }}
+            />
+            <Stack.Screen
+              name="term-tracking"
+              options={{
+                title: 'Term Tracking',
+              }}
+            />
+            <Stack.Screen
+              name="family-meetings"
+              options={{
+                title: 'Family Meetings',
+              }}
+            />
+            <Stack.Screen
+              name="student-management"
+              options={{
+                title: 'Manage Students',
+              }}
+            />
+            <Stack.Screen
+              name="grade-approval"
+              options={{
+                title: 'Grade Approval',
+              }}
+            />
           </Stack>
         </StudentProvider>
       </AuthProvider>

@@ -8,13 +8,19 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
+import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
+import { useNotifications } from '../../src/hooks/useNotifications';
 import { BehaviorScores } from '../../src/shared/types';
 import { calculateAssessmentAverageScore } from '../../src/shared/calculations';
 import { SCORE_DESCRIPTIONS } from '../../src/shared/validation/constants';
+
+const screenWidth = Dimensions.get('window').width;
 
 const OBLIGATIONS = [
   { key: 'diet', label: 'Diet', description: 'Eating healthy meals' },
@@ -51,19 +57,76 @@ export default function BehaviorScreen() {
 
   // Use selected student's ID for parents, own ID for students
   const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+  const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
 
   const { assessments, todayAssessment, overallAverage, isLoading, saveAssessment, isSaving, refetch } = useBehaviorAssessments(targetUserId);
+
+  const {
+    bonusAmount,
+    bonusPercentage,
+    currentTier,
+    qualifiesForBonus,
+    refetch: refetchBonus,
+  } = useBehaviorBonus(targetUserId, baseRewardAmount);
+
+  const { sendLowBehaviorAlert, isEnabled: notificationsEnabled } = useNotifications();
 
   const [scores, setScores] = useState<BehaviorScores>(
     todayAssessment || DEFAULT_SCORES
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'today' | 'analytics'>('today');
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchBonus()]);
     setRefreshing(false);
   };
+
+  // Prepare chart data from assessments
+  const getChartData = () => {
+    const recentAssessments = assessments.slice(0, 14).reverse();
+    const labels = recentAssessments.map((a, i) => {
+      if (i === 0 || i === recentAssessments.length - 1) {
+        const date = new Date(a.date);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+      }
+      return '';
+    });
+    const data = recentAssessments.map((a) => calculateAssessmentAverageScore(a));
+    return { labels, data };
+  };
+
+  // Calculate category averages for bar chart
+  const getCategoryAverages = () => {
+    if (assessments.length === 0) return null;
+
+    const categories = [
+      { key: 'diet', label: 'Diet' },
+      { key: 'exercise', label: 'Exercise' },
+      { key: 'work', label: 'Work' },
+      { key: 'hygiene', label: 'Hygiene' },
+      { key: 'respect', label: 'Respect' },
+      { key: 'responsibilities', label: 'Resp.' },
+      { key: 'attitude', label: 'Attitude' },
+      { key: 'cooperation', label: 'Coop.' },
+      { key: 'courtesy', label: 'Courtesy' },
+      { key: 'service', label: 'Service' },
+    ];
+
+    const averages = categories.map((cat) => {
+      const sum = assessments.reduce((acc, a) => acc + (a[cat.key as keyof BehaviorScores] || 0), 0);
+      return sum / assessments.length;
+    });
+
+    return {
+      labels: categories.map((c) => c.label),
+      data: averages,
+    };
+  };
+
+  const chartData = getChartData();
+  const categoryData = getCategoryAverages();
 
   const updateScore = (key: keyof BehaviorScores, value: number) => {
     setScores((prev) => ({ ...prev, [key]: value }));
@@ -84,6 +147,13 @@ export default function BehaviorScreen() {
         scores,
         status,
       });
+
+      // Check if score is below bonus threshold and send alert
+      const average = calculateAssessmentAverageScore(scores);
+      if (status === 'submitted' && average < 3.0 && notificationsEnabled) {
+        const studentName = isParentView ? selectedStudent?.name : undefined;
+        await sendLowBehaviorAlert(average, studentName);
+      }
 
       Alert.alert(
         'Success',
@@ -115,7 +185,7 @@ export default function BehaviorScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Today's Assessment</Text>
+          <Text style={styles.headerTitle}>Behavior</Text>
           <Text style={styles.headerDate}>
             {new Date().toLocaleDateString('en-US', {
               weekday: 'long',
@@ -125,7 +195,153 @@ export default function BehaviorScreen() {
           </Text>
         </View>
 
-        <View style={styles.statsRow}>
+        {/* Tab Toggle */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'today' && styles.tabActive]}
+            onPress={() => setActiveTab('today')}
+          >
+            <Text style={[styles.tabText, activeTab === 'today' && styles.tabTextActive]}>
+              Today
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'analytics' && styles.tabActive]}
+            onPress={() => setActiveTab('analytics')}
+          >
+            <Text style={[styles.tabText, activeTab === 'analytics' && styles.tabTextActive]}>
+              Analytics
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'analytics' ? (
+          /* Analytics View */
+          <View style={styles.analyticsContainer}>
+            {/* Bonus Card */}
+            <View style={[styles.bonusCard, qualifiesForBonus && styles.bonusCardActive]}>
+              <View style={styles.bonusHeader}>
+                <Text style={styles.bonusTitle}>Behavior Bonus</Text>
+                {currentTier && (
+                  <View style={styles.tierBadge}>
+                    <Text style={styles.tierBadgeText}>{currentTier}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.bonusAmount, qualifiesForBonus && styles.bonusAmountActive]}>
+                ${bonusAmount.toFixed(2)}
+              </Text>
+              <Text style={styles.bonusSubtext}>
+                {qualifiesForBonus
+                  ? `${(bonusPercentage * 100).toFixed(0)}% bonus on base reward`
+                  : 'Need 3.0+ average to qualify'}
+              </Text>
+            </View>
+
+            {/* Trend Chart */}
+            {assessments.length >= 2 && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Score Trend</Text>
+                <Text style={styles.chartSubtitle}>Last {Math.min(14, assessments.length)} assessments</Text>
+                <LineChart
+                  data={{
+                    labels: chartData.labels,
+                    datasets: [{ data: chartData.data.length > 0 ? chartData.data : [0] }],
+                  }}
+                  width={screenWidth - 64}
+                  height={180}
+                  yAxisSuffix=""
+                  yAxisInterval={1}
+                  chartConfig={{
+                    backgroundColor: '#fff',
+                    backgroundGradientFrom: '#fff',
+                    backgroundGradientTo: '#fff',
+                    decimalPlaces: 1,
+                    color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    style: { borderRadius: 16 },
+                    propsForDots: {
+                      r: '4',
+                      strokeWidth: '2',
+                      stroke: '#4F46E5',
+                    },
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 16 }}
+                  fromZero
+                  segments={5}
+                />
+              </View>
+            )}
+
+            {/* Category Breakdown */}
+            {categoryData && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Category Averages</Text>
+                <Text style={styles.chartSubtitle}>Based on {assessments.length} assessments</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <BarChart
+                    data={{
+                      labels: categoryData.labels,
+                      datasets: [{ data: categoryData.data }],
+                    }}
+                    width={screenWidth * 1.5}
+                    height={200}
+                    yAxisSuffix=""
+                    yAxisLabel=""
+                    chartConfig={{
+                      backgroundColor: '#fff',
+                      backgroundGradientFrom: '#fff',
+                      backgroundGradientTo: '#fff',
+                      decimalPlaces: 1,
+                      color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      barPercentage: 0.6,
+                    }}
+                    style={{ marginVertical: 8, borderRadius: 16 }}
+                    fromZero
+                    showValuesOnTopOfBars
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Summary Stats */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Summary</Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{assessments.length}</Text>
+                  <Text style={styles.summaryLabel}>Assessments</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{overallAverage.toFixed(2)}</Text>
+                  <Text style={styles.summaryLabel}>Average</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryValue, qualifiesForBonus && styles.summaryValueGreen]}>
+                    {qualifiesForBonus ? 'Yes' : 'No'}
+                  </Text>
+                  <Text style={styles.summaryLabel}>Qualified</Text>
+                </View>
+              </View>
+            </View>
+
+            {assessments.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No Data Yet</Text>
+                <Text style={styles.emptyDescription}>
+                  Complete daily assessments to see your analytics
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          /* Today's Assessment View */
+          <>
+            <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Today's Score</Text>
             <Text style={styles.statValue}>
@@ -184,10 +400,13 @@ export default function BehaviorScreen() {
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
+            <View style={{ height: 100 }} />
+          </>
+        )}
       </ScrollView>
 
-      <View style={styles.buttonRow}>
+      {activeTab === 'today' && (
+        <View style={styles.buttonRow}>
         <TouchableOpacity
           style={styles.saveButton}
           onPress={() => handleSave('draft')}
@@ -207,6 +426,7 @@ export default function BehaviorScreen() {
           )}
         </TouchableOpacity>
       </View>
+      )}
     </View>
   );
 }
@@ -439,5 +659,155 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    margin: 16,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  tabTextActive: {
+    color: '#4F46E5',
+  },
+  analyticsContainer: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  bonusCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  bonusCardActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  bonusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bonusTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+  },
+  tierBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tierBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  bonusAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#9CA3AF',
+  },
+  bonusAmountActive: {
+    color: '#10B981',
+  },
+  bonusSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  summaryValueGreen: {
+    color: '#10B981',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

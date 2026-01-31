@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
+import { useEducationBonus } from '../../src/hooks/useEducationBonus';
 
 export default function LearnScreen() {
   const { user } = useAuth();
@@ -33,7 +34,21 @@ export default function LearnScreen() {
     handleSubmitAnswer,
   } = useQuestionOfTheDay(gradeLevel);
 
+  // Get user ID for education bonus stats
+  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+  const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
+
+  const {
+    accuracyPercentage,
+    totalQuestions,
+    correctAnswers,
+    currentTier,
+    bonusAmount,
+    refetch: refetchEducation,
+  } = useEducationBonus(targetUserId, baseRewardAmount);
+
   const onRefresh = async () => {
+    refetchEducation();
     setRefreshing(true);
     // Hook will refetch on next render
     setRefreshing(false);
@@ -173,6 +188,48 @@ export default function LearnScreen() {
             <Text style={styles.resultExplanation}>
               {currentQuestion.explanation}
             </Text>
+          </View>
+        )}
+
+        {/* Accuracy Stats Card */}
+        {totalQuestions > 0 && (
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>Your Progress</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{totalQuestions}</Text>
+                <Text style={styles.statLabel}>Questions</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{correctAnswers}</Text>
+                <Text style={styles.statLabel}>Correct</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, accuracyPercentage >= 50 && styles.statValueGood]}>
+                  {accuracyPercentage}%
+                </Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
+            </View>
+            {currentTier && (
+              <View style={styles.bonusTierContainer}>
+                <View style={styles.bonusTierBadge}>
+                  <Text style={styles.bonusTierText}>{currentTier}</Text>
+                </View>
+                {bonusAmount > 0 && (
+                  <Text style={styles.bonusAmountText}>
+                    Earning ${bonusAmount.toFixed(2)} bonus
+                  </Text>
+                )}
+              </View>
+            )}
+            {!currentTier && (
+              <Text style={styles.noTierText}>
+                Reach 50% accuracy to start earning bonuses
+              </Text>
+            )}
           </View>
         )}
 
@@ -413,6 +470,84 @@ const styles = StyleSheet.create({
   },
   emptyDescription: {
     fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  statValueGood: {
+    color: '#10B981',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+  },
+  bonusTierContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  bonusTierBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  bonusTierText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  bonusAmountText: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  noTierText: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    fontSize: 13,
     color: '#6B7280',
     textAlign: 'center',
   },

@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
+  Switch,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { signOut } from '../../src/integrations/supabase/client';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { useSubscriptionStatus } from '../../src/hooks/useSubscriptionStatus';
+import { useNotifications } from '../../src/hooks/useNotifications';
 import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
@@ -29,7 +32,16 @@ export default function SettingsScreen() {
     refetch: refetchSubscription,
   } = useSubscriptionStatus();
 
+  const {
+    isEnabled: notificationsEnabled,
+    hasPermission: hasNotificationPermission,
+    isLoading: notificationsLoading,
+    toggleNotifications,
+    requestPermission,
+  } = useNotifications();
+
   const [refreshing, setRefreshing] = useState(false);
+  const [togglingNotifications, setTogglingNotifications] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -78,6 +90,34 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    setTogglingNotifications(true);
+    try {
+      if (enabled && !hasNotificationPermission) {
+        const granted = await requestPermission();
+        if (!granted) {
+          Alert.alert(
+            'Permission Required',
+            'Please enable notifications in your device settings to receive reminders.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => Linking.openSettings(),
+              },
+            ]
+          );
+          return;
+        }
+      }
+      await toggleNotifications(enabled);
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+    } finally {
+      setTogglingNotifications(false);
+    }
   };
 
   const isLoading = profileLoading || subscriptionLoading;
@@ -156,6 +196,40 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             )}
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => router.push('/edit-profile' as any)}
+            >
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.editProfileButton, { marginTop: 8 }]}
+              onPress={() => router.push('/term-tracking' as any)}
+            >
+              <Text style={styles.editProfileButtonText}>Term Tracking</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.editProfileButton, { marginTop: 8 }]}
+              onPress={() => router.push('/family-meetings' as any)}
+            >
+              <Text style={styles.editProfileButtonText}>Family Meetings</Text>
+            </TouchableOpacity>
+            {isParent && (
+              <>
+                <TouchableOpacity
+                  style={[styles.editProfileButton, { marginTop: 8 }]}
+                  onPress={() => router.push('/student-management' as any)}
+                >
+                  <Text style={styles.editProfileButtonText}>Manage Students</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.editProfileButton, { marginTop: 8 }]}
+                  onPress={() => router.push('/grade-approval' as any)}
+                >
+                  <Text style={styles.editProfileButtonText}>Grade Approval</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -183,6 +257,59 @@ export default function SettingsScreen() {
             >
               <Text style={styles.manageButtonText}>Manage Subscription</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <View style={styles.card}>
+            <View style={styles.notificationRow}>
+              <View style={styles.notificationInfo}>
+                <Ionicons
+                  name={notificationsEnabled ? 'notifications' : 'notifications-off-outline'}
+                  size={24}
+                  color={notificationsEnabled ? '#4F46E5' : '#9CA3AF'}
+                />
+                <View style={styles.notificationText}>
+                  <Text style={styles.label}>Push Notifications</Text>
+                  <Text style={styles.notificationDescription}>
+                    {notificationsEnabled
+                      ? 'Receive meeting reminders and alerts'
+                      : 'Enable to receive reminders'}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={handleNotificationToggle}
+                disabled={togglingNotifications || notificationsLoading}
+                trackColor={{ false: '#D1D5DB', true: '#A5B4FC' }}
+                thumbColor={notificationsEnabled ? '#4F46E5' : '#f4f3f4'}
+              />
+            </View>
+            {notificationsEnabled && (
+              <>
+                <View style={styles.notificationTypes}>
+                  <View style={styles.notificationTypeRow}>
+                    <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+                    <Text style={styles.notificationTypeText}>Meeting reminders</Text>
+                  </View>
+                  <View style={styles.notificationTypeRow}>
+                    <Ionicons name="school-outline" size={18} color="#6B7280" />
+                    <Text style={styles.notificationTypeText}>Grade updates</Text>
+                  </View>
+                  <View style={styles.notificationTypeRow}>
+                    <Ionicons name="alert-circle-outline" size={18} color="#6B7280" />
+                    <Text style={styles.notificationTypeText}>Behavior alerts</Text>
+                  </View>
+                  <View style={styles.notificationTypeRow}>
+                    <Ionicons name="bulb-outline" size={18} color="#6B7280" />
+                    <Text style={styles.notificationTypeText}>Daily question reminders</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -346,6 +473,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
+  editProfileButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editProfileButtonText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   manageButton: {
     marginTop: 12,
     padding: 12,
@@ -406,5 +545,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#DC2626',
     fontWeight: '500',
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  notificationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  notificationText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  notificationDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  notificationTypes: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  notificationTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  notificationTypeText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 12,
   },
 });

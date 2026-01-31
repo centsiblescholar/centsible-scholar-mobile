@@ -1,0 +1,971 @@
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useStudentManagement, StudentProfile, CreateStudentInput } from '../src/hooks/useStudentManagement';
+import { useUserProfile } from '../src/hooks/useUserProfile';
+
+const screenWidth = Dimensions.get('window').width;
+
+const GRADE_LEVELS = [
+  '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', '5th Grade',
+  '6th Grade', '7th Grade', '8th Grade', '9th Grade', '10th Grade',
+  '11th Grade', '12th Grade',
+];
+
+export default function StudentManagementScreen() {
+  const { isParent } = useUserProfile();
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+
+  // Form state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [gradeLevel, setGradeLevel] = useState('6th Grade');
+  const [baseReward, setBaseReward] = useState('10');
+
+  const {
+    activeStudents,
+    inactiveStudents,
+    isLoading,
+    refetch,
+    createStudent,
+    isCreating,
+    updateStudent,
+    isUpdating,
+    deactivateStudent,
+    isDeactivating,
+    reactivateStudent,
+    isReactivating,
+  } = useStudentManagement();
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setGradeLevel('6th Grade');
+    setBaseReward('10');
+  };
+
+  const handleAddStudent = async () => {
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a student name');
+      return;
+    }
+
+    const reward = parseFloat(baseReward);
+    if (isNaN(reward) || reward < 0) {
+      Alert.alert('Error', 'Please enter a valid base reward amount');
+      return;
+    }
+
+    try {
+      await createStudent({
+        name: name.trim(),
+        email: email.trim() || undefined,
+        grade_level: gradeLevel,
+        base_reward_amount: reward,
+      });
+      setShowAddModal(false);
+      resetForm();
+      Alert.alert('Success', 'Student added successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to add student');
+    }
+  };
+
+  const handleEditStudent = async () => {
+    if (!selectedStudent) return;
+
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a student name');
+      return;
+    }
+
+    const reward = parseFloat(baseReward);
+    if (isNaN(reward) || reward < 0) {
+      Alert.alert('Error', 'Please enter a valid base reward amount');
+      return;
+    }
+
+    try {
+      await updateStudent(selectedStudent.id, {
+        name: name.trim(),
+        email: email.trim() || undefined,
+        grade_level: gradeLevel,
+        base_reward_amount: reward,
+      });
+      setShowEditModal(false);
+      setSelectedStudent(null);
+      resetForm();
+      Alert.alert('Success', 'Student updated successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update student');
+    }
+  };
+
+  const handleDeactivate = (student: StudentProfile) => {
+    Alert.alert(
+      'Deactivate Student',
+      `Are you sure you want to deactivate ${student.name}? They will no longer appear in your active students list, but their data will be preserved.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deactivateStudent(student.id);
+              Alert.alert('Success', `${student.name} has been deactivated`);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to deactivate student');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReactivate = async (student: StudentProfile) => {
+    try {
+      await reactivateStudent(student.id);
+      Alert.alert('Success', `${student.name} has been reactivated`);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to reactivate student');
+    }
+  };
+
+  const openEditModal = (student: StudentProfile) => {
+    setSelectedStudent(student);
+    setName(student.name);
+    setEmail(student.email || '');
+    setGradeLevel(student.grade_level);
+    setBaseReward(student.base_reward_amount.toString());
+    setShowEditModal(true);
+  };
+
+  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+
+  if (!isParent) {
+    return (
+      <View style={styles.accessDenied}>
+        <Ionicons name="lock-closed" size={64} color="#9CA3AF" />
+        <Text style={styles.accessDeniedTitle}>Parent Access Only</Text>
+        <Text style={styles.accessDeniedText}>
+          This feature is only available for parent accounts.
+        </Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.content}>
+        {/* Header with Add Button */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            {activeStudents.length} Active Student{activeStudents.length !== 1 ? 's' : ''}
+          </Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Active Students List */}
+        {activeStudents.length > 0 ? (
+          <View style={styles.studentsList}>
+            {activeStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+                onEdit={() => openEditModal(student)}
+                onDeactivate={() => handleDeactivate(student)}
+                formatCurrency={formatCurrency}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyCard}>
+            <Ionicons name="people-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>No Students Yet</Text>
+            <Text style={styles.emptyText}>
+              Add your first student to get started with Centsible Scholar.
+            </Text>
+            <TouchableOpacity
+              style={styles.addFirstButton}
+              onPress={() => {
+                resetForm();
+                setShowAddModal(true);
+              }}
+            >
+              <Ionicons name="add-circle" size={20} color="#fff" />
+              <Text style={styles.addFirstButtonText}>Add Student</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Inactive Students Section */}
+        {inactiveStudents.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.inactiveHeader}
+              onPress={() => setShowInactive(!showInactive)}
+            >
+              <Text style={styles.inactiveTitle}>
+                Inactive Students ({inactiveStudents.length})
+              </Text>
+              <Ionicons
+                name={showInactive ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color="#6B7280"
+              />
+            </TouchableOpacity>
+
+            {showInactive && (
+              <View style={styles.studentsList}>
+                {inactiveStudents.map((student) => (
+                  <InactiveStudentCard
+                    key={student.id}
+                    student={student}
+                    onReactivate={() => handleReactivate(student)}
+                    isReactivating={isReactivating}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </View>
+
+      {/* Add Student Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add Student</Text>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter student name"
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="student@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Grade Level *</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gradePicker}
+                >
+                  {GRADE_LEVELS.map((grade) => (
+                    <TouchableOpacity
+                      key={grade}
+                      style={[
+                        styles.gradeOption,
+                        gradeLevel === grade && styles.gradeOptionActive,
+                      ]}
+                      onPress={() => setGradeLevel(grade)}
+                    >
+                      <Text
+                        style={[
+                          styles.gradeOptionText,
+                          gradeLevel === grade && styles.gradeOptionTextActive,
+                        ]}
+                      >
+                        {grade.replace(' Grade', '')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Base Reward Amount *</Text>
+                <View style={styles.currencyInput}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={styles.currencyField}
+                    value={baseReward}
+                    onChangeText={setBaseReward}
+                    placeholder="10.00"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <Text style={styles.inputHint}>
+                  Amount earned for each A grade
+                </Text>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmButton, isCreating && styles.buttonDisabled]}
+                  onPress={handleAddStudent}
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Add Student</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Edit Student Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowEditModal(false);
+          setSelectedStudent(null);
+          resetForm();
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Student</Text>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter student name"
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="student@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Grade Level *</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gradePicker}
+                >
+                  {GRADE_LEVELS.map((grade) => (
+                    <TouchableOpacity
+                      key={grade}
+                      style={[
+                        styles.gradeOption,
+                        gradeLevel === grade && styles.gradeOptionActive,
+                      ]}
+                      onPress={() => setGradeLevel(grade)}
+                    >
+                      <Text
+                        style={[
+                          styles.gradeOptionText,
+                          gradeLevel === grade && styles.gradeOptionTextActive,
+                        ]}
+                      >
+                        {grade.replace(' Grade', '')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Base Reward Amount *</Text>
+                <View style={styles.currencyInput}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={styles.currencyField}
+                    value={baseReward}
+                    onChangeText={setBaseReward}
+                    placeholder="10.00"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowEditModal(false);
+                    setSelectedStudent(null);
+                    resetForm();
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmButton, isUpdating && styles.buttonDisabled]}
+                  onPress={handleEditStudent}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+}
+
+// Student Card Component
+function StudentCard({
+  student,
+  onEdit,
+  onDeactivate,
+  formatCurrency,
+}: {
+  student: StudentProfile;
+  onEdit: () => void;
+  onDeactivate: () => void;
+  formatCurrency: (amount: number) => string;
+}) {
+  return (
+    <View style={styles.studentCard}>
+      <View style={styles.studentHeader}>
+        <View style={styles.studentAvatar}>
+          <Text style={styles.studentInitial}>
+            {student.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.studentInfo}>
+          <Text style={styles.studentName}>{student.name}</Text>
+          <Text style={styles.studentGrade}>{student.grade_level}</Text>
+        </View>
+      </View>
+
+      <View style={styles.studentDetails}>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Base Reward</Text>
+          <Text style={styles.detailValue}>
+            {formatCurrency(student.base_reward_amount)}
+          </Text>
+        </View>
+        {student.email && (
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Email</Text>
+            <Text style={styles.detailValue}>{student.email}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.studentActions}>
+        <TouchableOpacity style={styles.editButton} onPress={onEdit}>
+          <Ionicons name="pencil" size={18} color="#4F46E5" />
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deactivateButton} onPress={onDeactivate}>
+          <Ionicons name="person-remove" size={18} color="#EF4444" />
+          <Text style={styles.deactivateButtonText}>Deactivate</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// Inactive Student Card Component
+function InactiveStudentCard({
+  student,
+  onReactivate,
+  isReactivating,
+}: {
+  student: StudentProfile;
+  onReactivate: () => void;
+  isReactivating: boolean;
+}) {
+  return (
+    <View style={[styles.studentCard, styles.inactiveCard]}>
+      <View style={styles.studentHeader}>
+        <View style={[styles.studentAvatar, styles.inactiveAvatar]}>
+          <Text style={[styles.studentInitial, styles.inactiveInitial]}>
+            {student.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.studentInfo}>
+          <Text style={[styles.studentName, styles.inactiveName]}>{student.name}</Text>
+          <Text style={styles.studentGrade}>{student.grade_level}</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.reactivateButton}
+        onPress={onReactivate}
+        disabled={isReactivating}
+      >
+        {isReactivating ? (
+          <ActivityIndicator size="small" color="#4F46E5" />
+        ) : (
+          <>
+            <Ionicons name="person-add" size={18} color="#4F46E5" />
+            <Text style={styles.reactivateButtonText}>Reactivate</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  accessDenied: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 32,
+  },
+  accessDeniedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+  },
+  accessDeniedText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  backButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  content: {
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  studentsList: {
+    gap: 16,
+  },
+  studentCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inactiveCard: {
+    opacity: 0.7,
+  },
+  studentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  studentAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inactiveAvatar: {
+    backgroundColor: '#9CA3AF',
+  },
+  studentInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  inactiveInitial: {
+    color: '#fff',
+  },
+  studentInfo: {
+    marginLeft: 16,
+  },
+  studentName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  inactiveName: {
+    color: '#6B7280',
+  },
+  studentGrade: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  studentDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 16,
+    marginBottom: 16,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  studentActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 10,
+    gap: 8,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  deactivateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
+    gap: 8,
+  },
+  deactivateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  reactivateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 10,
+    gap: 8,
+  },
+  reactivateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  emptyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  addFirstButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addFirstButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  section: {
+    marginTop: 24,
+  },
+  inactiveHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  inactiveTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 6,
+  },
+  gradePicker: {
+    flexGrow: 0,
+  },
+  gradeOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
+  },
+  gradeOptionActive: {
+    backgroundColor: '#4F46E5',
+  },
+  gradeOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  gradeOptionTextActive: {
+    color: '#fff',
+  },
+  currencyInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginRight: 4,
+  },
+  currencyField: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  confirmButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+});
