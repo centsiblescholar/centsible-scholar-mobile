@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -197,7 +198,7 @@ export async function scheduleMeetingReminder(
     'meeting_reminder',
     'Family Meeting Reminder',
     `You have a family meeting scheduled for ${formattedTime}`,
-    { date: reminderDate },
+    { type: SchedulableTriggerInputTypes.DATE, date: reminderDate },
     { meetingId }
   );
 }
@@ -217,9 +218,9 @@ export async function scheduleDailyQODReminder(
     "Don't Forget Your Question!",
     'Complete your Question of the Day to keep your streak going!',
     {
+      type: SchedulableTriggerInputTypes.DAILY,
       hour,
       minute,
-      repeats: true,
     },
     {}
   );
@@ -297,7 +298,7 @@ export async function scheduleTermEndingReminder(
     'term_ending',
     'Term Ending Soon',
     `Your current term ends in ${daysBeforeEnd} days. Make sure all grades are submitted!`,
-    { date: reminderDate },
+    { type: SchedulableTriggerInputTypes.DATE, date: reminderDate },
     { termEndDate: termEndDate.toISOString() }
   );
 }

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -116,6 +141,36 @@ export type Database = {
         }
         Relationships: []
       }
+      behavior_analytics_summary: {
+        Row: {
+          assessment_count: number
+          avg_score: number
+          created_at: string | null
+          id: string
+          month_year: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assessment_count: number
+          avg_score: number
+          created_at?: string | null
+          id?: string
+          month_year: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assessment_count?: number
+          avg_score?: number
+          created_at?: string | null
+          id?: string
+          month_year?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       behavior_assessments: {
         Row: {
           attitude: number
@@ -127,10 +182,12 @@ export type Database = {
           exercise: number
           hygiene: number
           id: string
+          originated_by: string | null
           parent_notes: string | null
           respect: number
           responsibilities: number
           reviewed_at: string | null
+          score_disputes: Json | null
           service: number
           status:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -152,10 +209,12 @@ export type Database = {
           exercise?: number
           hygiene?: number
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           respect?: number
           responsibilities?: number
           reviewed_at?: string | null
+          score_disputes?: Json | null
           service?: number
           status?:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -177,10 +236,12 @@ export type Database = {
           exercise?: number
           hygiene?: number
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           respect?: number
           responsibilities?: number
           reviewed_at?: string | null
+          score_disputes?: Json | null
           service?: number
           status?:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -384,11 +445,13 @@ export type Database = {
           exercise: number
           hygiene: number
           id: string
+          originated_by: string | null
           parent_notes: string | null
           parent_user_id: string | null
           respect: number
           responsibilities: number
           reviewed_at: string | null
+          score_disputes: Json | null
           service: number
           status:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -410,11 +473,13 @@ export type Database = {
           exercise?: number
           hygiene?: number
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           parent_user_id?: string | null
           respect?: number
           responsibilities?: number
           reviewed_at?: string | null
+          score_disputes?: Json | null
           service?: number
           status?:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -436,11 +501,13 @@ export type Database = {
           exercise?: number
           hygiene?: number
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           parent_user_id?: string | null
           respect?: number
           responsibilities?: number
           reviewed_at?: string | null
+          score_disputes?: Json | null
           service?: number
           status?:
             | Database["public"]["Enums"]["behavior_assessment_status"]
@@ -464,6 +531,7 @@ export type Database = {
       }
       behavior_assessments_pending: {
         Row: {
+          archived_at: string
           attitude: number
           cooperation: number
           courtesy: number
@@ -473,49 +541,33 @@ export type Database = {
           exercise: number
           hygiene: number
           id: string
-          parent_notes: string | null
-          parent_user_id: string | null
           respect: number
           responsibilities: number
-          reviewed_at: string | null
           service: number
-          status:
-            | Database["public"]["Enums"]["behavior_assessment_status"]
-            | null
-          student_id: string | null
-          student_user_id: string | null
-          submitted_at: string | null
           updated_at: string
           user_id: string
           work: number
         }
         Insert: {
-          attitude?: number
-          cooperation?: number
-          courtesy?: number
-          created_at?: string
+          archived_at?: string
+          attitude: number
+          cooperation: number
+          courtesy: number
+          created_at: string
           date: string
-          diet?: number
-          exercise?: number
-          hygiene?: number
-          id?: string
-          parent_notes?: string | null
-          parent_user_id?: string | null
-          respect?: number
-          responsibilities?: number
-          reviewed_at?: string | null
-          service?: number
-          status?:
-            | Database["public"]["Enums"]["behavior_assessment_status"]
-            | null
-          student_id?: string | null
-          student_user_id?: string | null
-          submitted_at?: string | null
-          updated_at?: string
+          diet: number
+          exercise: number
+          hygiene: number
+          id: string
+          respect: number
+          responsibilities: number
+          service: number
+          updated_at: string
           user_id: string
-          work?: number
+          work: number
         }
         Update: {
+          archived_at?: string
           attitude?: number
           cooperation?: number
           courtesy?: number
@@ -525,31 +577,14 @@ export type Database = {
           exercise?: number
           hygiene?: number
           id?: string
-          parent_notes?: string | null
-          parent_user_id?: string | null
           respect?: number
           responsibilities?: number
-          reviewed_at?: string | null
           service?: number
-          status?:
-            | Database["public"]["Enums"]["behavior_assessment_status"]
-            | null
-          student_id?: string | null
-          student_user_id?: string | null
-          submitted_at?: string | null
           updated_at?: string
           user_id?: string
           work?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "behavior_assessments_duplicate_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       behavior_bonuses: {
         Row: {
@@ -599,6 +634,36 @@ export type Database = {
           user_id?: string
           week_end_date?: string
           week_start_date?: string
+        }
+        Relationships: []
+      }
+      budget_items: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          is_recurring: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          id?: string
+          is_recurring?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          is_recurring?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -896,6 +961,87 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_function_debug_log: {
+        Row: {
+          created_at: string | null
+          function_name: string
+          id: number
+          log_data: Json
+        }
+        Insert: {
+          created_at?: string | null
+          function_name: string
+          id?: number
+          log_data: Json
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string
+          id?: number
+          log_data?: Json
+        }
+        Relationships: []
+      }
+      family_meetings: {
+        Row: {
+          attendees: string[] | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          scheduled_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendees?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      feature_interest: {
+        Row: {
+          created_at: string
+          feature_id: string
+          id: string
+          interested_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_id: string
+          id?: string
+          interested_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_id?: string
+          id?: string
+          interested_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       grade_reporting_periods: {
         Row: {
           created_at: string
@@ -929,6 +1075,383 @@ export type Database = {
           status?: string
           student_user_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      influencer_payouts: {
+        Row: {
+          amount_cents: number
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          influencer_id: string | null
+          period_end: string
+          period_start: string
+          referral_count: number
+          status: string | null
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          influencer_id?: string | null
+          period_end: string
+          period_start: string
+          referral_count: number
+          status?: string | null
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          influencer_id?: string | null
+          period_end?: string
+          period_start?: string
+          referral_count?: number
+          status?: string | null
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_payouts_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_promo_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          discount_percent: number | null
+          id: string
+          influencer_id: string | null
+          is_active: boolean | null
+          stripe_coupon_id: string
+          stripe_promo_code_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          discount_percent?: number | null
+          id?: string
+          influencer_id?: string | null
+          is_active?: boolean | null
+          stripe_coupon_id: string
+          stripe_promo_code_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          discount_percent?: number | null
+          id?: string
+          influencer_id?: string | null
+          is_active?: boolean | null
+          stripe_coupon_id?: string
+          stripe_promo_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_promo_codes_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_referrals: {
+        Row: {
+          commission_amount_cents: number
+          confirmed_at: string | null
+          id: string
+          influencer_id: string | null
+          paid_at: string | null
+          promo_code_id: string | null
+          referred_at: string | null
+          status: string | null
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_amount_cents: number
+        }
+        Insert: {
+          commission_amount_cents: number
+          confirmed_at?: string | null
+          id?: string
+          influencer_id?: string | null
+          paid_at?: string | null
+          promo_code_id?: string | null
+          referred_at?: string | null
+          status?: string | null
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_amount_cents: number
+        }
+        Update: {
+          commission_amount_cents?: number
+          confirmed_at?: string | null
+          id?: string
+          influencer_id?: string | null
+          paid_at?: string | null
+          promo_code_id?: string | null
+          referred_at?: string | null
+          status?: string | null
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          subscription_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_referrals_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencer_referrals_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "influencer_promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencers: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          status: string | null
+          stripe_connect_account_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          status?: string | null
+          stripe_connect_account_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          status?: string | null
+          stripe_connect_account_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      meeting_assessments: {
+        Row: {
+          communication_rating: number
+          created_at: string
+          goal_progress_rating: number
+          id: string
+          meeting_id: string
+          notes: string | null
+          overall_rating: number
+          participation_rating: number
+          student_id: string
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          communication_rating: number
+          created_at?: string
+          goal_progress_rating: number
+          id?: string
+          meeting_id: string
+          notes?: string | null
+          overall_rating: number
+          participation_rating: number
+          student_id: string
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          communication_rating?: number
+          created_at?: string
+          goal_progress_rating?: number
+          id?: string
+          meeting_id?: string
+          notes?: string | null
+          overall_rating?: number
+          participation_rating?: number
+          student_id?: string
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_assessments_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "family_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_pending_assessments: {
+        Row: {
+          attitude: number
+          cooperation: number
+          courtesy: number
+          created_at: string
+          date: string
+          diet: number
+          exercise: number
+          hygiene: number
+          id: string
+          originated_by: string | null
+          parent_notes: string | null
+          parent_user_id: string | null
+          respect: number
+          responsibilities: number
+          reviewed_at: string | null
+          score_disputes: Json | null
+          service: number
+          status:
+            | Database["public"]["Enums"]["behavior_assessment_status"]
+            | null
+          student_display_name: string | null
+          student_id: string | null
+          student_user_id: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          work: number
+        }
+        Insert: {
+          attitude?: number
+          cooperation?: number
+          courtesy?: number
+          created_at?: string
+          date: string
+          diet?: number
+          exercise?: number
+          hygiene?: number
+          id?: string
+          originated_by?: string | null
+          parent_notes?: string | null
+          parent_user_id?: string | null
+          respect?: number
+          responsibilities?: number
+          reviewed_at?: string | null
+          score_disputes?: Json | null
+          service?: number
+          status?:
+            | Database["public"]["Enums"]["behavior_assessment_status"]
+            | null
+          student_display_name?: string | null
+          student_id?: string | null
+          student_user_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+          work?: number
+        }
+        Update: {
+          attitude?: number
+          cooperation?: number
+          courtesy?: number
+          created_at?: string
+          date?: string
+          diet?: number
+          exercise?: number
+          hygiene?: number
+          id?: string
+          originated_by?: string | null
+          parent_notes?: string | null
+          parent_user_id?: string | null
+          respect?: number
+          responsibilities?: number
+          reviewed_at?: string | null
+          score_disputes?: Json | null
+          service?: number
+          status?:
+            | Database["public"]["Enums"]["behavior_assessment_status"]
+            | null
+          student_display_name?: string | null
+          student_id?: string | null
+          student_user_id?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+          work?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavior_assessments_duplicate_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_pending_grades: {
+        Row: {
+          base_amount: number | null
+          created_at: string | null
+          grade: string
+          id: string
+          originated_by: string | null
+          parent_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          student_display_name: string | null
+          student_user_id: string
+          subject: string
+          submitted_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_amount?: number | null
+          created_at?: string | null
+          grade: string
+          id: string
+          originated_by?: string | null
+          parent_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          student_display_name?: string | null
+          student_user_id: string
+          subject: string
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_amount?: number | null
+          created_at?: string | null
+          grade?: string
+          id?: string
+          originated_by?: string | null
+          parent_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          student_display_name?: string | null
+          student_user_id?: string
+          subject?: string
+          submitted_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -989,6 +1512,51 @@ export type Database = {
           parent_user_id?: string
           relationship_type?: string | null
           student_user_id?: string
+        }
+        Relationships: []
+      }
+      payment_audit_log: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          currency: string | null
+          event_type: string
+          id: string
+          new_state: Json | null
+          previous_state: Json | null
+          stripe_customer_id: string
+          stripe_event_id: string
+          stripe_invoice_id: string | null
+          stripe_subscription_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          event_type: string
+          id?: string
+          new_state?: Json | null
+          previous_state?: Json | null
+          stripe_customer_id: string
+          stripe_event_id: string
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          id?: string
+          new_state?: Json | null
+          previous_state?: Json | null
+          stripe_customer_id?: string
+          stripe_event_id?: string
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1105,6 +1673,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      resource_downloads: {
+        Row: {
+          downloaded_at: string
+          id: string
+          resource_name: string
+          resource_type: string
+          user_id: string
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          resource_name: string
+          resource_type: string
+          user_id: string
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          resource_name?: string
+          resource_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      savings_goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_amount: number
+          goal_emoji: string | null
+          goal_name: string
+          id: string
+          is_active: boolean
+          priority: number | null
+          student_id: string | null
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_amount?: number
+          goal_emoji?: string | null
+          goal_name: string
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          student_id?: string | null
+          target_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_amount?: number
+          goal_emoji?: string | null
+          goal_name?: string
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          student_id?: string | null
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stripe_prices: {
         Row: {
@@ -1232,6 +1877,7 @@ export type Database = {
           created_at: string
           grade: string
           id: string
+          originated_by: string | null
           parent_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1246,6 +1892,7 @@ export type Database = {
           created_at?: string
           grade: string
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1260,6 +1907,7 @@ export type Database = {
           created_at?: string
           grade?: string
           id?: string
+          originated_by?: string | null
           parent_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1280,10 +1928,14 @@ export type Database = {
           grade_level: string
           id: string
           is_active: boolean
+          last_qod_date: string | null
           last_report_submitted: string | null
+          longest_streak: number
           name: string
           next_report_due: string | null
           reporting_frequency: string
+          streak_count: number
+          total_xp: number
           updated_at: string
           user_id: string
         }
@@ -1295,10 +1947,14 @@ export type Database = {
           grade_level: string
           id?: string
           is_active?: boolean
+          last_qod_date?: string | null
           last_report_submitted?: string | null
+          longest_streak?: number
           name: string
           next_report_due?: string | null
           reporting_frequency?: string
+          streak_count?: number
+          total_xp?: number
           updated_at?: string
           user_id: string
         }
@@ -1310,10 +1966,14 @@ export type Database = {
           grade_level?: string
           id?: string
           is_active?: boolean
+          last_qod_date?: string | null
           last_report_submitted?: string | null
+          longest_streak?: number
           name?: string
           next_report_due?: string | null
           reporting_frequency?: string
+          streak_count?: number
+          total_xp?: number
           updated_at?: string
           user_id?: string
         }
@@ -1523,6 +2183,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tour_progress: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          last_step_index: number | null
+          tour_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          last_step_index?: number | null
+          tour_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          last_step_index?: number | null
+          tour_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -1567,9 +2260,67 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json | null
+          processed_at: string | null
+          processing_time_ms: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          processing_time_ms?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          processing_time_ms?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      student_assessment_history: {
+        Row: {
+          attitude: number | null
+          cooperation: number | null
+          courtesy: number | null
+          created_at: string | null
+          date: string | null
+          diet: number | null
+          exercise: number | null
+          hygiene: number | null
+          id: string | null
+          parent_display_name: string | null
+          parent_email: string | null
+          parent_notes: string | null
+          parent_user_id: string | null
+          respect: number | null
+          responsibilities: number | null
+          reviewed_at: string | null
+          service: number | null
+          status: string | null
+          student_id: string | null
+          student_user_id: string | null
+          submitted_at: string | null
+          updated_at: string | null
+          user_id: string | null
+          work: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       approve_behavior_assessment: {
@@ -1580,48 +2331,67 @@ export type Database = {
         }
         Returns: string
       }
-      archive_old_behavior_assessments: {
-        Args: Record<PropertyKey, never>
-        Returns: number
+      approve_student_grade: {
+        Args: {
+          grade_id: string
+          parent_notes?: string
+          parent_user_id: string
+        }
+        Returns: string
       }
+      archive_old_behavior_assessments: { Args: never; Returns: number }
       calculate_next_report_due: {
         Args: { custom_days?: number; frequency: string; last_report?: string }
         Returns: string
       }
-      cleanup_expired_coaching_data: {
-        Args: Record<PropertyKey, never>
-        Returns: number
+      cleanup_expired_coaching_data: { Args: never; Returns: number }
+      cleanup_old_archived_data: { Args: never; Returns: number }
+      cleanup_old_assessments: {
+        Args: never
+        Returns: {
+          deleted_count: number
+          summary_count: number
+        }[]
       }
-      cleanup_old_archived_data: {
-        Args: Record<PropertyKey, never>
-        Returns: number
+      create_parent_assessment: {
+        Args: {
+          p_date: string
+          p_parent_user_id: string
+          p_scores: Json
+          p_student_user_id: string
+        }
+        Returns: string
+      }
+      create_parent_student_relationship: {
+        Args: { parent_user_id: string; student_user_id: string }
+        Returns: string
       }
       create_reporting_period: {
         Args: { custom_days?: number; frequency: string; student_id: string }
         Returns: string
       }
-      delete_student_centsible_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      delete_user_data: {
-        Args: { target_user_id: string }
-        Returns: Json
-      }
-      generate_secure_password: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      delete_student_centsible_accounts: { Args: never; Returns: number }
+      delete_user_data: { Args: { target_user_id: string }; Returns: Json }
+      generate_secure_password: { Args: never; Returns: string }
+      get_grade_conflicts: {
+        Args: { p_student_user_id: string }
+        Returns: {
+          parent_grade: string
+          parent_grade_id: string
+          parent_originated_by: string
+          student_grade: string
+          student_grade_id: string
+          student_originated_by: string
+          subject: string
+        }[]
       }
       get_max_students_allowed: {
         Args: { parent_user_id: string }
         Returns: number
       }
-      get_student_number: {
-        Args: { student_user_id: string }
-        Returns: number
-      }
+      get_student_number: { Args: { student_user_id: string }; Returns: number }
       get_users_in_grace_period: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           current_student_count: number
           days_remaining: number
@@ -1632,14 +2402,13 @@ export type Database = {
           user_id: string
         }[]
       }
-      has_coaching_access: {
+      has_active_subscription: { Args: { user_uuid: string }; Returns: boolean }
+      has_coaching_access: { Args: { user_uuid: string }; Returns: boolean }
+      has_premium_subscription: {
         Args: { user_uuid: string }
         Returns: boolean
       }
-      is_admin_user: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
+      is_admin_user: { Args: { user_uuid: string }; Returns: boolean }
       is_coaching_staff: {
         Args: {
           required_role?: Database["public"]["Enums"]["coaching_staff_role"]
@@ -1647,17 +2416,36 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_parent: {
-        Args: { user_uuid: string }
-        Returns: boolean
+      is_parent: { Args: { user_uuid: string }; Returns: boolean }
+      is_premium_user: { Args: { user_uuid: string }; Returns: boolean }
+      is_student: { Args: { user_uuid: string }; Returns: boolean }
+      migrate_existing_behavior_assessments: { Args: never; Returns: undefined }
+      parent_resolve_dispute: {
+        Args: {
+          p_assessment_id: string
+          p_new_score: number
+          p_parent_user_id: string
+          p_resolution_notes: string
+          p_score_field: string
+        }
+        Returns: undefined
       }
-      is_premium_user: {
-        Args: { user_uuid: string }
-        Returns: boolean
+      reject_student_grade: {
+        Args: {
+          grade_id: string
+          parent_notes?: string
+          parent_user_id: string
+        }
+        Returns: undefined
       }
-      is_student: {
-        Args: { user_uuid: string }
-        Returns: boolean
+      request_assessment_cleanup: {
+        Args: never
+        Returns: {
+          deleted_count: number
+          message: string
+          success: boolean
+          summary_count: number
+        }[]
       }
       request_behavior_assessment_revision: {
         Args: {
@@ -1666,6 +2454,32 @@ export type Database = {
           parent_user_id: string
         }
         Returns: undefined
+      }
+      request_grade_revision: {
+        Args: {
+          grade_id: string
+          parent_notes?: string
+          parent_user_id: string
+        }
+        Returns: undefined
+      }
+      student_acknowledge_assessment: {
+        Args: { p_assessment_id: string; p_student_user_id: string }
+        Returns: undefined
+      }
+      student_dispute_score: {
+        Args: {
+          p_assessment_id: string
+          p_comment: string
+          p_score_field: string
+          p_student_user_id: string
+        }
+        Returns: undefined
+      }
+      update_missed_meetings: { Args: never; Returns: undefined }
+      validate_parent_access: {
+        Args: { parent_user_id: string }
+        Returns: boolean
       }
       validate_student_limit: {
         Args: { parent_user_id: string }
@@ -1678,6 +2492,9 @@ export type Database = {
         | "submitted"
         | "approved"
         | "needs_revision"
+        | "parent_submitted"
+        | "student_disputed"
+        | "student_acknowledged"
       coaching_staff_role: "coach" | "admin" | "support"
     }
     CompositeTypes: {
@@ -1804,6 +2621,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       behavior_assessment_status: [
@@ -1811,6 +2631,9 @@ export const Constants = {
         "submitted",
         "approved",
         "needs_revision",
+        "parent_submitted",
+        "student_disputed",
+        "student_acknowledged",
       ],
       coaching_staff_role: ["coach", "admin", "support"],
     },

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { format, differenceInDays, parseISO, addWeeks } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface TermConfig {
   id: string;
@@ -41,7 +42,41 @@ export const termTrackingKeys = {
   currentSnapshot: (userId: string) => [...termTrackingKeys.all, 'currentSnapshot', userId] as const,
 };
 
-async function fetchTermConfig(userId: string): Promise<TermConfig | null> {
+/**
+ * Resolves a student profile ID or user ID to the actual user ID.
+ *
+ * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
+ * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
+ */
+async function resolveStudentUserId(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<string> {
+  if (!parentUserId) {
+    return studentUserIdOrProfileId;
+  }
+
+  // Check if this is a student_profiles.id
+  const { data: profile } = await supabase
+    .from('student_profiles')
+    .select('user_id')
+    .eq('id', studentUserIdOrProfileId)
+    .maybeSingle();
+
+  if (profile?.user_id) {
+    return profile.user_id;
+  }
+
+  // It's already a user_id
+  return studentUserIdOrProfileId;
+}
+
+async function fetchTermConfig(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<TermConfig | null> {
+  const userId = await resolveStudentUserId(studentUserIdOrProfileId, parentUserId);
+
   const { data, error } = await supabase
     .from('term_configs')
     .select('*')
@@ -60,7 +95,12 @@ async function fetchTermConfig(userId: string): Promise<TermConfig | null> {
   return data;
 }
 
-async function fetchTermSnapshots(userId: string): Promise<TermSnapshot[]> {
+async function fetchTermSnapshots(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<TermSnapshot[]> {
+  const userId = await resolveStudentUserId(studentUserIdOrProfileId, parentUserId);
+
   const { data, error } = await supabase
     .from('term_snapshots')
     .select('*')
@@ -119,9 +159,11 @@ async function updateTermConfig(
   return data;
 }
 
-export function useTermTracking(userId: string | undefined) {
+export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const targetUserId = userId || '';
+  const targetUserId = studentUserIdOrProfileId || '';
+  const parentUserId = user?.id;
 
   // Fetch term configuration
   const {
@@ -131,7 +173,7 @@ export function useTermTracking(userId: string | undefined) {
     refetch: refetchConfig,
   } = useQuery({
     queryKey: termTrackingKeys.config(targetUserId),
-    queryFn: () => fetchTermConfig(targetUserId),
+    queryFn: () => fetchTermConfig(targetUserId, parentUserId),
     enabled: !!targetUserId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -144,7 +186,7 @@ export function useTermTracking(userId: string | undefined) {
     refetch: refetchSnapshots,
   } = useQuery({
     queryKey: termTrackingKeys.snapshots(targetUserId),
-    queryFn: () => fetchTermSnapshots(targetUserId),
+    queryFn: () => fetchTermSnapshots(targetUserId, parentUserId),
     enabled: !!targetUserId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -229,6 +271,9 @@ export function useTermTracking(userId: string | undefined) {
   const setupNewTerm = async (termLengthWeeks: number = 9) => {
     if (!targetUserId) throw new Error('User ID is required');
 
+    // Resolve to actual user_id if we have a profile ID
+    const resolvedUserId = await resolveStudentUserId(targetUserId, parentUserId);
+
     const startDate = new Date();
     const endDate = addWeeks(startDate, termLengthWeeks);
 
@@ -245,7 +290,7 @@ export function useTermTracking(userId: string | undefined) {
     } else {
       // Create new config
       return createConfigMutation.mutateAsync({
-        user_id: targetUserId,
+        user_id: resolvedUserId,
         term_length: termLengthWeeks,
         current_term_start: startDate.toISOString(),
         current_term_end: endDate.toISOString(),

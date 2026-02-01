@@ -10,18 +10,61 @@ export const behaviorAssessmentKeys = {
   list: (userId: string) => [...behaviorAssessmentKeys.all, 'list', userId] as const,
 };
 
-async function fetchBehaviorAssessments(studentId: string): Promise<BehaviorAssessment[]> {
+/**
+ * Fetches behavior assessments for a student.
+ *
+ * @param studentUserIdOrProfileId - Either the student's auth user_id (if they have an account)
+ *                                    or the student_profiles.id (for parent-managed students)
+ * @param parentUserId - The parent's auth user_id (optional, used to look up student via relationships)
+ */
+async function fetchBehaviorAssessments(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<BehaviorAssessment[]> {
   const today = new Date();
   const eighteenWeeksAgo = new Date();
   eighteenWeeksAgo.setDate(eighteenWeeksAgo.getDate() - 126); // 18 weeks
+  const dateFilter = {
+    start: eighteenWeeksAgo.toISOString().split('T')[0],
+    end: today.toISOString().split('T')[0],
+  };
 
-  // Try fetching by user_id first (for students with their own accounts)
-  let { data, error } = await supabase
+  // If we have a parent user ID, look up the student's user_id via relationships
+  let studentUserId = studentUserIdOrProfileId;
+
+  if (parentUserId) {
+    // First, check if this is a student_profiles.id by looking it up
+    const { data: profile } = await supabase
+      .from('student_profiles')
+      .select('user_id')
+      .eq('id', studentUserIdOrProfileId)
+      .maybeSingle();
+
+    if (profile?.user_id) {
+      // Found a profile - use the user_id from the profile
+      studentUserId = profile.user_id;
+    } else {
+      // Not a profile ID - try looking up via parent_student_relationships
+      const { data: relationship } = await supabase
+        .from('parent_student_relationships')
+        .select('student_user_id')
+        .eq('parent_user_id', parentUserId)
+        .eq('student_user_id', studentUserIdOrProfileId)
+        .maybeSingle();
+
+      if (relationship?.student_user_id) {
+        studentUserId = relationship.student_user_id;
+      }
+    }
+  }
+
+  // Query behavior assessments using student_user_id
+  const { data, error } = await supabase
     .from('behavior_assessments')
     .select('*')
-    .eq('user_id', studentId)
-    .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
-    .lte('date', today.toISOString().split('T')[0])
+    .or(`user_id.eq.${studentUserId},student_user_id.eq.${studentUserId}`)
+    .gte('date', dateFilter.start)
+    .lte('date', dateFilter.end)
     .order('date', { ascending: false });
 
   if (error) {
@@ -29,22 +72,8 @@ async function fetchBehaviorAssessments(studentId: string): Promise<BehaviorAsse
     throw error;
   }
 
-  // If no results, try by student_id (for parent-managed students)
-  if (!data || data.length === 0) {
-    const { data: studentData, error: studentError } = await supabase
-      .from('behavior_assessments')
-      .select('*')
-      .eq('student_id', studentId)
-      .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
-      .lte('date', today.toISOString().split('T')[0])
-      .order('date', { ascending: false });
-
-    if (!studentError && studentData) {
-      return studentData;
-    }
-  }
-
-  return data || [];
+  // Cast to BehaviorAssessment[] - the DB schema matches but Supabase types are broader
+  return (data || []) as BehaviorAssessment[];
 }
 
 async function saveAssessment(assessment: {
@@ -96,10 +125,11 @@ export function useBehaviorAssessments(studentUserId?: string) {
 
   // Use provided studentUserId or fall back to logged-in user's ID
   const targetUserId = studentUserId || user?.id || '';
+  const parentUserId = user?.id;
 
   const { data: assessments = [], isLoading, error, refetch } = useQuery({
     queryKey: behaviorAssessmentKeys.list(targetUserId),
-    queryFn: () => fetchBehaviorAssessments(targetUserId),
+    queryFn: () => fetchBehaviorAssessments(targetUserId, parentUserId),
     enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

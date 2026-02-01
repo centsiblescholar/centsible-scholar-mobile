@@ -39,11 +39,28 @@ export const gradeApprovalKeys = {
 
 // Fetch pending grades for all students of a parent
 async function fetchPendingGrades(parentId: string): Promise<PendingGrade[]> {
-  // First get all students belonging to this parent
+  // First get all students belonging to this parent via parent_student_relationships
+  const { data: relationships, error: relError } = await supabase
+    .from('parent_student_relationships')
+    .select('student_user_id')
+    .eq('parent_user_id', parentId);
+
+  if (relError) {
+    console.error('Error fetching relationships:', relError);
+    throw relError;
+  }
+
+  if (!relationships || relationships.length === 0) {
+    return [];
+  }
+
+  const studentUserIds = relationships.map((r) => r.student_user_id);
+
+  // Get student profiles for names
   const { data: students, error: studentsError } = await supabase
     .from('student_profiles')
     .select('user_id, name')
-    .eq('user_id', parentId)
+    .in('user_id', studentUserIds)
     .eq('is_active', true);
 
   if (studentsError) {
@@ -55,14 +72,14 @@ async function fetchPendingGrades(parentId: string): Promise<PendingGrade[]> {
     return [];
   }
 
-  // Get all student IDs
-  const studentIds = students.map((s) => s.user_id);
+  // Get active student IDs
+  const activeStudentIds = students.map((s) => s.user_id);
 
   // Fetch pending grades for these students
   const { data: grades, error: gradesError } = await supabase
     .from('student_grades')
     .select('*')
-    .in('student_user_id', studentIds)
+    .in('student_user_id', activeStudentIds)
     .eq('status', 'submitted')
     .order('submitted_at', { ascending: false });
 
@@ -82,11 +99,28 @@ async function fetchPendingGrades(parentId: string): Promise<PendingGrade[]> {
 
 // Fetch recently reviewed grades
 async function fetchReviewedGrades(parentId: string): Promise<PendingGrade[]> {
-  // First get all students belonging to this parent
+  // First get all students belonging to this parent via parent_student_relationships
+  const { data: relationships, error: relError } = await supabase
+    .from('parent_student_relationships')
+    .select('student_user_id')
+    .eq('parent_user_id', parentId);
+
+  if (relError) {
+    console.error('Error fetching relationships:', relError);
+    throw relError;
+  }
+
+  if (!relationships || relationships.length === 0) {
+    return [];
+  }
+
+  const studentUserIds = relationships.map((r) => r.student_user_id);
+
+  // Get student profiles for names
   const { data: students, error: studentsError } = await supabase
     .from('student_profiles')
     .select('user_id, name')
-    .eq('user_id', parentId)
+    .in('user_id', studentUserIds)
     .eq('is_active', true);
 
   if (studentsError) {
@@ -98,7 +132,7 @@ async function fetchReviewedGrades(parentId: string): Promise<PendingGrade[]> {
     return [];
   }
 
-  const studentIds = students.map((s) => s.user_id);
+  const activeStudentIds = students.map((s) => s.user_id);
 
   // Fetch recently reviewed grades (last 30 days)
   const thirtyDaysAgo = new Date();
@@ -107,7 +141,7 @@ async function fetchReviewedGrades(parentId: string): Promise<PendingGrade[]> {
   const { data: grades, error: gradesError } = await supabase
     .from('student_grades')
     .select('*')
-    .in('student_user_id', studentIds)
+    .in('student_user_id', activeStudentIds)
     .in('status', ['approved', 'rejected'])
     .gte('reviewed_at', thirtyDaysAgo.toISOString())
     .order('reviewed_at', { ascending: false })

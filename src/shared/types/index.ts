@@ -61,18 +61,19 @@ export interface UserProfile {
 export interface BehaviorAssessment extends BehaviorScores {
   id: string;
   user_id: string;
-  student_user_id: string;
+  student_user_id?: string | null;
+  student_id?: string | null;
   user?: UserProfile;
   date: string;
-  status: BehaviorAssessmentStatus;
-  submitted_at?: string;
-  reviewed_at?: string;
-  parent_notes?: string;
+  status: BehaviorAssessmentStatus | null;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
+  parent_notes?: string | null;
   notes?: string;
   created_at: string;
   updated_at: string;
-  originated_by?: BehaviorAssessmentOrigin;
-  score_disputes?: Record<string, ScoreDispute>;
+  originated_by?: string | null;
+  score_disputes?: Record<string, ScoreDispute> | null;
 }
 
 export interface BehaviorAssessmentInput extends BehaviorScores {

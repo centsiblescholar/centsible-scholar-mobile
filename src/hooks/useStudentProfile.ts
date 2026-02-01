@@ -6,7 +6,7 @@ export interface StudentProfile {
   id: string;
   user_id: string;
   name: string;
-  email?: string;
+  email: string | null;
   grade_level: string;
   base_reward_amount: number;
   is_active: boolean;

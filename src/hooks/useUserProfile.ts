@@ -5,8 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 export interface UserProfile {
   id: string;
   name: string;
-  email?: string;
-  grade_level?: string;
+  email: string | null;
+  grade_level?: string | null;
   base_reward_amount?: number;
   userType: 'student' | 'parent';
 }
@@ -63,7 +63,7 @@ async function fetchUserProfile(userId: string, userEmail: string | undefined): 
     return {
       id: parentData.id,
       name: fullName,
-      email: parentData.email || undefined,
+      email: parentData.email,
       userType: 'parent' as const,
     };
   }
@@ -72,7 +72,7 @@ async function fetchUserProfile(userId: string, userEmail: string | undefined): 
   return {
     id: userId,
     name: userEmail?.split('@')[0] || 'User',
-    email: userEmail,
+    email: userEmail || null,
     userType: 'parent' as const,
   };
 }

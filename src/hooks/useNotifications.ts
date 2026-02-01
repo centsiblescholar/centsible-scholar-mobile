@@ -59,8 +59,8 @@ export function useNotifications(): UseNotificationsReturn {
   const [scheduledNotifications, setScheduledNotifications] = useState<ScheduledNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<ReturnType<typeof Notifications.addNotificationReceivedListener> | undefined>(undefined);
+  const responseListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | undefined>(undefined);
 
   // Initialize notifications
   useEffect(() => {
@@ -104,11 +104,11 @@ export function useNotifications(): UseNotificationsReturn {
     });
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+      if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
+        notificationListener.current.remove();
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+      if (responseListener.current && typeof responseListener.current.remove === 'function') {
+        responseListener.current.remove();
       }
     };
   }, [user?.id]);

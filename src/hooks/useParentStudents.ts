@@ -6,7 +6,7 @@ export interface StudentInfo {
   id: string;
   user_id: string;
   name: string;
-  email?: string;
+  email: string | null;
   grade_level: string;
   base_reward_amount: number;
   is_active: boolean;
@@ -19,10 +19,28 @@ export const parentStudentsKeys = {
 };
 
 async function fetchParentStudents(parentUserId: string): Promise<StudentInfo[]> {
+  // First get student user IDs from parent_student_relationships
+  const { data: relationships, error: relError } = await supabase
+    .from('parent_student_relationships')
+    .select('student_user_id')
+    .eq('parent_user_id', parentUserId);
+
+  if (relError) {
+    console.error('Error fetching parent-student relationships:', relError);
+    throw relError;
+  }
+
+  if (!relationships || relationships.length === 0) {
+    return [];
+  }
+
+  const studentUserIds = relationships.map((r) => r.student_user_id);
+
+  // Now fetch student profiles for those user IDs
   const { data, error } = await supabase
     .from('student_profiles')
     .select('id, user_id, name, email, grade_level, base_reward_amount, is_active')
-    .eq('user_id', parentUserId)
+    .in('user_id', studentUserIds)
     .eq('is_active', true)
     .order('name');
 

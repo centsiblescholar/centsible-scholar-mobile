@@ -41,17 +41,42 @@ interface BehaviorScores {
   service: number;
 }
 
-async function fetchBehaviorAssessments(studentId: string): Promise<BehaviorScores[]> {
-  // Fetch assessments from the last 18 weeks
+/**
+ * Fetches behavior assessments for bonus calculation.
+ *
+ * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
+ * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
+ */
+async function fetchBehaviorAssessments(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<BehaviorScores[]> {
   const eighteenWeeksAgo = new Date();
   eighteenWeeksAgo.setDate(eighteenWeeksAgo.getDate() - 126);
+  const dateStart = eighteenWeeksAgo.toISOString().split('T')[0];
 
-  // Try fetching by user_id first (for students with their own accounts)
-  let { data, error } = await supabase
+  // Resolve the student's user_id if we have a profile ID
+  let studentUserId = studentUserIdOrProfileId;
+
+  if (parentUserId) {
+    // Check if this is a student_profiles.id
+    const { data: profile } = await supabase
+      .from('student_profiles')
+      .select('user_id')
+      .eq('id', studentUserIdOrProfileId)
+      .maybeSingle();
+
+    if (profile?.user_id) {
+      studentUserId = profile.user_id;
+    }
+  }
+
+  // Query behavior assessments using student_user_id
+  const { data, error } = await supabase
     .from('behavior_assessments')
     .select('diet, exercise, work, hygiene, respect, responsibilities, attitude, cooperation, courtesy, service')
-    .eq('user_id', studentId)
-    .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
+    .or(`user_id.eq.${studentUserId},student_user_id.eq.${studentUserId}`)
+    .gte('date', dateStart)
     .order('date', { ascending: false });
 
   if (error) {
@@ -59,27 +84,17 @@ async function fetchBehaviorAssessments(studentId: string): Promise<BehaviorScor
     return [];
   }
 
-  // If no results, try by student_id (for parent-managed students)
-  if (!data || data.length === 0) {
-    const { data: studentData, error: studentError } = await supabase
-      .from('behavior_assessments')
-      .select('diet, exercise, work, hygiene, respect, responsibilities, attitude, cooperation, courtesy, service')
-      .eq('student_id', studentId)
-      .gte('date', eighteenWeeksAgo.toISOString().split('T')[0])
-      .order('date', { ascending: false });
-
-    if (!studentError && studentData) {
-      return studentData;
-    }
-  }
-
   return data || [];
 }
 
-export function useBehaviorBonus(userId: string | undefined, baseRewardAmount: number = 0) {
+export function useBehaviorBonus(
+  userId: string | undefined,
+  baseRewardAmount: number = 0,
+  parentUserId?: string
+) {
   const { data: assessments, isLoading, error, refetch } = useQuery({
     queryKey: ['behaviorBonus', userId],
-    queryFn: () => fetchBehaviorAssessments(userId!),
+    queryFn: () => fetchBehaviorAssessments(userId!, parentUserId),
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
   });

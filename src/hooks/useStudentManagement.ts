@@ -39,12 +39,30 @@ export const studentManagementKeys = {
   detail: (studentId: string) => [...studentManagementKeys.all, 'detail', studentId] as const,
 };
 
-// Fetch all students for a parent
+// Fetch all students for a parent via parent_student_relationships
 async function fetchStudents(parentUserId: string): Promise<StudentProfile[]> {
+  // First get student user IDs from parent_student_relationships
+  const { data: relationships, error: relError } = await supabase
+    .from('parent_student_relationships')
+    .select('student_user_id')
+    .eq('parent_user_id', parentUserId);
+
+  if (relError) {
+    console.error('Error fetching parent-student relationships:', relError);
+    throw relError;
+  }
+
+  if (!relationships || relationships.length === 0) {
+    return [];
+  }
+
+  const studentUserIds = relationships.map((r) => r.student_user_id);
+
+  // Now fetch student profiles for those user IDs
   const { data, error } = await supabase
     .from('student_profiles')
     .select('*')
-    .eq('user_id', parentUserId)
+    .in('user_id', studentUserIds)
     .order('name');
 
   if (error) {

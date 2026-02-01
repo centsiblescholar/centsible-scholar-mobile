@@ -45,14 +45,39 @@ function getTierLabel(accuracy: number): string | null {
   return null;
 }
 
-async function fetchEducationBonusData(userId: string): Promise<{
+/**
+ * Fetches QOD results for education bonus calculation.
+ *
+ * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
+ * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
+ */
+async function fetchEducationBonusData(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<{
   totalQuestions: number;
   correctAnswers: number;
 }> {
+  // Resolve the student's user_id if we have a profile ID
+  let studentUserId = studentUserIdOrProfileId;
+
+  if (parentUserId) {
+    // Check if this is a student_profiles.id
+    const { data: profile } = await supabase
+      .from('student_profiles')
+      .select('user_id')
+      .eq('id', studentUserIdOrProfileId)
+      .maybeSingle();
+
+    if (profile?.user_id) {
+      studentUserId = profile.user_id;
+    }
+  }
+
   const { data, error } = await supabase
     .from('question_of_day_results')
     .select('passed')
-    .eq('user_id', userId);
+    .eq('user_id', studentUserId);
 
   if (error) {
     console.error('Error fetching QOD results:', error);
@@ -65,10 +90,14 @@ async function fetchEducationBonusData(userId: string): Promise<{
   return { totalQuestions, correctAnswers };
 }
 
-export function useEducationBonus(userId: string | undefined, baseRewardAmount: number = 0) {
+export function useEducationBonus(
+  userId: string | undefined,
+  baseRewardAmount: number = 0,
+  parentUserId?: string
+) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['educationBonus', userId],
-    queryFn: () => fetchEducationBonusData(userId!),
+    queryFn: () => fetchEducationBonusData(userId!, parentUserId),
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
   });
