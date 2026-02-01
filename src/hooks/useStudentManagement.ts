@@ -95,10 +95,14 @@ async function createStudent(
   parentUserId: string,
   input: CreateStudentInput
 ): Promise<StudentProfile> {
+  // Generate a unique user_id for the student (students don't need auth accounts)
+  const studentUserId = crypto.randomUUID();
+
+  // Create the student profile
   const { data, error } = await supabase
     .from('student_profiles')
     .insert({
-      user_id: parentUserId,
+      user_id: studentUserId,
       name: input.name,
       email: input.email || null,
       grade_level: input.grade_level,
@@ -112,6 +116,22 @@ async function createStudent(
   if (error) {
     console.error('Error creating student:', error);
     throw error;
+  }
+
+  // Create the parent-student relationship
+  const { error: relError } = await supabase
+    .from('parent_student_relationships')
+    .insert({
+      parent_user_id: parentUserId,
+      student_user_id: studentUserId,
+      relationship_type: 'parent',
+    });
+
+  if (relError) {
+    // If relationship creation fails, we should clean up the student profile
+    console.error('Error creating parent-student relationship:', relError);
+    await supabase.from('student_profiles').delete().eq('id', data.id);
+    throw relError;
   }
 
   return data;
