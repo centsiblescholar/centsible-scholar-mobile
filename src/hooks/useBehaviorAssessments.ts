@@ -13,13 +13,12 @@ export const behaviorAssessmentKeys = {
 /**
  * Fetches behavior assessments for a student.
  *
- * @param studentUserIdOrProfileId - Either the student's auth user_id (if they have an account)
- *                                    or the student_profiles.id (for parent-managed students)
- * @param parentUserId - The parent's auth user_id (optional, used to look up student via relationships)
+ * @param studentUserId - The student's user_id from student_profiles.user_id
+ *                        (This is the generated UUID for parent-managed students,
+ *                        or the auth user ID for students with their own accounts)
  */
 async function fetchBehaviorAssessments(
-  studentUserIdOrProfileId: string,
-  parentUserId?: string
+  studentUserId: string
 ): Promise<BehaviorAssessment[]> {
   const today = new Date();
   const eighteenWeeksAgo = new Date();
@@ -29,40 +28,12 @@ async function fetchBehaviorAssessments(
     end: today.toISOString().split('T')[0],
   };
 
-  // If we have a parent user ID, look up the student's user_id via relationships
-  let studentUserId = studentUserIdOrProfileId;
-
-  if (parentUserId) {
-    // First, check if this is a student_profiles.id by looking it up
-    const { data: profile } = await supabase
-      .from('student_profiles')
-      .select('user_id')
-      .eq('id', studentUserIdOrProfileId)
-      .maybeSingle();
-
-    if (profile?.user_id) {
-      // Found a profile - use the user_id from the profile
-      studentUserId = profile.user_id;
-    } else {
-      // Not a profile ID - try looking up via parent_student_relationships
-      const { data: relationship } = await supabase
-        .from('parent_student_relationships')
-        .select('student_user_id')
-        .eq('parent_user_id', parentUserId)
-        .eq('student_user_id', studentUserIdOrProfileId)
-        .maybeSingle();
-
-      if (relationship?.student_user_id) {
-        studentUserId = relationship.student_user_id;
-      }
-    }
-  }
-
-  // Query behavior assessments using student_user_id
+  // Query behavior assessments by student_user_id only
+  // This is the consistent identifier for the student across all data tables
   const { data, error } = await supabase
     .from('behavior_assessments')
     .select('*')
-    .or(`user_id.eq.${studentUserId},student_user_id.eq.${studentUserId}`)
+    .eq('student_user_id', studentUserId)
     .gte('date', dateFilter.start)
     .lte('date', dateFilter.end)
     .order('date', { ascending: false });
@@ -84,22 +55,23 @@ async function saveAssessment(assessment: {
 }): Promise<void> {
   const { user_id, date, scores, status } = assessment;
 
-  // Check if assessment exists for this date
+  // Check if assessment exists for this date and student
   const { data: existing } = await supabase
     .from('behavior_assessments')
     .select('id')
-    .eq('user_id', user_id)
+    .eq('student_user_id', user_id)
     .eq('date', date)
     .maybeSingle();
 
+  // Always set student_user_id for consistent querying
   const assessmentData = {
     user_id,
+    student_user_id: user_id,
     date,
     ...scores,
     status,
     ...(status === 'submitted' ? {
       submitted_at: new Date().toISOString(),
-      student_user_id: user_id
     } : {}),
   };
 
@@ -124,12 +96,12 @@ export function useBehaviorAssessments(studentUserId?: string) {
   const queryClient = useQueryClient();
 
   // Use provided studentUserId or fall back to logged-in user's ID
+  // When called from a parent view, studentUserId should be selectedStudent.user_id
   const targetUserId = studentUserId || user?.id || '';
-  const parentUserId = user?.id;
 
   const { data: assessments = [], isLoading, error, refetch } = useQuery({
     queryKey: behaviorAssessmentKeys.list(targetUserId),
-    queryFn: () => fetchBehaviorAssessments(targetUserId, parentUserId),
+    queryFn: () => fetchBehaviorAssessments(targetUserId),
     enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

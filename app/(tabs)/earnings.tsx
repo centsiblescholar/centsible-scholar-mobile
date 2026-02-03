@@ -29,7 +29,11 @@ export default function EarningsScreen() {
   const { selectedStudent, isParentView } = useStudent();
   const [refreshing, setRefreshing] = useState(false);
 
-  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+  // Use selected student's user_id for data queries (not profile id)
+  // For parents viewing student data: use selectedStudent.user_id
+  // For students viewing own data: use their auth user.id
+  const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
+  const profileId = isParentView ? selectedStudent?.id : undefined;
   const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
 
   const {
@@ -37,7 +41,7 @@ export default function EarningsScreen() {
     totalReward,
     isLoading: gradesLoading,
     refetch: refetchGrades,
-  } = useStudentGrades(targetUserId);
+  } = useStudentGrades(targetUserId, profileId);
 
   const {
     assessments,

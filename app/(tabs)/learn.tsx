@@ -35,7 +35,8 @@ export default function LearnScreen() {
   } = useQuestionOfTheDay(gradeLevel);
 
   // Get user ID for education bonus stats
-  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+  // Use selected student's user_id for data queries (not profile id)
+  const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
   const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
 
   const {

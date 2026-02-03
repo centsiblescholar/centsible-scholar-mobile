@@ -26,42 +26,14 @@ export const studentGradesKeys = {
 /**
  * Fetches grades for a student.
  *
- * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
- * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
+ * @param studentUserId - The student's user_id from student_profiles.user_id
+ * @param profileId - The student's profile record ID (student_profiles.id)
+ *                    Used as fallback for dashboard_grades table which uses student_id
  */
 async function fetchStudentGrades(
-  studentUserIdOrProfileId: string,
-  parentUserId?: string
+  studentUserId: string,
+  profileId?: string
 ): Promise<StudentGrade[]> {
-  // Resolve the student's user_id if we have a profile ID
-  let studentUserId = studentUserIdOrProfileId;
-  let studentProfileId = studentUserIdOrProfileId;
-
-  if (parentUserId) {
-    // Check if this is a student_profiles.id
-    const { data: profile } = await supabase
-      .from('student_profiles')
-      .select('id, user_id')
-      .eq('id', studentUserIdOrProfileId)
-      .maybeSingle();
-
-    if (profile?.user_id) {
-      studentUserId = profile.user_id;
-      studentProfileId = profile.id;
-    } else {
-      // Maybe it's already a user_id - look up the profile by user_id
-      const { data: profileByUserId } = await supabase
-        .from('student_profiles')
-        .select('id, user_id')
-        .eq('user_id', studentUserIdOrProfileId)
-        .maybeSingle();
-
-      if (profileByUserId) {
-        studentProfileId = profileByUserId.id;
-      }
-    }
-  }
-
   // Try student_grades table first (uses student_user_id)
   let { data, error } = await supabase
     .from('student_grades')
@@ -74,12 +46,12 @@ async function fetchStudentGrades(
     throw error;
   }
 
-  // If no results, try dashboard_grades (uses student_id which is profile ID)
-  if (!data || data.length === 0) {
+  // If no results and we have a profileId, try dashboard_grades (uses student_id which is profile ID)
+  if ((!data || data.length === 0) && profileId) {
     const { data: dashboardData, error: dashError } = await supabase
       .from('dashboard_grades')
       .select('*')
-      .eq('student_id', studentProfileId)
+      .eq('student_id', profileId)
       .order('created_at', { ascending: false });
 
     if (!dashError && dashboardData) {
@@ -117,17 +89,18 @@ async function submitGrade(grade: {
   }
 }
 
-export function useStudentGrades(studentUserId?: string) {
+export function useStudentGrades(studentUserId?: string, profileId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Use provided studentUserId or fall back to logged-in user's ID
+  // When called from a parent view, studentUserId should be selectedStudent.user_id
+  // and profileId should be selectedStudent.id
   const targetUserId = studentUserId || user?.id || '';
-  const parentUserId = user?.id;
 
   const { data: grades = [], isLoading, error, refetch } = useQuery({
     queryKey: studentGradesKeys.list(targetUserId),
-    queryFn: () => fetchStudentGrades(targetUserId, parentUserId),
+    queryFn: () => fetchStudentGrades(targetUserId, profileId),
     enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -90,13 +91,28 @@ async function fetchStudent(studentId: string): Promise<StudentProfile | null> {
   return data;
 }
 
+/**
+ * Error class for student creation failures
+ */
+export class StudentCreationError extends Error {
+  public readonly isRLSError: boolean;
+  public readonly originalError: Error;
+
+  constructor(message: string, originalError: Error, isRLSError: boolean = false) {
+    super(message);
+    this.name = 'StudentCreationError';
+    this.originalError = originalError;
+    this.isRLSError = isRLSError;
+  }
+}
+
 // Create a new student
 async function createStudent(
   parentUserId: string,
   input: CreateStudentInput
 ): Promise<StudentProfile> {
   // Generate a unique user_id for the student (students don't need auth accounts)
-  const studentUserId = crypto.randomUUID();
+  const studentUserId = Crypto.randomUUID();
 
   // Create the student profile
   const { data, error } = await supabase
@@ -115,7 +131,20 @@ async function createStudent(
 
   if (error) {
     console.error('Error creating student:', error);
-    throw error;
+
+    // Check for the known RLS policy ambiguity error
+    if (error.message?.includes('parent_user_id') && error.message?.includes('ambiguous')) {
+      throw new StudentCreationError(
+        'Unable to create student due to a database configuration issue. Please contact support.',
+        error,
+        true
+      );
+    }
+
+    throw new StudentCreationError(
+      'Failed to create student profile. Please try again.',
+      error
+    );
   }
 
   // Create the parent-student relationship
@@ -131,7 +160,20 @@ async function createStudent(
     // If relationship creation fails, we should clean up the student profile
     console.error('Error creating parent-student relationship:', relError);
     await supabase.from('student_profiles').delete().eq('id', data.id);
-    throw relError;
+
+    // Check for the known RLS policy ambiguity error
+    if (relError.message?.includes('parent_user_id') && relError.message?.includes('ambiguous')) {
+      throw new StudentCreationError(
+        'Unable to link student to your account due to a database configuration issue. Please contact support.',
+        relError,
+        true
+      );
+    }
+
+    throw new StudentCreationError(
+      'Failed to link student to your account. Please try again.',
+      relError
+    );
   }
 
   return data;

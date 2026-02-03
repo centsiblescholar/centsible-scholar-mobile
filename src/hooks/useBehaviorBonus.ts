@@ -44,38 +44,23 @@ interface BehaviorScores {
 /**
  * Fetches behavior assessments for bonus calculation.
  *
- * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
- * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
+ * @param studentUserId - The student's user_id from student_profiles.user_id
+ *                        (This is the generated UUID for parent-managed students,
+ *                        or the auth user ID for students with their own accounts)
  */
 async function fetchBehaviorAssessments(
-  studentUserIdOrProfileId: string,
-  parentUserId?: string
+  studentUserId: string
 ): Promise<BehaviorScores[]> {
   const eighteenWeeksAgo = new Date();
   eighteenWeeksAgo.setDate(eighteenWeeksAgo.getDate() - 126);
   const dateStart = eighteenWeeksAgo.toISOString().split('T')[0];
 
-  // Resolve the student's user_id if we have a profile ID
-  let studentUserId = studentUserIdOrProfileId;
-
-  if (parentUserId) {
-    // Check if this is a student_profiles.id
-    const { data: profile } = await supabase
-      .from('student_profiles')
-      .select('user_id')
-      .eq('id', studentUserIdOrProfileId)
-      .maybeSingle();
-
-    if (profile?.user_id) {
-      studentUserId = profile.user_id;
-    }
-  }
-
-  // Query behavior assessments using student_user_id
+  // Query behavior assessments by student_user_id only
+  // This is the consistent identifier for the student across all data tables
   const { data, error } = await supabase
     .from('behavior_assessments')
     .select('diet, exercise, work, hygiene, respect, responsibilities, attitude, cooperation, courtesy, service')
-    .or(`user_id.eq.${studentUserId},student_user_id.eq.${studentUserId}`)
+    .eq('student_user_id', studentUserId)
     .gte('date', dateStart)
     .order('date', { ascending: false });
 
@@ -88,14 +73,13 @@ async function fetchBehaviorAssessments(
 }
 
 export function useBehaviorBonus(
-  userId: string | undefined,
-  baseRewardAmount: number = 0,
-  parentUserId?: string
+  studentUserId: string | undefined,
+  baseRewardAmount: number = 0
 ) {
   const { data: assessments, isLoading, error, refetch } = useQuery({
-    queryKey: ['behaviorBonus', userId],
-    queryFn: () => fetchBehaviorAssessments(userId!, parentUserId),
-    enabled: !!userId,
+    queryKey: ['behaviorBonus', studentUserId],
+    queryFn: () => fetchBehaviorAssessments(studentUserId!),
+    enabled: !!studentUserId,
     staleTime: 5 * 60 * 1000,
   });
 

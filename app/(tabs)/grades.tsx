@@ -26,10 +26,13 @@ export default function GradesScreen() {
   const { user } = useAuth();
   const { selectedStudent, isParentView } = useStudent();
 
-  // Use selected student's ID for parents, own ID for students
-  const targetUserId = isParentView ? selectedStudent?.id : user?.id;
+  // Use selected student's user_id for data queries (not profile id)
+  // For parents viewing student data: use selectedStudent.user_id
+  // For students viewing own data: use their auth user.id
+  const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
+  const profileId = isParentView ? selectedStudent?.id : undefined;
 
-  const { grades, gradeEntries, totalReward, gpa, isLoading, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId);
+  const { grades, gradeEntries, totalReward, gpa, isLoading, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId, profileId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
