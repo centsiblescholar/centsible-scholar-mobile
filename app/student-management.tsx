@@ -25,6 +25,16 @@ const GRADE_LEVELS = [
   '11th Grade', '12th Grade',
 ];
 
+function generatePassword(): string {
+  const length = 12;
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+}
+
 export default function StudentManagementScreen() {
   const { isParent } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +46,8 @@ export default function StudentManagementScreen() {
   // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState(generatePassword());
+  const [showPassword, setShowPassword] = useState(false);
   const [gradeLevel, setGradeLevel] = useState('6th Grade');
   const [baseReward, setBaseReward] = useState('10');
 
@@ -63,6 +75,8 @@ export default function StudentManagementScreen() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setPassword(generatePassword());
+    setShowPassword(false);
     setGradeLevel('6th Grade');
     setBaseReward('10');
   };
@@ -70,6 +84,16 @@ export default function StudentManagementScreen() {
   const handleAddStudent = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a student name');
+      return;
+    }
+
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter a student email address');
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
 
@@ -82,13 +106,14 @@ export default function StudentManagementScreen() {
     try {
       await createStudent({
         name: name.trim(),
-        email: email.trim() || undefined,
+        email: email.trim(),
         grade_level: gradeLevel,
+        password: password,
         base_reward_amount: reward,
       });
       setShowAddModal(false);
       resetForm();
-      Alert.alert('Success', 'Student added successfully!');
+      Alert.alert('Success', 'Student added successfully!\n\nSave their login credentials:\nEmail: ' + email.trim() + '\nPassword: ' + password);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to add student');
     }
@@ -308,7 +333,7 @@ export default function StudentManagementScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email (optional)</Text>
+                <Text style={styles.inputLabel}>Student Email *</Text>
                 <TextInput
                   style={styles.input}
                   value={email}
@@ -317,6 +342,45 @@ export default function StudentManagementScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
+                <Text style={styles.inputHint}>
+                  Your student will use this email to log in
+                </Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Password *</Text>
+                <View style={styles.passwordRow}>
+                  <View style={styles.passwordInputWrapper}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="Min 8 characters"
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <TouchableOpacity
+                      style={styles.passwordToggle}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color="#6B7280"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.generateButton}
+                    onPress={() => setPassword(generatePassword())}
+                  >
+                    <Ionicons name="refresh" size={20} color="#4F46E5" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.inputHint}>
+                  Save this password! Your student will need it to log in.
+                </Text>
               </View>
 
               <View style={styles.inputContainer}>
@@ -894,6 +958,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginTop: 6,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  passwordInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 14,
+    fontSize: 16,
+  },
+  passwordToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  generateButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gradePicker: {
     flexGrow: 0,

@@ -20,6 +20,13 @@ export default function AuthLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="signup"
+        options={{
+          title: 'Create Account',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

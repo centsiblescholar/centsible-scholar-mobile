@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as Crypto from 'expo-crypto';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,8 +18,9 @@ export interface StudentProfile {
 
 export interface CreateStudentInput {
   name: string;
-  email?: string;
+  email: string;
   grade_level: string;
+  password: string;
   base_reward_amount: number;
 }
 
@@ -106,77 +106,39 @@ export class StudentCreationError extends Error {
   }
 }
 
-// Create a new student
+// Create a new student via the create-student edge function
+// This creates a real Supabase auth account for the student
 async function createStudent(
   parentUserId: string,
   input: CreateStudentInput
 ): Promise<StudentProfile> {
-  // Generate a unique user_id for the student (students don't need auth accounts)
-  const studentUserId = Crypto.randomUUID();
-
-  // Create the student profile
-  const { data, error } = await supabase
-    .from('student_profiles')
-    .insert({
-      user_id: studentUserId,
+  const { data, error } = await supabase.functions.invoke('create-student', {
+    body: {
       name: input.name,
-      email: input.email || null,
-      grade_level: input.grade_level,
-      base_reward_amount: input.base_reward_amount,
-      is_active: true,
-      reporting_frequency: 'weekly',
-    })
-    .select()
-    .single();
+      email: input.email,
+      gradeLevel: input.grade_level,
+      password: input.password,
+      baseRewardAmount: input.base_reward_amount,
+      reportingFrequency: 'weekly',
+    },
+  });
 
   if (error) {
     console.error('Error creating student:', error);
-
-    // Check for the known RLS policy ambiguity error
-    if (error.message?.includes('parent_user_id') && error.message?.includes('ambiguous')) {
-      throw new StudentCreationError(
-        'Unable to create student due to a database configuration issue. Please contact support.',
-        error,
-        true
-      );
-    }
-
     throw new StudentCreationError(
-      'Failed to create student profile. Please try again.',
+      'Failed to create student. Please try again.',
       error
     );
   }
 
-  // Create the parent-student relationship
-  const { error: relError } = await supabase
-    .from('parent_student_relationships')
-    .insert({
-      parent_user_id: parentUserId,
-      student_user_id: studentUserId,
-      relationship_type: 'parent',
-    });
-
-  if (relError) {
-    // If relationship creation fails, we should clean up the student profile
-    console.error('Error creating parent-student relationship:', relError);
-    await supabase.from('student_profiles').delete().eq('id', data.id);
-
-    // Check for the known RLS policy ambiguity error
-    if (relError.message?.includes('parent_user_id') && relError.message?.includes('ambiguous')) {
-      throw new StudentCreationError(
-        'Unable to link student to your account due to a database configuration issue. Please contact support.',
-        relError,
-        true
-      );
-    }
-
-    throw new StudentCreationError(
-      'Failed to link student to your account. Please try again.',
-      relError
-    );
+  if (!data?.success) {
+    const errorMsg = data?.error || 'Failed to create student';
+    throw new StudentCreationError(errorMsg, new Error(errorMsg));
   }
 
-  return data;
+  // The edge function returns a partial student object.
+  // Return it - the mutation's onSuccess will invalidate queries to refetch full data.
+  return data.student;
 }
 
 // Update a student

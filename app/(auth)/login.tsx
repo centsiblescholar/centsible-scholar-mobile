@@ -86,8 +86,11 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Don't have an account? Sign up at centsiblescholar.com
+            Don't have an account?{' '}
           </Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+            <Text style={styles.footerLink}>Sign Up</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -155,11 +158,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 40,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   footerText: {
     fontSize: 14,
     color: '#6B7280',
-    textAlign: 'center',
+  },
+  footerLink: {
+    fontSize: 14,
+    color: '#4F46E5',
+    fontWeight: '600',
   },
 });
