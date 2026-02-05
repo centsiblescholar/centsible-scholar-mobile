@@ -8,6 +8,19 @@ A React Native / Expo mobile app that mirrors the full Centsible Scholar Premium
 
 Parents and students can do everything on mobile that they can on the web app â€” same features, same data, native mobile experience.
 
+## Current Milestone: v1.0 App Store Launch
+
+**Goal:** Launch on Apple App Store and Google Play with complete student experience, in-app subscriptions, and polished UI.
+
+**Target features:**
+- Complete authentication flows (password reset)
+- Independent student dashboard and daily assessment flow
+- Parent QOD progress tracking across all students
+- Apple IAP / Google Play Billing with subscription gates
+- UI/UX polish matching web design system
+- App Store assets and metadata
+- Data management for privacy compliance (export, backup, deletion)
+
 ## Requirements
 
 ### Validated
@@ -108,4 +121,4 @@ Parents and students can do everything on mobile that they can on the web app â€
 | Full student login experience on mobile | Students need independent access for QOD, assessments, grades | -- Pending |
 
 ---
-*Last updated: 2026-02-05 after initialization*
+*Last updated: 2026-02-05 after milestone v1.0 started*
