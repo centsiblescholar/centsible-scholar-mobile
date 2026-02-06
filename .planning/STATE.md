@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 4 of 7 (Subscription UI + Gates)
-Plan: 0 of TBD (Phase 4 not planned yet)
-Status: Ready to plan Phase 4
-Last activity: 2026-02-06 -- Completed Phase 3 (all 3 plans)
+Plan: 1 of 3 (04-01 complete)
+Status: In progress
+Last activity: 2026-02-06 -- Completed 04-01-PLAN.md
 
-Progress: [████████████████░░░░] 80% (8/TBD plans completed - Phases 1-3 complete)
+Progress: [████████████████░░░░] 82% (9/11 plans completed - Phase 4 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 3.5min
-- Total execution time: 27min
+- Total plans completed: 9
+- Average duration: 3.3min
+- Total execution time: 30min
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [████████████████░░░░] 80% (8/
 | 01-architecture-foundation | 2 | 5min | 2.5min |
 | 02-auth-student-routing | 3 | 11min | 3.7min |
 | 03-student-daily-experience | 3 | 11min | 3.7min |
+| 04-subscription-ui-gates | 1 | 3min | 3.0min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (4min), 02-03 (3min), 03-01 (6min*), 03-03 (6min*), 03-02 (5min)
+- Last 5 plans: 02-03 (3min), 03-01 (6min*), 03-03 (6min*), 03-02 (5min), 04-01 (3min)
 - *03-01 and 03-03 executed in parallel (6min wall clock for both)
 - Trend: stable
 
@@ -86,6 +87,10 @@ Recent decisions affecting current work:
 - [03-03]: Accuracy color coding: green >90%, yellow 75-90%, red <75%
 - [03-02]: Dashboard task cards disabled when both QOD and behavior are complete
 - [03-03]: Student cards NOT tappable -- deep navigation deferred to Phase 6 polish
+- [04-01]: Two-step query-then-insert/update for mock purchase (not upsert) to avoid unique constraint issues
+- [04-01]: Student gate query uses 5-min staleTime to prevent N+1 inheritance queries
+- [04-01]: Mock purchase uses platform: 'apple' to simulate IAP path for Phase 5
+- [04-01]: Supabase insert/update data cast as any for pre-migration compat (same pattern as Phases 2-3)
 
 ### Pending Todos
 
@@ -103,5 +108,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 03-02-PLAN.md -- Phase 3 fully complete
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
