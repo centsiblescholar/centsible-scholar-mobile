@@ -8,17 +8,322 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  Dimensions,
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
 import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
 import { useEducationBonus } from '../../src/hooks/useEducationBonus';
 import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
+import { useStudentProfile } from '../../src/hooks/useStudentProfile';
+import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
 import { calculateAllocation } from '../../src/shared/calculations';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const METRIC_CARD_WIDTH = SCREEN_WIDTH - 64;
+const METRIC_CARD_GAP = 12;
+
+// Format currency helper (shared between both views)
+const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+
+// ---------------------------------------------------------------------------
+// Student Dashboard View
+// ---------------------------------------------------------------------------
+function StudentDashboardView() {
+  const { user } = useAuth();
+  const studentUserId = user?.id;
+
+  // Student profile for name, grade level, base reward
+  const { profile: studentProfile } = useStudentProfile();
+  const firstName = studentProfile?.name?.split(' ')[0] || 'Student';
+  const gradeLevel = studentProfile?.grade_level;
+  const baseRewardAmount = studentProfile?.base_reward_amount || 0;
+
+  // Data hooks using student's own user.id
+  const {
+    gradeEntries,
+    totalReward,
+    gpa,
+    isLoading: gradesLoading,
+    refetch: refetchGrades,
+  } = useStudentGrades(studentUserId);
+
+  const {
+    overallAverage,
+    assessments,
+    todayAssessment,
+    isLoading: behaviorLoading,
+    refetch: refetchBehavior,
+  } = useBehaviorAssessments(studentUserId);
+
+  const {
+    bonusAmount: educationBonusAmount,
+    currentTier: educationTier,
+    isLoading: educationLoading,
+    refetch: refetchEducation,
+  } = useEducationBonus(studentUserId, baseRewardAmount);
+
+  const {
+    bonusAmount: behaviorBonusAmount,
+    currentTier: behaviorTier,
+    isLoading: behaviorBonusLoading,
+    refetch: refetchBehaviorBonus,
+  } = useBehaviorBonus(studentUserId, baseRewardAmount);
+
+  // QOD hook for today's task status and streak
+  const {
+    hasAnsweredToday: qodAnsweredToday,
+    streakCount,
+    loading: qodLoading,
+  } = useQuestionOfTheDay(gradeLevel);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeMetricIndex, setActiveMetricIndex] = useState(0);
+  const metricListRef = useRef<FlatList>(null);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      refetchGrades(),
+      refetchBehavior(),
+      refetchEducation(),
+      refetchBehaviorBonus(),
+    ]);
+    setRefreshing(false);
+  }, [refetchGrades, refetchBehavior, refetchEducation, refetchBehaviorBonus]);
+
+  const isLoading =
+    gradesLoading || behaviorLoading || educationLoading || behaviorBonusLoading || qodLoading;
+
+  // Allocation breakdown
+  const allocation = calculateAllocation(totalReward);
+
+  // Metric card data
+  const metricCards = [
+    {
+      id: 'gpa',
+      value: gradeEntries.length > 0 ? gpa.toFixed(2) : '--',
+      subtitle: 'CURRENT GPA',
+      context:
+        gradeEntries.length > 0
+          ? `${gradeEntries.length} grade${gradeEntries.length !== 1 ? 's' : ''} entered`
+          : "You've got this!",
+      color: '#4F46E5',
+    },
+    {
+      id: 'earnings',
+      value: formatCurrency(totalReward),
+      subtitle: 'TOTAL REWARDS',
+      context: baseRewardAmount > 0 ? `${formatCurrency(baseRewardAmount)} per grade` : 'Earn rewards for your grades',
+      color: '#10B981',
+    },
+    {
+      id: 'streak',
+      value: String(streakCount),
+      subtitle: 'DAY STREAK',
+      context: streakCount > 0 ? 'Keep it going!' : "Answer today's QOD!",
+      color: '#F59E0B',
+    },
+    {
+      id: 'behavior',
+      value: assessments.length > 0 ? overallAverage.toFixed(1) : '--',
+      subtitle: 'BEHAVIOR SCORE',
+      context:
+        assessments.length > 0
+          ? `${assessments.length} assessment${assessments.length !== 1 ? 's' : ''}`
+          : "You've got this!",
+      color: '#8B5CF6',
+    },
+  ];
+
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Loading your data...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+      }
+    >
+      {/* A. Header */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Hey, {firstName}!</Text>
+        <Text style={studentStyles.streakText}>
+          {streakCount > 0 ? `${streakCount} day streak` : 'Start your streak!'}
+        </Text>
+        <View style={studentStyles.studentBadge}>
+          <Text style={styles.parentBadgeText}>Student</Text>
+        </View>
+      </View>
+
+      {/* B. Today's Tasks */}
+      <View style={studentStyles.tasksSection}>
+        <Text style={studentStyles.tasksSectionTitle}>What You Need To Do Today</Text>
+        <View style={studentStyles.tasksRow}>
+          {/* QOD Card */}
+          <View style={studentStyles.taskCard}>
+            <View style={studentStyles.taskStatusRow}>
+              <View
+                style={[
+                  studentStyles.statusDot,
+                  qodAnsweredToday ? studentStyles.statusDotComplete : studentStyles.statusDotPending,
+                ]}
+              />
+              <Text style={studentStyles.taskCardTitle}>Question of the Day</Text>
+            </View>
+            <Text style={studentStyles.taskStatusText}>
+              {qodAnsweredToday ? 'Completed!' : 'Ready to answer!'}
+            </Text>
+          </View>
+
+          {/* Behavior Card */}
+          <View style={studentStyles.taskCard}>
+            <View style={studentStyles.taskStatusRow}>
+              <View
+                style={[
+                  studentStyles.statusDot,
+                  todayAssessment ? studentStyles.statusDotComplete : studentStyles.statusDotPending,
+                ]}
+              />
+              <Text style={studentStyles.taskCardTitle}>Behavior Check-in</Text>
+            </View>
+            <Text style={studentStyles.taskStatusText}>
+              {todayAssessment ? 'Completed!' : 'Time to reflect!'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* C. Horizontal Scrollable Metric Cards */}
+      <View style={studentStyles.metricsSection}>
+        <FlatList
+          ref={metricListRef}
+          data={metricCards}
+          horizontal
+          pagingEnabled={false}
+          snapToInterval={METRIC_CARD_WIDTH + METRIC_CARD_GAP}
+          decelerationRate="fast"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={studentStyles.metricsListContent}
+          keyExtractor={(item) => item.id}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(
+              e.nativeEvent.contentOffset.x / (METRIC_CARD_WIDTH + METRIC_CARD_GAP)
+            );
+            setActiveMetricIndex(index);
+          }}
+          renderItem={({ item }) => (
+            <View style={[studentStyles.metricCard, { width: METRIC_CARD_WIDTH }]}>
+              <Text style={[studentStyles.metricValue, { color: item.color }]}>{item.value}</Text>
+              <Text style={studentStyles.metricSubtitle}>{item.subtitle}</Text>
+              <Text style={studentStyles.metricContext}>{item.context}</Text>
+            </View>
+          )}
+        />
+        {/* Page Indicator Dots */}
+        <View style={studentStyles.dotsContainer}>
+          {metricCards.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                studentStyles.dot,
+                i === activeMetricIndex ? studentStyles.dotActive : studentStyles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* D. Reward Structure */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your Reward Structure</Text>
+
+        {/* Base reward */}
+        <View style={studentStyles.rewardInfoCard}>
+          <Text style={studentStyles.rewardLabel}>Base Reward</Text>
+          <Text style={studentStyles.rewardValue}>
+            {baseRewardAmount > 0 ? `${formatCurrency(baseRewardAmount)} per grade` : 'Not set yet'}
+          </Text>
+        </View>
+
+        {/* Bonuses earned */}
+        {(educationBonusAmount > 0 || behaviorBonusAmount > 0) && (
+          <View style={studentStyles.bonusesRow}>
+            {educationBonusAmount > 0 && (
+              <View style={studentStyles.bonusChip}>
+                <Text style={studentStyles.bonusChipText}>
+                  Education Bonus: {formatCurrency(educationBonusAmount)}
+                  {educationTier ? ` (${educationTier})` : ''}
+                </Text>
+              </View>
+            )}
+            {behaviorBonusAmount > 0 && (
+              <View style={studentStyles.bonusChip}>
+                <Text style={studentStyles.bonusChipText}>
+                  Behavior Bonus: {formatCurrency(behaviorBonusAmount)}
+                  {behaviorTier ? ` (${behaviorTier})` : ''}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Allocation Breakdown */}
+        <View style={studentStyles.allocationHeader}>
+          <Text style={studentStyles.allocationTitle}>Where Your Money Goes</Text>
+        </View>
+        <View style={styles.allocationCard}>
+          <View style={styles.allocationRow}>
+            <Text style={styles.allocationLabel}>Taxes (15%)</Text>
+            <Text style={styles.allocationValue}>{formatCurrency(allocation.taxQualified.taxes)}</Text>
+          </View>
+          <View style={styles.allocationRow}>
+            <Text style={styles.allocationLabel}>Retirement (10%)</Text>
+            <Text style={styles.allocationValue}>{formatCurrency(allocation.taxQualified.retirement)}</Text>
+          </View>
+          <View style={styles.allocationRow}>
+            <Text style={styles.allocationLabel}>Savings (25%)</Text>
+            <Text style={styles.allocationValue}>{formatCurrency(allocation.savings)}</Text>
+          </View>
+          <View style={[styles.allocationRow, styles.allocationRowLast]}>
+            <Text style={styles.allocationLabel}>Discretionary (50%)</Text>
+            <Text style={styles.allocationValue}>{formatCurrency(allocation.discretionary)}</Text>
+          </View>
+          <View style={styles.allocationTotal}>
+            <Text style={styles.allocationTotalLabel}>Total</Text>
+            <Text style={styles.allocationTotalValue}>{formatCurrency(allocation.total)}</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Parent Dashboard View (original, unchanged)
+// ---------------------------------------------------------------------------
 export default function DashboardScreen() {
+  const { user, userRole } = useAuth();
+
+  // Student users see the dedicated student dashboard
+  if (userRole === 'student') {
+    return <StudentDashboardView />;
+  }
+
+  // --- Parent dashboard code below (unchanged) ---
+  return <ParentDashboardView />;
+}
+
+function ParentDashboardView() {
   const { user } = useAuth();
   const {
     selectedStudent,
@@ -90,11 +395,6 @@ export default function DashboardScreen() {
 
   // Calculate allocation breakdown
   const allocation = calculateAllocation(totalReward);
-
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
-  };
 
   if (isLoading && !refreshing) {
     return (
@@ -343,6 +643,9 @@ function getGradeStyle(grade: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Shared styles (used by both views)
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -658,5 +961,184 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#1F2937',
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Student-specific styles
+// ---------------------------------------------------------------------------
+const studentStyles = StyleSheet.create({
+  streakText: {
+    fontSize: 14,
+    color: '#C7D2FE',
+    marginTop: 4,
+  },
+  studentBadge: {
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+
+  // Today's Tasks
+  tasksSection: {
+    padding: 16,
+  },
+  tasksSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  tasksRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  taskCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taskStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  statusDotComplete: {
+    backgroundColor: '#10B981',
+  },
+  statusDotPending: {
+    backgroundColor: '#F59E0B',
+  },
+  taskCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  taskStatusText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 18,
+  },
+
+  // Metric Cards
+  metricsSection: {
+    paddingBottom: 16,
+  },
+  metricsListContent: {
+    paddingHorizontal: 32,
+    gap: METRIC_CARD_GAP,
+  },
+  metricCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    justifyContent: 'center',
+    minHeight: 120,
+  },
+  metricValue: {
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  metricSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  metricContext: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginTop: 4,
+  },
+
+  // Page indicator dots
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    backgroundColor: '#4F46E5',
+  },
+  dotInactive: {
+    backgroundColor: '#D1D5DB',
+  },
+
+  // Reward Structure
+  rewardInfoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rewardLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  rewardValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginTop: 4,
+  },
+  bonusesRow: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  bonusChip: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  bonusChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#166534',
+  },
+  allocationHeader: {
+    marginBottom: 8,
+  },
+  allocationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
