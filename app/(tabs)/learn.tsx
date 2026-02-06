@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,294 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  FlatList,
+  Dimensions,
 } from 'react-native';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
 import { useEducationBonus } from '../../src/hooks/useEducationBonus';
+import { useParentQODStats, TimeRange, StudentQODStats } from '../../src/hooks/useParentQODStats';
+import { calculateLevelInfo } from '../../src/utils/levelSystem';
+import { format, parseISO } from 'date-fns';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const STUDENT_CARD_WIDTH = SCREEN_WIDTH - 64;
+const STUDENT_CARD_GAP = 12;
+
+// ---------------------------------------------------------------------------
+// Main Export: Role-conditional Learn screen
+// ---------------------------------------------------------------------------
 export default function LearnScreen() {
+  const { userRole } = useAuth();
+
+  if (userRole === 'parent') {
+    return <ParentQODProgressView />;
+  }
+
+  return <StudentLearnView />;
+}
+
+// ---------------------------------------------------------------------------
+// Accuracy color helper
+// ---------------------------------------------------------------------------
+function getAccuracyColor(percentage: number): string {
+  if (percentage > 90) return '#10B981';
+  if (percentage >= 75) return '#F59E0B';
+  return '#EF4444';
+}
+
+// ---------------------------------------------------------------------------
+// Parent QOD Progress Dashboard
+// ---------------------------------------------------------------------------
+function ParentQODProgressView() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeStudentIndex, setActiveStudentIndex] = useState(0);
+  const studentListRef = useRef<FlatList>(null);
+
+  const {
+    studentStats,
+    isLoading,
+    error,
+    refetch,
+    familyTotalXP,
+    familyAveragePercentage,
+    studentsWithActiveStreak,
+    studentsAnsweredToday,
+    totalStudents,
+  } = useParentQODStats(timeRange);
+
+  const levelInfo = calculateLevelInfo(familyTotalXP);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  const timeRangeOptions: { key: TimeRange; label: string }[] = [
+    { key: 'week', label: 'This Week' },
+    { key: 'month', label: 'This Month' },
+    { key: 'all', label: 'All Time' },
+  ];
+
+  // Loading state
+  if (isLoading && !refreshing) {
+    return (
+      <View style={parentStyles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={parentStyles.loadingText}>Loading progress...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <View style={parentStyles.container}>
+        <View style={parentStyles.header}>
+          <Text style={parentStyles.headerTitle}>Learning Progress</Text>
+          <Text style={parentStyles.headerSubtitle}>Family QOD Dashboard</Text>
+        </View>
+        <View style={parentStyles.errorCard}>
+          <Text style={parentStyles.errorText}>
+            {error.message || 'Failed to load student progress'}
+          </Text>
+          <TouchableOpacity style={parentStyles.retryButton} onPress={() => refetch()}>
+            <Text style={parentStyles.retryButtonText}>Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={parentStyles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+      }
+    >
+      {/* A. Header */}
+      <View style={parentStyles.header}>
+        <Text style={parentStyles.headerTitle}>Learning Progress</Text>
+        <Text style={parentStyles.headerSubtitle}>Family QOD Dashboard</Text>
+      </View>
+
+      {/* B. Time Range Toggle */}
+      <View style={parentStyles.toggleContainer}>
+        <View style={parentStyles.toggleRow}>
+          {timeRangeOptions.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                parentStyles.toggleOption,
+                timeRange === option.key && parentStyles.toggleOptionActive,
+              ]}
+              onPress={() => setTimeRange(option.key)}
+            >
+              <Text
+                style={[
+                  parentStyles.toggleOptionText,
+                  timeRange === option.key && parentStyles.toggleOptionTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* E. Empty State */}
+      {totalStudents === 0 ? (
+        <View style={parentStyles.emptyState}>
+          <Text style={parentStyles.emptyTitle}>No Students Found</Text>
+          <Text style={parentStyles.emptyDescription}>
+            Add students from your dashboard.
+          </Text>
+        </View>
+      ) : (
+        <>
+          {/* C. Family Aggregate Stats */}
+          <View style={parentStyles.aggregateGrid}>
+            <View style={parentStyles.aggregateCard}>
+              <Text style={parentStyles.aggregateValue}>{familyTotalXP}</Text>
+              <Text style={parentStyles.aggregateLabel}>Total XP</Text>
+              <Text style={parentStyles.aggregateSublabel}>
+                Level {levelInfo.level} - {levelInfo.title}
+              </Text>
+            </View>
+            <View style={parentStyles.aggregateCard}>
+              <Text
+                style={[
+                  parentStyles.aggregateValue,
+                  { color: totalStudents > 0 ? getAccuracyColor(familyAveragePercentage) : '#111827' },
+                ]}
+              >
+                {familyAveragePercentage}%
+              </Text>
+              <Text style={parentStyles.aggregateLabel}>Avg Accuracy</Text>
+            </View>
+            <View style={parentStyles.aggregateCard}>
+              <Text style={parentStyles.aggregateValue}>
+                {studentsWithActiveStreak}/{totalStudents}
+              </Text>
+              <Text style={parentStyles.aggregateLabel}>Active Streaks</Text>
+            </View>
+            <View style={parentStyles.aggregateCard}>
+              <Text style={parentStyles.aggregateValue}>
+                {studentsAnsweredToday}/{totalStudents}
+              </Text>
+              <Text style={parentStyles.aggregateLabel}>Answered Today</Text>
+            </View>
+          </View>
+
+          {/* D. Per-Student Progress Cards */}
+          <View style={parentStyles.studentSection}>
+            <Text style={parentStyles.studentSectionTitle}>Student Progress</Text>
+            <FlatList
+              ref={studentListRef}
+              data={studentStats}
+              horizontal
+              pagingEnabled={false}
+              snapToInterval={STUDENT_CARD_WIDTH + STUDENT_CARD_GAP}
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={parentStyles.studentListContent}
+              keyExtractor={(item) => item.studentId}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(
+                  e.nativeEvent.contentOffset.x / (STUDENT_CARD_WIDTH + STUDENT_CARD_GAP)
+                );
+                setActiveStudentIndex(index);
+              }}
+              renderItem={({ item }) => <StudentProgressCard student={item} />}
+            />
+            {/* Page indicator dots */}
+            {studentStats.length > 1 && (
+              <View style={parentStyles.dotsContainer}>
+                {studentStats.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      parentStyles.dot,
+                      i === activeStudentIndex ? parentStyles.dotActive : parentStyles.dotInactive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Student Progress Card (for parent horizontal scroll)
+// ---------------------------------------------------------------------------
+function StudentProgressCard({ student }: { student: StudentQODStats }) {
+  const formattedDate = student.lastAnswerDate
+    ? format(parseISO(student.lastAnswerDate), 'MMM d')
+    : 'Never';
+
+  return (
+    <View style={[parentStyles.studentCard, { width: STUDENT_CARD_WIDTH }]}>
+      <View style={parentStyles.studentCardHeader}>
+        <Text style={parentStyles.studentCardName}>{student.studentName}</Text>
+        <View
+          style={[
+            parentStyles.todayStatusDot,
+            student.answeredToday
+              ? parentStyles.todayStatusDotComplete
+              : parentStyles.todayStatusDotPending,
+          ]}
+        />
+      </View>
+
+      <View style={parentStyles.studentCardStats}>
+        <View style={parentStyles.studentStatRow}>
+          <Text style={parentStyles.studentStatLabel}>Streak</Text>
+          <Text style={parentStyles.studentStatValue}>
+            {student.currentStreak > 0 ? `${student.currentStreak} days` : 'No streak'}
+          </Text>
+        </View>
+
+        <View style={parentStyles.studentStatRow}>
+          <Text style={parentStyles.studentStatLabel}>Accuracy</Text>
+          <Text
+            style={[
+              parentStyles.studentStatValue,
+              { color: student.totalAttempts > 0 ? getAccuracyColor(student.percentage) : '#6B7280' },
+            ]}
+          >
+            {student.totalAttempts > 0 ? `${student.percentage}%` : '--'}
+          </Text>
+        </View>
+
+        <View style={parentStyles.studentStatRow}>
+          <Text style={parentStyles.studentStatLabel}>Last Answer</Text>
+          <Text style={parentStyles.studentStatValue}>{formattedDate}</Text>
+        </View>
+
+        <View style={parentStyles.studentStatRow}>
+          <Text style={parentStyles.studentStatLabel}>Total Answered</Text>
+          <Text style={parentStyles.studentStatValue}>
+            {student.totalAttempts} question{student.totalAttempts !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Student Learn View (existing QOD screen, unchanged)
+// ---------------------------------------------------------------------------
+function StudentLearnView() {
   const { user } = useAuth();
   const { selectedStudent, isParentView } = useStudent();
   const [refreshing, setRefreshing] = useState(false);
@@ -246,6 +527,9 @@ export default function LearnScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Student Learn View Styles (preserved from original)
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -569,5 +853,244 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#115E59',
     lineHeight: 22,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Parent QOD Progress Dashboard Styles
+// ---------------------------------------------------------------------------
+const parentStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  header: {
+    backgroundColor: '#4F46E5',
+    padding: 20,
+    paddingBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#C7D2FE',
+    marginTop: 4,
+  },
+
+  // Time Range Toggle
+  toggleContainer: {
+    padding: 16,
+    paddingBottom: 0,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 4,
+  },
+  toggleOption: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  toggleOptionActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  toggleOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  toggleOptionTextActive: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+
+  // Aggregate Stats
+  aggregateGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 12,
+  },
+  aggregateCard: {
+    width: (SCREEN_WIDTH - 44) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  aggregateValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  aggregateLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  aggregateSublabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+
+  // Student Progress Section
+  studentSection: {
+    paddingBottom: 24,
+  },
+  studentSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  studentListContent: {
+    paddingHorizontal: 32,
+    gap: STUDENT_CARD_GAP,
+  },
+  studentCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    minHeight: 200,
+  },
+  studentCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  studentCardName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  todayStatusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  todayStatusDotComplete: {
+    backgroundColor: '#10B981',
+  },
+  todayStatusDotPending: {
+    backgroundColor: '#F59E0B',
+  },
+  studentCardStats: {
+    gap: 12,
+  },
+  studentStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  studentStatLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  studentStatValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+
+  // Page indicator dots
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    backgroundColor: '#4F46E5',
+  },
+  dotInactive: {
+    backgroundColor: '#D1D5DB',
+  },
+
+  // Empty State
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+
+  // Error State
+  errorCard: {
+    margin: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#B91C1C',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
