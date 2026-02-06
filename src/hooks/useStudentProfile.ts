@@ -12,6 +12,11 @@ export interface StudentProfile {
   is_active: boolean;
   reporting_frequency: string;
   has_completed_onboarding: boolean;
+  // XP/streak fields (may not exist until migration applied)
+  streak_count?: number;
+  longest_streak?: number;
+  total_xp?: number;
+  last_qod_date?: string | null;
 }
 
 /** Safe accessor -- treats null/undefined as false (pre-migration compat) */
