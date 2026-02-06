@@ -11,6 +11,12 @@ export interface StudentProfile {
   base_reward_amount: number;
   is_active: boolean;
   reporting_frequency: string;
+  has_completed_onboarding: boolean;
+}
+
+/** Safe accessor -- treats null/undefined as false (pre-migration compat) */
+export function safeOnboardingStatus(profile: StudentProfile | null | undefined): boolean {
+  return profile?.has_completed_onboarding ?? false;
 }
 
 // Query key factory
@@ -47,7 +53,11 @@ async function fetchStudentProfile(userId: string, userEmail: string | undefined
     throw error;
   }
 
-  return data;
+  if (!data) return null;
+
+  // Cast to StudentProfile -- has_completed_onboarding may not exist until
+  // migration is applied; safeOnboardingStatus handles null/undefined safely.
+  return data as unknown as StudentProfile;
 }
 
 export function useStudentProfile() {
@@ -66,5 +76,6 @@ export function useStudentProfile() {
     error,
     refetch,
     hasProfile: !!profile,
+    hasCompletedOnboarding: safeOnboardingStatus(profile),
   };
 }
