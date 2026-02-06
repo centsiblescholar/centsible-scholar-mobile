@@ -233,6 +233,28 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Replay Tutorial (students only) */}
+        {isStudent && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tutorial</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => router.push('/(onboarding)/welcome')}
+              >
+                <View style={styles.replayRow}>
+                  <Ionicons name="play-circle-outline" size={22} color="#4F46E5" />
+                  <View style={styles.replayTextContainer}>
+                    <Text style={styles.linkText}>Replay Tutorial</Text>
+                    <Text style={styles.replaySubtitle}>Review how everything works</Text>
+                  </View>
+                </View>
+                <Text style={styles.chevron}>&rsaquo;</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Subscription Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
@@ -545,6 +567,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#DC2626',
     fontWeight: '500',
+  },
+  replayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  replayTextContainer: {
+    flex: 1,
+  },
+  replaySubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   notificationRow: {
     flexDirection: 'row',
