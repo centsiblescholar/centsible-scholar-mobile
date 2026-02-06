@@ -31,11 +31,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Subscription status can be checked without knowing whether the user subscribed via Stripe (web) or IAP (mobile)
   3. Student users cannot see or access parent-only screens (manage students, grade approval, subscription management)
   4. Existing parent login and dashboard continue to work exactly as before
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Role detection in AuthContext + role-based routing with conditional tab visibility
+- [ ] 01-02-PLAN.md -- Subscription schema migration for IAP + platform-agnostic useSubscriptionStatus hook
 
 ### Phase 2: Auth + Student Routing
 **Goal**: Users can recover locked accounts and students can sign in independently to see their own personalized dashboard
@@ -139,7 +139,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Architecture Foundation | 0/TBD | Not started | - |
+| 1. Architecture Foundation | 0/2 | Planned | - |
 | 2. Auth + Student Routing | 0/TBD | Not started | - |
 | 3. Student Daily Experience | 0/TBD | Not started | - |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
