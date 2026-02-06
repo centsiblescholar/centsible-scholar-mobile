@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Architecture Foundation** - Schema extensions, role detection, and subscription abstraction that gate all downstream work
 - [x] **Phase 2: Auth + Student Routing** - Password reset and independent student dashboard with role-based navigation
 - [x] **Phase 3: Student Daily Experience** - Combined daily assessment flow and parent QOD progress view
-- [ ] **Phase 4: Subscription UI + Gates** - Paywall, feature gating, and restore purchases (Expo Go, mocked IAP)
+- [x] **Phase 4: Subscription UI + Gates** - Paywall, feature gating, and restore purchases (Expo Go, mocked IAP)
 - [ ] **Phase 5: IAP Wiring** - Real in-app purchase flow via RevenueCat with EAS dev builds
 - [ ] **Phase 6: Data Management + UI Polish** - Data export, account deletion, and consistent design system across all screens
 - [ ] **Phase 7: App Store Preparation** - Screenshots, metadata, assets, and production builds for submission
@@ -82,9 +82,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Subscription plan constants, gate hook (parent + student inheritance), and mock purchase hook
-- [ ] 04-02-PLAN.md -- Paywall screen with plan cards, billing toggle, mock purchase flow + gate wiring in root redirect
-- [ ] 04-03-PLAN.md -- Settings subscription overhaul, manage-subscription screen, and student limit enforcement
+- [x] 04-01-PLAN.md -- Subscription plan constants, gate hook (parent + student inheritance), and mock purchase hook
+- [x] 04-02-PLAN.md -- Paywall screen with plan cards, billing toggle, mock purchase flow + gate wiring in root redirect
+- [x] 04-03-PLAN.md -- Settings subscription overhaul, manage-subscription screen, and student limit enforcement
 
 ### Phase 5: IAP Wiring
 **Goal**: Users can purchase subscriptions through Apple App Store or Google Play with real money, completing the monetization flow
@@ -145,7 +145,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
 | 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
 | 3. Student Daily Experience | 3/3 | Complete | 2026-02-06 |
-| 4. Subscription UI + Gates | 0/3 | Not started | - |
+| 4. Subscription UI + Gates | 3/3 | Complete | 2026-02-06 |
 | 5. IAP Wiring | 0/TBD | Not started | - |
 | 6. Data Management + UI Polish | 0/TBD | Not started | - |
 | 7. App Store Preparation | 0/TBD | Not started | - |

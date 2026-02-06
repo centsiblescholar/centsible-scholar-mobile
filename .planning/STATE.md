@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 4 - Subscription UI + Gates (COMPLETE)
+**Current focus:** Phase 5 - IAP Wiring
 
 ## Current Position
 
-Phase: 4 of 7 (Subscription UI + Gates) -- COMPLETE
-Plan: 3 of 3 (04-01, 04-02, 04-03 all complete)
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 04-02-PLAN.md and 04-03-PLAN.md (parallel)
+Phase: 5 of 7 (IAP Wiring)
+Plan: 0 of TBD (Phase 5 not planned yet)
+Status: Ready to plan Phase 5
+Last activity: 2026-02-06 -- Completed Phase 4 (all 3 plans)
 
-Progress: [██████████████████░░] 100% Phase 4 | 11/11 plans completed through Phase 4
+Progress: [████████████████████] 100% (11/TBD plans completed - Phases 1-4 complete)
 
 ## Performance Metrics
 

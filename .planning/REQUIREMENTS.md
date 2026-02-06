@@ -20,8 +20,8 @@ Requirements for first App Store and Google Play submission.
 ### Subscriptions & Monetization
 
 - [ ] **SUB-01**: User can subscribe via Apple IAP / Google Play Billing (3 tiers: Standard/Premium/Family, monthly/annual, 7-day trial)
-- [ ] **SUB-02**: App enforces subscription gates (free tier: 1 student + basic features; premium: unlimited students + all features)
-- [ ] **SUB-03**: User can restore purchases and manage subscription (Restore Purchases button, Manage Subscription link to platform settings)
+- [x] **SUB-02**: App enforces subscription gates (free tier: 1 student + basic features; premium: unlimited students + all features)
+- [x] **SUB-03**: User can restore purchases and manage subscription (Restore Purchases button, Manage Subscription link to platform settings)
 
 ### Data Management & Privacy
 
@@ -83,8 +83,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-04 | Phase 3: Student Daily Experience | Complete |
 | QOD-04 | Phase 3: Student Daily Experience | Complete |
 | SUB-01 | Phase 5: IAP Wiring | Pending |
-| SUB-02 | Phase 4: Subscription UI + Gates | Pending |
-| SUB-03 | Phase 4: Subscription UI + Gates | Pending |
+| SUB-02 | Phase 4: Subscription UI + Gates | Complete |
+| SUB-03 | Phase 4: Subscription UI + Gates | Complete |
 | DATA-01 | Phase 6: Data Management + UI Polish | Pending |
 | STYLE-01 | Phase 6: Data Management + UI Polish | Pending |
 | STYLE-02 | Phase 6: Data Management + UI Polish | Pending |
