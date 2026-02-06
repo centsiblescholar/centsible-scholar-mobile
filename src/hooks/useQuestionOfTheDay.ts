@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { questionBank, Question } from '../data/questionBank';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStreakData, calculateStreak, updateStreakData, calculateXPReward, awardXP } from '../utils/questionOfTheDayApi';
 
 export function useQuestionOfTheDay(gradeLevel: string | undefined) {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -13,6 +14,8 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
   const [hasAnsweredToday, setHasAnsweredToday] = useState(false);
   const [loading, setLoading] = useState(true);
   const [streakCount, setStreakCount] = useState<number>(0);
+  const [xpEarned, setXpEarned] = useState<number>(0);
+  const [totalXP, setTotalXP] = useState<number>(0);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -24,19 +27,15 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
         if (user) {
           setUserId(user.id);
 
-          // Fetch student profile for streak (streak_count may not exist in all schemas)
+          // Fetch streak/XP data using shared utility
           try {
-            const { data: studentProfile } = await supabase
-              .from('student_profiles')
-              .select('*')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (studentProfile && 'streak_count' in studentProfile) {
-              setStreakCount((studentProfile as Record<string, unknown>).streak_count as number || 0);
+            const streakData = await getStreakData(user.id);
+            if (streakData) {
+              setStreakCount(streakData.streak_count || 0);
+              setTotalXP(streakData.total_xp || 0);
             }
           } catch (profileError) {
-            console.log('Streak count not available');
+            console.log('Streak/XP data not available');
           }
 
           await checkExistingAnswer(user.id);
@@ -185,6 +184,41 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
         }
 
         setHasAnsweredToday(true);
+
+        // After successful QOD save, update streak and award XP (fire-and-forget)
+        try {
+          const streakData = await getStreakData(userId);
+          if (streakData) {
+            const streakSignal = calculateStreak(streakData.last_qod_date, today);
+            let newStreakCount: number;
+            if (streakSignal === -1) {
+              // Consecutive day -- increment
+              newStreakCount = streakData.streak_count + 1;
+            } else if (streakSignal === 0) {
+              // Same day -- no change
+              newStreakCount = streakData.streak_count;
+            } else {
+              // Missed day or first time -- use signal value (1)
+              newStreakCount = streakSignal;
+            }
+
+            await updateStreakData(userId, newStreakCount, today);
+
+            const xpAwards = calculateXPReward(correct, newStreakCount);
+            let totalXpEarned = 0;
+            for (const award of xpAwards) {
+              await awardXP(userId, userId, award);
+              totalXpEarned += award.amount;
+            }
+
+            setStreakCount(newStreakCount);
+            setXpEarned(totalXpEarned);
+            setTotalXP((streakData.total_xp || 0) + totalXpEarned);
+          }
+        } catch (streakError) {
+          console.error('Error updating streak/XP:', streakError);
+          // Non-blocking: don't fail QOD submission
+        }
       } catch (error: any) {
         console.error('Error saving question result:', error);
       }
@@ -202,6 +236,8 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
     loading,
     hasAnsweredToday,
     streakCount,
+    xpEarned,
+    totalXP,
     handleAnswerSelect,
     handleSubmitAnswer,
   };
