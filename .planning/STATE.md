@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 2 - Auth + Student Routing (In progress)
+**Current focus:** Phase 2 - Auth + Student Routing (Complete)
 
 ## Current Position
 
 Phase: 2 of 7 (Auth + Student Routing)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-06 -- Completed 02-02-PLAN.md (Student Dashboard + Role-Based Routing)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-06 -- Completed 02-03-PLAN.md (Student Onboarding Tutorial)
 
-Progress: [████████░░] 80% (4/5 plans completed)
+Progress: [██████████] 100% (5/5 plans completed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 3.3min
-- Total execution time: 13min
+- Total plans completed: 5
+- Average duration: 3.2min
+- Total execution time: 16min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-architecture-foundation | 2 | 5min | 2.5min |
-| 02-auth-student-routing | 2 | 8min | 4min |
+| 02-auth-student-routing | 3 | 11min | 3.7min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (3min), 02-01 (4min), 02-02 (4min)
+- Last 5 plans: 01-02 (3min), 02-01 (4min), 02-02 (4min), 02-03 (3min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -63,22 +63,25 @@ Recent decisions affecting current work:
 - [02-02]: Student and parent dashboard views in same file as separate function components
 - [02-02]: _layout.tsx confirmed correct from Phase 1 -- no changes needed for student tab visibility
 - [02-02]: useQuestionOfTheDay reused for dashboard hasAnsweredToday and streakCount
+- [02-03]: ProgressDots duplicated per-screen to avoid cross-file deps for simple UI element
+- [02-03]: Celebration DB update uses email fallback if user_id match fails (mirrors fetch pattern)
+- [02-03]: Supabase update payload cast as any for pre-migration compat (same pattern as 02-02)
+- [02-03]: Removed 'as any' cast on /(onboarding) redirect now that route files exist
 
 ### Pending Todos
 
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_iap_subscription_columns.sql
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
-- After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts and useStudentProfile.ts
+- After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts, useStudentProfile.ts, and celebration.tsx
 
 ### Blockers/Concerns
 
 - RevenueCat webhook + Supabase edge function integration needs testing (Phase 5)
 - EAS build with New Architecture enabled may surface compatibility issues (Phase 5)
 - SQL migrations must be applied before IAP features and onboarding gate work in production
-- /(onboarding) route does not exist yet -- student redirect will 404 until Plan 02-03 creates it
 
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 02-02-PLAN.md (Student Dashboard + Role-Based Routing)
+Stopped at: Completed 02-03-PLAN.md (Student Onboarding Tutorial) -- Phase 2 complete
 Resume file: None
