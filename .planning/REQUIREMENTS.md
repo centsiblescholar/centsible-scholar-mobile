@@ -9,11 +9,11 @@ Requirements for first App Store and Google Play submission.
 
 ### Authentication
 
-- [ ] **AUTH-04**: User can reset password via email with OTP code (6-digit code flow)
+- [x] **AUTH-04**: User can reset password via email with OTP code (6-digit code flow)
 
 ### Student Experience
 
-- [ ] **DASH-03**: Student can sign in and see independent dashboard with own data (GPA, earnings, streak, behavior)
+- [x] **DASH-03**: Student can sign in and see independent dashboard with own data (GPA, earnings, streak, behavior)
 - [ ] **DASH-04**: Student can complete daily assessment in single flow (QOD + behavior self-assessment combined)
 - [ ] **QOD-04**: Parent can view family-wide QOD progress (total XP, average correct %, active streaks, per-student cards)
 
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-04 | Phase 2: Auth + Student Routing | Pending |
-| DASH-03 | Phase 2: Auth + Student Routing | Pending |
+| AUTH-04 | Phase 2: Auth + Student Routing | Complete |
+| DASH-03 | Phase 2: Auth + Student Routing | Complete |
 | DASH-04 | Phase 3: Student Daily Experience | Pending |
 | QOD-04 | Phase 3: Student Daily Experience | Pending |
 | SUB-01 | Phase 5: IAP Wiring | Pending |
@@ -98,4 +98,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after roadmap creation*
+*Last updated: 2026-02-06 after Phase 2 completion*

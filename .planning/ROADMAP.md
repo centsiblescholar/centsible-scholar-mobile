@@ -13,7 +13,7 @@ This roadmap delivers a complete App Store and Google Play launch for Centsible 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Architecture Foundation** - Schema extensions, role detection, and subscription abstraction that gate all downstream work
-- [ ] **Phase 2: Auth + Student Routing** - Password reset and independent student dashboard with role-based navigation
+- [x] **Phase 2: Auth + Student Routing** - Password reset and independent student dashboard with role-based navigation
 - [ ] **Phase 3: Student Daily Experience** - Combined daily assessment flow and parent QOD progress view
 - [ ] **Phase 4: Subscription UI + Gates** - Paywall, feature gating, and restore purchases (Expo Go, mocked IAP)
 - [ ] **Phase 5: IAP Wiring** - Real in-app purchase flow via RevenueCat with EAS dev builds
@@ -49,9 +49,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- OTP-based password reset flow (forgot password, code verification, new password)
-- [ ] 02-02-PLAN.md -- Student dashboard with horizontal metric cards + onboarding gate + tab routing
-- [ ] 02-03-PLAN.md -- Required interactive onboarding tutorial for new students + replay in Settings
+- [x] 02-01-PLAN.md -- OTP-based password reset flow (forgot password, code verification, new password)
+- [x] 02-02-PLAN.md -- Student dashboard with horizontal metric cards + onboarding gate + tab routing
+- [x] 02-03-PLAN.md -- Required interactive onboarding tutorial for new students + replay in Settings
 
 ### Phase 3: Student Daily Experience
 **Goal**: Students have a streamlined daily check-in and parents can monitor education progress across all children
@@ -141,7 +141,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
-| 2. Auth + Student Routing | 0/3 | Planned | - |
+| 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
 | 3. Student Daily Experience | 0/TBD | Not started | - |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
 | 5. IAP Wiring | 0/TBD | Not started | - |
