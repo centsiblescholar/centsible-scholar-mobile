@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Architecture Foundation** - Schema extensions, role detection, and subscription abstraction that gate all downstream work
 - [x] **Phase 2: Auth + Student Routing** - Password reset and independent student dashboard with role-based navigation
-- [ ] **Phase 3: Student Daily Experience** - Combined daily assessment flow and parent QOD progress view
+- [x] **Phase 3: Student Daily Experience** - Combined daily assessment flow and parent QOD progress view
 - [ ] **Phase 4: Subscription UI + Gates** - Paywall, feature gating, and restore purchases (Expo Go, mocked IAP)
 - [ ] **Phase 5: IAP Wiring** - Real in-app purchase flow via RevenueCat with EAS dev builds
 - [ ] **Phase 6: Data Management + UI Polish** - Data export, account deletion, and consistent design system across all screens
@@ -65,9 +65,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Port XP/streak/level utilities from web app + enhance QOD hook with XP/streak side-effects
-- [ ] 03-02-PLAN.md -- Student combined daily assessment wizard (QOD + behavior + celebration) with Daily tab
-- [ ] 03-03-PLAN.md -- Parent QOD progress dashboard in Learn tab with family aggregates and per-student cards
+- [x] 03-01-PLAN.md -- Port XP/streak/level utilities from web app + enhance QOD hook with XP/streak side-effects
+- [x] 03-02-PLAN.md -- Student combined daily assessment wizard (QOD + behavior + celebration) with Daily tab
+- [x] 03-03-PLAN.md -- Parent QOD progress dashboard in Learn tab with family aggregates and per-student cards
 
 ### Phase 4: Subscription UI + Gates
 **Goal**: The app enforces a free/premium boundary and presents a polished paywall, all testable in Expo Go
@@ -143,7 +143,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 |-------|---------------|--------|-----------|
 | 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
 | 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
-| 3. Student Daily Experience | 0/3 | Not started | - |
+| 3. Student Daily Experience | 3/3 | Complete | 2026-02-06 |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
 | 5. IAP Wiring | 0/TBD | Not started | - |
 | 6. Data Management + UI Polish | 0/TBD | Not started | - |

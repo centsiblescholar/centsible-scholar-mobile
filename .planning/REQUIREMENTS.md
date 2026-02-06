@@ -14,8 +14,8 @@ Requirements for first App Store and Google Play submission.
 ### Student Experience
 
 - [x] **DASH-03**: Student can sign in and see independent dashboard with own data (GPA, earnings, streak, behavior)
-- [ ] **DASH-04**: Student can complete daily assessment in single flow (QOD + behavior self-assessment combined)
-- [ ] **QOD-04**: Parent can view family-wide QOD progress (total XP, average correct %, active streaks, per-student cards)
+- [x] **DASH-04**: Student can complete daily assessment in single flow (QOD + behavior self-assessment combined)
+- [x] **QOD-04**: Parent can view family-wide QOD progress (total XP, average correct %, active streaks, per-student cards)
 
 ### Subscriptions & Monetization
 
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | AUTH-04 | Phase 2: Auth + Student Routing | Complete |
 | DASH-03 | Phase 2: Auth + Student Routing | Complete |
-| DASH-04 | Phase 3: Student Daily Experience | Pending |
-| QOD-04 | Phase 3: Student Daily Experience | Pending |
+| DASH-04 | Phase 3: Student Daily Experience | Complete |
+| QOD-04 | Phase 3: Student Daily Experience | Complete |
 | SUB-01 | Phase 5: IAP Wiring | Pending |
 | SUB-02 | Phase 4: Subscription UI + Gates | Pending |
 | SUB-03 | Phase 4: Subscription UI + Gates | Pending |

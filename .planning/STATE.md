@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 3 - Student Daily Experience (Complete)
+**Current focus:** Phase 4 - Subscription UI + Gates
 
 ## Current Position
 
-Phase: 3 of 7 (Student Daily Experience)
-Plan: 3 of 3 (Phase 3 complete)
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 03-02-PLAN.md (Wave 2, final plan in Phase 3)
+Phase: 4 of 7 (Subscription UI + Gates)
+Plan: 0 of TBD (Phase 4 not planned yet)
+Status: Ready to plan Phase 4
+Last activity: 2026-02-06 -- Completed Phase 3 (all 3 plans)
 
-Progress: [████████████████░░░░] 80% (8/10 plans completed)
+Progress: [████████████████░░░░] 80% (8/TBD plans completed - Phases 1-3 complete)
 
 ## Performance Metrics
 
@@ -72,14 +72,20 @@ Recent decisions affecting current work:
 - [03-01]: Query by user_id (not profile row id) for all streak/XP operations -- matches mobile auth pattern
 - [03-01]: Email fallback on getStreakData matching useStudentProfile fetch pattern
 - [03-01]: Cast xp_transactions as any for pre-migration compat (table not in generated types yet)
-- [03-01]: Fire-and-forget XP/streak updates -- errors logged but never block QOD save
-- [03-02]: State-driven wizard steps (WizardStep type) instead of multi-screen navigation
-- [03-02]: Default behavior scores to 3 (not 0) for friendlier starting point
-- [03-02]: Post-completion re-entry shows read-only completed view, not celebration again
+- [03-01]: XP/streak updates in useQuestionOfTheDay are fire-and-forget (try/catch, non-blocking)
+- [03-01]: levelSystem.ts ported verbatim from web app (10 levels with titles and thresholds)
+- [03-02]: State-driven wizard (single screen, not multi-screen navigation) to prevent back-button issues
+- [03-02]: Smart step-skipping based on hasAnsweredToday and todayAssessment on mount
+- [03-02]: All 10 behavior categories with Slider components (1-5 scale, defaults to 3)
+- [03-02]: Progress bar shows 50% after QOD, 100% after behavior (hidden on celebration/completed)
+- [03-02]: Post-completion re-entry shows read-only completed view (not celebration)
+- [03-02]: Intermediate celebration for correct QOD answers handled inside QODStep (1.5s delay)
+- [03-02]: Daily tab placed between Dashboard and Grades in tab order
+- [03-03]: useParentQODStats uses TanStack React Query with time range in queryKey
+- [03-03]: Role-conditional Learn tab: parent sees progress dashboard, student sees existing QOD screen
+- [03-03]: Accuracy color coding: green >90%, yellow 75-90%, red <75%
 - [03-02]: Dashboard task cards disabled when both QOD and behavior are complete
-- [03-03]: Role-conditional rendering in learn.tsx -- parent sees dashboard, student sees existing QOD
 - [03-03]: Student cards NOT tappable -- deep navigation deferred to Phase 6 polish
-- [03-03]: useParentQODStats uses @tanstack/react-query with timeRange in query key
 
 ### Pending Todos
 
