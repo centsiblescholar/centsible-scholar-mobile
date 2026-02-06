@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 2 of 7 (Auth + Student Routing)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-05 -- Completed 02-01-PLAN.md (Password Reset Flow)
+Last activity: 2026-02-06 -- Completed 02-02-PLAN.md (Student Dashboard + Role-Based Routing)
 
-Progress: [██████░░░░] 60% (3/5 plans completed)
+Progress: [████████░░] 80% (4/5 plans completed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 3min
-- Total execution time: 9min
+- Total plans completed: 4
+- Average duration: 3.3min
+- Total execution time: 13min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-architecture-foundation | 2 | 5min | 2.5min |
-| 02-auth-student-routing | 1 | 4min | 4min |
+| 02-auth-student-routing | 2 | 8min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (3min), 02-01 (4min)
+- Last 5 plans: 01-01 (2min), 01-02 (3min), 02-01 (4min), 02-02 (4min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -59,20 +59,26 @@ Recent decisions affecting current work:
 - [02-01]: Combined OTP verification + password reset on single screen for fewer navigation steps
 - [02-01]: verifyOtp creates session, then updateUser sets password -- user lands on dashboard logged in
 - [02-01]: textContentType='oneTimeCode' on password fields to prevent iOS autofill overlay (consistent with Phase 1)
+- [02-02]: Cast Supabase data as unknown then StudentProfile for pre-migration compat (safeOnboardingStatus handles null)
+- [02-02]: Student and parent dashboard views in same file as separate function components
+- [02-02]: _layout.tsx confirmed correct from Phase 1 -- no changes needed for student tab visibility
+- [02-02]: useQuestionOfTheDay reused for dashboard hasAnsweredToday and streakCount
 
 ### Pending Todos
 
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_iap_subscription_columns.sql
-- After migration, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts
+- Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
+- After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts and useStudentProfile.ts
 
 ### Blockers/Concerns
 
 - RevenueCat webhook + Supabase edge function integration needs testing (Phase 5)
 - EAS build with New Architecture enabled may surface compatibility issues (Phase 5)
-- SQL migration must be applied before IAP features work (Phase 5 prerequisite)
+- SQL migrations must be applied before IAP features and onboarding gate work in production
+- /(onboarding) route does not exist yet -- student redirect will 404 until Plan 02-03 creates it
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Completed 02-01-PLAN.md (Password Reset Flow)
+Last session: 2026-02-06
+Stopped at: Completed 02-02-PLAN.md (Student Dashboard + Role-Based Routing)
 Resume file: None
