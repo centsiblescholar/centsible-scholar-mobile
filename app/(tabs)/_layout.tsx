@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function TabLayout() {
+  const { userRole } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -61,6 +64,7 @@ export default function TabLayout() {
         name="earnings"
         options={{
           title: 'Earnings',
+          href: userRole === 'student' ? null : '/(tabs)/earnings',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
