@@ -1,17 +1,24 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
+
+type UserRole = 'parent' | 'student' | null;
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  userRole: UserRole;
+  signOutWithError: (message: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  userRole: null,
+  signOutWithError: async () => {},
 });
 
 export function useAuth() {
@@ -26,10 +33,29 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Extract role from user metadata.
+ * Returns 'parent' | 'student' if valid, null otherwise.
+ */
+function extractRole(user: User | null): UserRole {
+  if (!user) return null;
+  const userType = user.user_metadata?.user_type;
+  if (userType === 'parent' || userType === 'student') {
+    return userType;
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole>(null);
+
+  const signOutWithError = useCallback(async (message: string) => {
+    await supabase.auth.signOut();
+    Alert.alert('Account Error', message);
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -38,6 +64,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
+
+        const role = extractRole(initialSession?.user ?? null);
+        setUserRole(role);
+
+        // If there is a user but role is invalid, sign out with error
+        if (initialSession?.user && !role) {
+          await signOutWithError(
+            'Your account is missing role information. Please contact support.'
+          );
+        }
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
@@ -53,6 +89,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('Auth state changed:', event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
+
+        if (event === 'SIGNED_OUT') {
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+
+        const role = extractRole(newSession?.user ?? null);
+        setUserRole(role);
+
+        // If user just signed in but role is invalid, sign out with error
+        if (event === 'SIGNED_IN' && newSession?.user && !role) {
+          await signOutWithError(
+            'Your account is missing role information. Please contact support.'
+          );
+        }
+
         setLoading(false);
       }
     );
@@ -60,10 +113,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [signOutWithError]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, signOutWithError }}>
       {children}
     </AuthContext.Provider>
   );
