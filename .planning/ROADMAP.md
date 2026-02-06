@@ -62,11 +62,12 @@ Plans:
   2. Student sees a progress indicator during the combined assessment and a celebration/summary at completion
   3. Parent can view a family-wide QOD progress screen showing total XP, average correct percentage, active streaks, and per-student cards
   4. Combined assessment results persist correctly (QOD answer recorded, behavior scores saved, streaks updated)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Port XP/streak/level utilities from web app + enhance QOD hook with XP/streak side-effects
+- [ ] 03-02-PLAN.md -- Student combined daily assessment wizard (QOD + behavior + celebration) with Daily tab
+- [ ] 03-03-PLAN.md -- Parent QOD progress dashboard in Learn tab with family aggregates and per-student cards
 
 ### Phase 4: Subscription UI + Gates
 **Goal**: The app enforces a free/premium boundary and presents a polished paywall, all testable in Expo Go
@@ -142,7 +143,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 |-------|---------------|--------|-----------|
 | 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
 | 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
-| 3. Student Daily Experience | 0/TBD | Not started | - |
+| 3. Student Daily Experience | 0/3 | Not started | - |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
 | 5. IAP Wiring | 0/TBD | Not started | - |
 | 6. Data Management + UI Polish | 0/TBD | Not started | - |
