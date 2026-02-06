@@ -1,7 +1,7 @@
 # Requirements: Centsible Scholar Mobile
 
 **Defined:** 2026-02-05
-**Core Value:** Parents and students can do everything on mobile that they can on the web app — same features, same data, native mobile experience.
+**Core Value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
 
 ## v1.0 Requirements (App Store Launch)
 
@@ -78,24 +78,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-04 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| QOD-04 | TBD | Pending |
-| SUB-01 | TBD | Pending |
-| SUB-02 | TBD | Pending |
-| SUB-03 | TBD | Pending |
-| DATA-01 | TBD | Pending |
-| STYLE-01 | TBD | Pending |
-| STYLE-02 | TBD | Pending |
-| STORE-01 | TBD | Pending |
-| STORE-02 | TBD | Pending |
+| AUTH-04 | Phase 2: Auth + Student Routing | Pending |
+| DASH-03 | Phase 2: Auth + Student Routing | Pending |
+| DASH-04 | Phase 3: Student Daily Experience | Pending |
+| QOD-04 | Phase 3: Student Daily Experience | Pending |
+| SUB-01 | Phase 5: IAP Wiring | Pending |
+| SUB-02 | Phase 4: Subscription UI + Gates | Pending |
+| SUB-03 | Phase 4: Subscription UI + Gates | Pending |
+| DATA-01 | Phase 6: Data Management + UI Polish | Pending |
+| STYLE-01 | Phase 6: Data Management + UI Polish | Pending |
+| STYLE-02 | Phase 6: Data Management + UI Polish | Pending |
+| STORE-01 | Phase 7: App Store Preparation | Pending |
+| STORE-02 | Phase 7: App Store Preparation | Pending |
 
 **Coverage:**
 - v1.0 requirements: 12 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after initial definition*
+*Last updated: 2026-02-05 after roadmap creation*
