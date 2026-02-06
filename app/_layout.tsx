@@ -66,6 +66,20 @@ export default function RootLayout() {
                 title: 'Grade Approval',
               }}
             />
+            <Stack.Screen
+              name="paywall"
+              options={{
+                presentation: 'modal',
+                headerShown: false,
+                gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen
+              name="manage-subscription"
+              options={{
+                title: 'Manage Subscription',
+              }}
+            />
           </Stack>
         </StudentProvider>
       </AuthProvider>
