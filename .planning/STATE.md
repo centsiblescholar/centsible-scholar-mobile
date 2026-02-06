@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 1 - Architecture Foundation (COMPLETE)
+**Current focus:** Phase 2 - Auth + Student Routing (In progress)
 
 ## Current Position
 
-Phase: 1 of 7 (Architecture Foundation)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-05 -- Completed 01-02-PLAN.md (Subscription Schema + Platform-Agnostic Hook)
+Phase: 2 of 7 (Auth + Student Routing)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-05 -- Completed 02-01-PLAN.md (Password Reset Flow)
 
-Progress: [██████████] 100% of Phase 1
+Progress: [██████░░░░] 60% (3/5 plans completed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 2.5min
-- Total execution time: 5min
+- Total plans completed: 3
+- Average duration: 3min
+- Total execution time: 9min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-architecture-foundation | 2 | 5min | 2.5min |
+| 02-auth-student-routing | 1 | 4min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (3min)
-- Trend: baseline
+- Last 5 plans: 01-01 (2min), 01-02 (3min), 02-01 (4min)
+- Trend: stable
 
 *Updated after each plan completion*
 
@@ -55,6 +56,9 @@ Recent decisions affecting current work:
 - [01-02]: isActive returns null (not false) when no subscription record exists
 - [01-02]: Keep backward-compat status returning 'inactive' to prevent Settings crash
 - [01-02]: Map 'large' subscription type to 'Family' for App Store naming
+- [02-01]: Combined OTP verification + password reset on single screen for fewer navigation steps
+- [02-01]: verifyOtp creates session, then updateUser sets password -- user lands on dashboard logged in
+- [02-01]: textContentType='oneTimeCode' on password fields to prevent iOS autofill overlay (consistent with Phase 1)
 
 ### Pending Todos
 
@@ -70,5 +74,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 01-02-PLAN.md -- Phase 1 (Architecture Foundation) complete
+Stopped at: Completed 02-01-PLAN.md (Password Reset Flow)
 Resume file: None
