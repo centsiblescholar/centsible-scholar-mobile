@@ -14,10 +14,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { signOut } from '../../src/integrations/supabase/client';
+import { signOut, supabase } from '../../src/integrations/supabase/client';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { useSubscriptionStatus } from '../../src/hooks/useSubscriptionStatus';
 import { useNotifications } from '../../src/hooks/useNotifications';
+import { SUBSCRIPTION_PLANS } from '../../src/constants/subscriptionPlans';
 import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
     isActive,
     subscriptionTypeDisplay,
     status,
+    tier,
     periodEndDate,
     refetch: refetchSubscription,
   } = useSubscriptionStatus();
@@ -42,6 +44,7 @@ export default function SettingsScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [togglingNotifications, setTogglingNotifications] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -72,7 +75,44 @@ export default function SettingsScreen() {
   };
 
   const handleManageSubscription = () => {
-    Linking.openURL('https://centsiblescholar.com/settings');
+    if (isActive) {
+      router.push('/manage-subscription' as any);
+    } else {
+      router.push('/paywall' as any);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    if (!user) return;
+    setIsRestoring(true);
+    try {
+      // Simulate restore delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .maybeSingle();
+
+      if (error) {
+        Alert.alert('Error', 'Unable to check for purchases. Please try again.');
+        return;
+      }
+
+      if (data) {
+        Alert.alert('Subscription Restored!', 'Your subscription has been restored successfully.');
+        refetchSubscription();
+      } else {
+        Alert.alert(
+          'No Purchases Found',
+          'No active subscription was found for this account.'
+        );
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -124,11 +164,11 @@ export default function SettingsScreen() {
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 
-  const getStatusColor = () => {
-    if (isActive) return styles.valueGreen;
-    if (status === 'trialing') return styles.valueBlue;
-    if (status === 'past_due') return styles.valueOrange;
-    return styles.valueRed;
+  const getStatusBadgeStyle = () => {
+    if (isActive) return { backgroundColor: '#10B981' };
+    if (status === 'trialing') return { backgroundColor: '#3B82F6' };
+    if (status === 'past_due') return { backgroundColor: '#F97316' };
+    return { backgroundColor: '#EF4444' };
   };
 
   const getStatusText = () => {
@@ -145,6 +185,10 @@ export default function SettingsScreen() {
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
+
+  // Get feature count for current plan
+  const currentPlan = SUBSCRIPTION_PLANS.find((p) => p.id === tier);
+  const featureCount = currentPlan?.features.length ?? 0;
 
   if (isLoading && !refreshing) {
     return (
@@ -255,32 +299,60 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Subscription Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subscription</Text>
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.label}>Status</Text>
-              <Text style={[styles.value, getStatusColor()]}>{getStatusText()}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Plan</Text>
-              <Text style={styles.value}>{subscriptionTypeDisplay}</Text>
-            </View>
-            {periodEndDate && (
+        {/* Subscription Section (parents only) */}
+        {isParent && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Subscription</Text>
+            <View style={styles.card}>
               <View style={styles.row}>
-                <Text style={styles.label}>Renews</Text>
-                <Text style={styles.value}>{periodEndDate}</Text>
+                <Text style={styles.label}>Status</Text>
+                <View style={styles.statusBadgeRow}>
+                  <View style={[styles.statusDot, getStatusBadgeStyle()]} />
+                  <Text style={[styles.value, styles.statusText]}>{getStatusText()}</Text>
+                </View>
               </View>
-            )}
-            <TouchableOpacity
-              style={styles.manageButton}
-              onPress={handleManageSubscription}
-            >
-              <Text style={styles.manageButtonText}>Manage Subscription</Text>
-            </TouchableOpacity>
+              <View style={styles.row}>
+                <Text style={styles.label}>Plan</Text>
+                <Text style={styles.value}>{subscriptionTypeDisplay}</Text>
+              </View>
+              {featureCount > 0 && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Features</Text>
+                  <Text style={styles.value}>{featureCount} features included</Text>
+                </View>
+              )}
+              {periodEndDate && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Renews</Text>
+                  <Text style={styles.value}>{periodEndDate}</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={handleManageSubscription}
+              >
+                <Ionicons name="card-outline" size={18} color="#4F46E5" />
+                <Text style={styles.manageButtonText}>
+                  {isActive ? 'Manage Subscription' : 'Subscribe Now'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.restoreButton, isRestoring && styles.buttonDisabled]}
+                onPress={handleRestorePurchases}
+                disabled={isRestoring}
+              >
+                {isRestoring ? (
+                  <ActivityIndicator size="small" color="#4F46E5" />
+                ) : (
+                  <>
+                    <Ionicons name="refresh-circle-outline" size={18} color="#4F46E5" />
+                    <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Notifications Section */}
         <View style={styles.section}>
@@ -365,28 +437,28 @@ export default function SettingsScreen() {
               onPress={() => Linking.openURL('https://centsiblescholar.com/help')}
             >
               <Text style={styles.linkText}>Help Center</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron}>&rsaquo;</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.linkRow}
               onPress={() => Linking.openURL('mailto:support@centsiblescholar.com')}
             >
               <Text style={styles.linkText}>Contact Support</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron}>&rsaquo;</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.linkRow}
               onPress={() => Linking.openURL('https://centsiblescholar.com/privacy')}
             >
               <Text style={styles.linkText}>Privacy Policy</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron}>&rsaquo;</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.linkRow, styles.linkRowLast]}
               onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}
             >
               <Text style={styles.linkText}>Terms of Service</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron}>&rsaquo;</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -463,20 +535,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-  valueGreen: {
-    color: '#10B981',
-    fontWeight: '600',
+  statusBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  valueBlue: {
-    color: '#3B82F6',
-    fontWeight: '600',
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  valueOrange: {
-    color: '#F97316',
-    fontWeight: '600',
-  },
-  valueRed: {
-    color: '#EF4444',
+  statusText: {
     fontWeight: '600',
   },
   typeBadge: {
@@ -513,11 +582,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     borderRadius: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 44,
   },
   manageButtonText: {
     color: '#4F46E5',
     fontSize: 14,
     fontWeight: '600',
+  },
+  restoreButton: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 44,
+  },
+  restoreButtonText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   linkRow: {
     flexDirection: 'row',
