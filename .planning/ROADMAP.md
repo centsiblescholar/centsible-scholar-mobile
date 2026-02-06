@@ -46,11 +46,12 @@ Plans:
   2. Student can sign in with their own email/password and land on a student-specific dashboard showing their GPA, earnings, streak, and behavior score
   3. Student sees a different tab bar than parent (Dashboard, Grades, Behavior, Learn, Settings) with no parent management tabs visible
   4. Parent can still switch between students and see all parent features after this phase
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- OTP-based password reset flow (forgot password, code verification, new password)
+- [ ] 02-02-PLAN.md -- Student dashboard with horizontal metric cards + onboarding gate + tab routing
+- [ ] 02-03-PLAN.md -- Required interactive onboarding tutorial for new students + replay in Settings
 
 ### Phase 3: Student Daily Experience
 **Goal**: Students have a streamlined daily check-in and parents can monitor education progress across all children
@@ -140,7 +141,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
-| 2. Auth + Student Routing | 0/TBD | Not started | - |
+| 2. Auth + Student Routing | 0/3 | Planned | - |
 | 3. Student Daily Experience | 0/TBD | Not started | - |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
 | 5. IAP Wiring | 0/TBD | Not started | - |
