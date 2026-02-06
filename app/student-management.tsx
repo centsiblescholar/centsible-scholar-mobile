@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useStudentManagement, StudentProfile, CreateStudentInput } from '../src/hooks/useStudentManagement';
 import { useUserProfile } from '../src/hooks/useUserProfile';
+import { getStudentLimit } from '../src/constants/subscriptionPlans';
+import { useSubscriptionStatus } from '../src/hooks/useSubscriptionStatus';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -37,6 +39,8 @@ function generatePassword(): string {
 
 export default function StudentManagementScreen() {
   const { isParent } = useUserProfile();
+  const { tier } = useSubscriptionStatus();
+  const studentLimit = getStudentLimit(tier);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -81,7 +85,35 @@ export default function StudentManagementScreen() {
     setBaseReward('10');
   };
 
+  const handleOpenAddModal = () => {
+    if (studentLimit > 0 && activeStudents.length >= studentLimit) {
+      Alert.alert(
+        'Student Limit Reached',
+        `Your plan allows ${studentLimit} student${studentLimit !== 1 ? 's' : ''}. Upgrade your plan to add more students.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade Plan', onPress: () => router.push('/paywall' as any) },
+        ]
+      );
+      return;
+    }
+    resetForm();
+    setShowAddModal(true);
+  };
+
   const handleAddStudent = async () => {
+    if (studentLimit > 0 && activeStudents.length >= studentLimit) {
+      Alert.alert(
+        'Student Limit Reached',
+        `Your plan allows ${studentLimit} student${studentLimit !== 1 ? 's' : ''}. Upgrade your plan to add more students.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade Plan', onPress: () => router.push('/paywall' as any) },
+        ]
+      );
+      return;
+    }
+
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a student name');
       return;
@@ -232,10 +264,7 @@ export default function StudentManagementScreen() {
           </Text>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
+            onPress={handleOpenAddModal}
           >
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
@@ -263,10 +292,7 @@ export default function StudentManagementScreen() {
             </Text>
             <TouchableOpacity
               style={styles.addFirstButton}
-              onPress={() => {
-                resetForm();
-                setShowAddModal(true);
-              }}
+              onPress={handleOpenAddModal}
             >
               <Ionicons name="add-circle" size={20} color="#fff" />
               <Text style={styles.addFirstButtonText}>Add Student</Text>
