@@ -27,6 +27,20 @@ export default function AuthLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="forgot-password"
+        options={{
+          title: 'Forgot Password',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="verify-reset-code"
+        options={{
+          title: 'Reset Password',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
