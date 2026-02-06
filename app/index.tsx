@@ -49,8 +49,7 @@ export default function Index() {
       );
     }
     if (!hasCompletedOnboarding) {
-      // Route created in Plan 02-03; cast needed until route files exist
-      return <Redirect href={'/(onboarding)' as any} />;
+      return <Redirect href="/(onboarding)" />;
     }
     return <Redirect href="/(tabs)/dashboard" />;
   }
