@@ -12,7 +12,7 @@ This roadmap delivers a complete App Store and Google Play launch for Centsible 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Architecture Foundation** - Schema extensions, role detection, and subscription abstraction that gate all downstream work
+- [x] **Phase 1: Architecture Foundation** - Schema extensions, role detection, and subscription abstraction that gate all downstream work
 - [ ] **Phase 2: Auth + Student Routing** - Password reset and independent student dashboard with role-based navigation
 - [ ] **Phase 3: Student Daily Experience** - Combined daily assessment flow and parent QOD progress view
 - [ ] **Phase 4: Subscription UI + Gates** - Paywall, feature gating, and restore purchases (Expo Go, mocked IAP)
@@ -34,8 +34,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Role detection in AuthContext + role-based routing with conditional tab visibility
-- [ ] 01-02-PLAN.md -- Subscription schema migration for IAP + platform-agnostic useSubscriptionStatus hook
+- [x] 01-01-PLAN.md -- Role detection in AuthContext + role-based routing with conditional tab visibility
+- [x] 01-02-PLAN.md -- Subscription schema migration for IAP + platform-agnostic useSubscriptionStatus hook
 
 ### Phase 2: Auth + Student Routing
 **Goal**: Users can recover locked accounts and students can sign in independently to see their own personalized dashboard
@@ -139,7 +139,7 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Architecture Foundation | 0/2 | Planned | - |
+| 1. Architecture Foundation | 2/2 | Complete | 2026-02-05 |
 | 2. Auth + Student Routing | 0/TBD | Not started | - |
 | 3. Student Daily Experience | 0/TBD | Not started | - |
 | 4. Subscription UI + Gates | 0/TBD | Not started | - |
