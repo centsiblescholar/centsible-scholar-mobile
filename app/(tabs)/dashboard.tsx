@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useState, useCallback, useRef } from 'react';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
@@ -33,6 +34,7 @@ const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 // ---------------------------------------------------------------------------
 function StudentDashboardView() {
   const { user } = useAuth();
+  const router = useRouter();
   const studentUserId = user?.id;
 
   // Student profile for name, grade level, base reward
@@ -170,7 +172,11 @@ function StudentDashboardView() {
         <Text style={studentStyles.tasksSectionTitle}>What You Need To Do Today</Text>
         <View style={studentStyles.tasksRow}>
           {/* QOD Card */}
-          <View style={studentStyles.taskCard}>
+          <TouchableOpacity
+            style={studentStyles.taskCard}
+            onPress={() => router.push('/(tabs)/daily')}
+            disabled={qodAnsweredToday && !!todayAssessment}
+          >
             <View style={studentStyles.taskStatusRow}>
               <View
                 style={[
@@ -183,10 +189,14 @@ function StudentDashboardView() {
             <Text style={studentStyles.taskStatusText}>
               {qodAnsweredToday ? 'Completed!' : 'Ready to answer!'}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Behavior Card */}
-          <View style={studentStyles.taskCard}>
+          <TouchableOpacity
+            style={studentStyles.taskCard}
+            onPress={() => router.push('/(tabs)/daily')}
+            disabled={qodAnsweredToday && !!todayAssessment}
+          >
             <View style={studentStyles.taskStatusRow}>
               <View
                 style={[
@@ -199,7 +209,7 @@ function StudentDashboardView() {
             <Text style={studentStyles.taskStatusText}>
               {todayAssessment ? 'Completed!' : 'Time to reflect!'}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
 

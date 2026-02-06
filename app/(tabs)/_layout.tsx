@@ -34,6 +34,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="daily"
+        options={{
+          title: 'Daily',
+          headerShown: false,
+          href: userRole === 'parent' ? null : '/(tabs)/daily',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="today-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="grades"
         options={{
           title: 'Grades',
