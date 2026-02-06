@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 4 - Subscription UI + Gates
+**Current focus:** Phase 4 - Subscription UI + Gates (COMPLETE)
 
 ## Current Position
 
-Phase: 4 of 7 (Subscription UI + Gates)
-Plan: 1 of 3 (04-01 complete)
-Status: In progress
-Last activity: 2026-02-06 -- Completed 04-01-PLAN.md
+Phase: 4 of 7 (Subscription UI + Gates) -- COMPLETE
+Plan: 3 of 3 (04-01, 04-02, 04-03 all complete)
+Status: Phase complete
+Last activity: 2026-02-06 -- Completed 04-02-PLAN.md and 04-03-PLAN.md (parallel)
 
-Progress: [████████████████░░░░] 82% (9/11 plans completed - Phase 4 in progress)
+Progress: [██████████████████░░] 100% Phase 4 | 11/11 plans completed through Phase 4
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 3.3min
-- Total execution time: 30min
+- Total plans completed: 11
+- Average duration: 3.5min
+- Total execution time: 40min
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [████████████████░░░░] 82% (9/
 | 01-architecture-foundation | 2 | 5min | 2.5min |
 | 02-auth-student-routing | 3 | 11min | 3.7min |
 | 03-student-daily-experience | 3 | 11min | 3.7min |
-| 04-subscription-ui-gates | 1 | 3min | 3.0min |
+| 04-subscription-ui-gates | 3 | 13min | 4.3min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (3min), 03-01 (6min*), 03-03 (6min*), 03-02 (5min), 04-01 (3min)
-- *03-01 and 03-03 executed in parallel (6min wall clock for both)
+- Last 5 plans: 03-02 (5min), 04-01 (3min), 04-02 (5min*), 04-03 (5min*)
+- *04-02 and 04-03 executed in parallel (5min wall clock for both)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -91,6 +91,13 @@ Recent decisions affecting current work:
 - [04-01]: Student gate query uses 5-min staleTime to prevent N+1 inheritance queries
 - [04-01]: Mock purchase uses platform: 'apple' to simulate IAP path for Phase 5
 - [04-01]: Supabase insert/update data cast as any for pre-migration compat (same pattern as Phases 2-3)
+- [04-02]: BillingToggle and PlanCard as local function components in paywall.tsx (not separate files)
+- [04-02]: gestureEnabled: false on paywall modal -- X button is intentional dismiss path
+- [04-02]: as any cast on Redirect href for /paywall (Expo Router types lag behind file creation)
+- [04-03]: Settings subscription section hidden for students (isParent guard)
+- [04-03]: Button text: "Manage Subscription" when active, "Subscribe Now" when inactive
+- [04-03]: Student limit enforced at both modal open and handleAddStudent (defense in depth)
+- [04-03]: Dev debug tools (__DEV__) for testing subscription states
 
 ### Pending Todos
 
@@ -108,5 +115,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 04-01-PLAN.md
+Stopped at: Completed Phase 4 (all 3 plans: 04-01, 04-02, 04-03)
 Resume file: None
