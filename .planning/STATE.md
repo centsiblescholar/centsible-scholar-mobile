@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 2 - Auth + Student Routing (Complete)
+**Current focus:** Phase 3 - Student Daily Experience (In Progress)
 
 ## Current Position
 
-Phase: 2 of 7 (Auth + Student Routing)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 02-03-PLAN.md (Student Onboarding Tutorial)
+Phase: 3 of 7 (Student Daily Experience)
+Plan: 2 of 3 remaining (Plans 01 and 03 complete, Plan 02 next)
+Status: In progress (Wave 1 complete)
+Last activity: 2026-02-06 -- Completed 03-01-PLAN.md and 03-03-PLAN.md (Wave 1 parallel)
 
-Progress: [██████████] 100% (5/5 plans completed)
+Progress: [██████████████░░░░░░] 70% (7/10 plans completed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 3.2min
-- Total execution time: 16min
+- Total plans completed: 7
+- Average duration: 3.7min
+- Total execution time: 22min
 
 **By Phase:**
 
@@ -29,9 +29,11 @@ Progress: [██████████] 100% (5/5 plans completed)
 |-------|-------|-------|----------|
 | 01-architecture-foundation | 2 | 5min | 2.5min |
 | 02-auth-student-routing | 3 | 11min | 3.7min |
+| 03-student-daily-experience | 2 | 6min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3min), 02-01 (4min), 02-02 (4min), 02-03 (3min)
+- Last 5 plans: 02-01 (4min), 02-02 (4min), 02-03 (3min), 03-01 (6min*), 03-03 (6min*)
+- *03-01 and 03-03 executed in parallel (6min wall clock for both)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -67,21 +69,29 @@ Recent decisions affecting current work:
 - [02-03]: Celebration DB update uses email fallback if user_id match fails (mirrors fetch pattern)
 - [02-03]: Supabase update payload cast as any for pre-migration compat (same pattern as 02-02)
 - [02-03]: Removed 'as any' cast on /(onboarding) redirect now that route files exist
+- [03-01]: Query by user_id (not profile row id) for all streak/XP operations -- matches mobile auth pattern
+- [03-01]: Email fallback on getStreakData matching useStudentProfile fetch pattern
+- [03-01]: Cast xp_transactions as any for pre-migration compat (table not in generated types yet)
+- [03-01]: Fire-and-forget XP/streak updates -- errors logged but never block QOD save
+- [03-03]: Role-conditional rendering in learn.tsx -- parent sees dashboard, student sees existing QOD
+- [03-03]: Student cards NOT tappable -- deep navigation deferred to Phase 6 polish
+- [03-03]: useParentQODStats uses @tanstack/react-query with timeRange in query key
 
 ### Pending Todos
 
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_iap_subscription_columns.sql
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
 - After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts, useStudentProfile.ts, and celebration.tsx
+- Apply SQL migration for streak_count, longest_streak, total_xp, last_qod_date on student_profiles and xp_transactions table
 
 ### Blockers/Concerns
 
 - RevenueCat webhook + Supabase edge function integration needs testing (Phase 5)
 - EAS build with New Architecture enabled may surface compatibility issues (Phase 5)
-- SQL migrations must be applied before IAP features and onboarding gate work in production
+- SQL migrations must be applied before IAP features, onboarding gate, and XP/streak features work in production
 
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 02-03-PLAN.md (Student Onboarding Tutorial) -- Phase 2 complete
+Stopped at: Completed 03-01-PLAN.md and 03-03-PLAN.md (Wave 1) -- Plan 03-02 next (Wave 2)
 Resume file: None
