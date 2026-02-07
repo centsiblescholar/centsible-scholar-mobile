@@ -1,3 +1,10 @@
+import { Platform } from 'react-native';
+
+export interface ProductIds {
+  monthly: string;
+  annual: string;
+}
+
 export interface SubscriptionPlan {
   id: 'single' | 'midsize' | 'large';
   name: string;
@@ -7,6 +14,9 @@ export interface SubscriptionPlan {
   studentLimit: number;
   features: string[];
   badge?: string;
+  appleProductId: ProductIds;
+  googleProductId: ProductIds;
+  rcPackageId: ProductIds;
 }
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
@@ -25,6 +35,18 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       'Financial literacy education',
       'Email support',
     ],
+    appleProductId: {
+      monthly: 'com.centsiblescholar.single.monthly',
+      annual: 'com.centsiblescholar.single.annual',
+    },
+    googleProductId: {
+      monthly: 'com.centsiblescholar.single.monthly',
+      annual: 'com.centsiblescholar.single.annual',
+    },
+    rcPackageId: {
+      monthly: '$rc_monthly',
+      annual: '$rc_annual',
+    },
   },
   {
     id: 'midsize',
@@ -42,6 +64,18 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       'Advanced analytics & reports',
       'Priority email support',
     ],
+    appleProductId: {
+      monthly: 'com.centsiblescholar.midsize.monthly',
+      annual: 'com.centsiblescholar.midsize.annual',
+    },
+    googleProductId: {
+      monthly: 'com.centsiblescholar.midsize.monthly',
+      annual: 'com.centsiblescholar.midsize.annual',
+    },
+    rcPackageId: {
+      monthly: '$rc_monthly',
+      annual: '$rc_annual',
+    },
   },
   {
     id: 'large',
@@ -58,6 +92,18 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       'Priority email support',
       'Early access to new features',
     ],
+    appleProductId: {
+      monthly: 'com.centsiblescholar.large.monthly',
+      annual: 'com.centsiblescholar.large.annual',
+    },
+    googleProductId: {
+      monthly: 'com.centsiblescholar.large.monthly',
+      annual: 'com.centsiblescholar.large.annual',
+    },
+    rcPackageId: {
+      monthly: '$rc_monthly',
+      annual: '$rc_annual',
+    },
   },
 ];
 
@@ -80,4 +126,17 @@ export function getAnnualSavingsPercent(plan: SubscriptionPlan): number {
   return Math.round(
     ((plan.monthlyPrice * 12 - plan.annualPrice) / (plan.monthlyPrice * 12)) * 100
   );
+}
+
+export function getProductIdForPlatform(
+  planId: SubscriptionPlan['id'],
+  billingInterval: 'monthly' | 'annual',
+  platform?: 'ios' | 'android'
+): string {
+  const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
+  if (!plan) throw new Error(`Unknown plan: ${planId}`);
+
+  const os = platform ?? (Platform.OS === 'ios' ? 'ios' : 'android');
+  const productIds = os === 'ios' ? plan.appleProductId : plan.googleProductId;
+  return productIds[billingInterval];
 }
