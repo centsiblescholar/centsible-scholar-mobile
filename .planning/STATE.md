@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 5 - IAP Wiring (COMPLETE)
+**Current focus:** Phase 6 - Data Management + UI Polish
 
 ## Current Position
 
-Phase: 5 of 7 (IAP Wiring)
-Plan: 4 of 4 (EAS Build Config)
-Status: Phase complete
-Last activity: 2026-02-06 -- Completed 05-04-PLAN.md (EAS Build Config)
+Phase: 6 of 7 (Data Management + UI Polish)
+Plan: 0 of TBD (Phase 6 not planned yet)
+Status: Ready to plan Phase 6
+Last activity: 2026-02-06 -- Completed Phase 5 (all 4 plans)
 
 Progress: [██████████████████████████████] 100% (15/15 plans completed - Phases 1-5 complete)
 

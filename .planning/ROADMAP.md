@@ -148,6 +148,6 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
 | 3. Student Daily Experience | 3/3 | Complete | 2026-02-06 |
 | 4. Subscription UI + Gates | 3/3 | Complete | 2026-02-06 |
-| 5. IAP Wiring | 0/4 | Not started | - |
+| 5. IAP Wiring | 4/4 | Complete (setup required) | 2026-02-06 |
 | 6. Data Management + UI Polish | 0/TBD | Not started | - |
 | 7. App Store Preparation | 0/TBD | Not started | - |

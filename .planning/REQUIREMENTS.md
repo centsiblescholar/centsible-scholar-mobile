@@ -19,7 +19,7 @@ Requirements for first App Store and Google Play submission.
 
 ### Subscriptions & Monetization
 
-- [ ] **SUB-01**: User can subscribe via Apple IAP / Google Play Billing (3 tiers: Standard/Premium/Family, monthly/annual, 7-day trial)
+- [x] **SUB-01**: User can subscribe via Apple IAP / Google Play Billing (3 tiers: Standard/Premium/Family, monthly/annual, 7-day trial)
 - [x] **SUB-02**: App enforces subscription gates (free tier: 1 student + basic features; premium: unlimited students + all features)
 - [x] **SUB-03**: User can restore purchases and manage subscription (Restore Purchases button, Manage Subscription link to platform settings)
 
