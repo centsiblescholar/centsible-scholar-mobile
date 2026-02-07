@@ -95,11 +95,13 @@ Plans:
   2. After purchase completes, the app immediately unlocks premium features without requiring a restart or manual refresh
   3. Subscription status syncs to Supabase via RevenueCat webhook so the web app recognizes the mobile subscription
   4. EAS development builds compile and run successfully on both iOS and Android
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- RevenueCat SDK install, config constants with product IDs, provider component, app layout wiring
+- [ ] 05-02-PLAN.md -- Supabase Edge Function webhook handler mirroring stripe-webhook patterns
+- [ ] 05-03-PLAN.md -- Real purchase hook with webhook polling, paywall and manage-subscription wiring, web subscriber guard
+- [ ] 05-04-PLAN.md -- EAS build profiles (development/device/preview/production) and RevenueCat plugin registration
 
 ### Phase 6: Data Management + UI Polish
 **Goal**: The app meets Apple's data privacy requirements and every screen presents a polished, consistent experience worthy of App Store review
@@ -146,6 +148,6 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | 2. Auth + Student Routing | 3/3 | Complete | 2026-02-06 |
 | 3. Student Daily Experience | 3/3 | Complete | 2026-02-06 |
 | 4. Subscription UI + Gates | 3/3 | Complete | 2026-02-06 |
-| 5. IAP Wiring | 0/TBD | Not started | - |
+| 5. IAP Wiring | 0/4 | Not started | - |
 | 6. Data Management + UI Polish | 0/TBD | Not started | - |
 | 7. App Store Preparation | 0/TBD | Not started | - |
