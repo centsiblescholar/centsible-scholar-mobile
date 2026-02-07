@@ -17,9 +17,9 @@ import {
   getAnnualSavingsPercent,
   SubscriptionPlan,
 } from '../src/constants/subscriptionPlans';
-import { useMockPurchase } from '../src/hooks/useMockPurchase';
+import { useRevenueCatPurchase, useRestorePurchases } from '../src/hooks/useRevenueCatPurchase';
+import { useSubscriptionStatus } from '../src/hooks/useSubscriptionStatus';
 import { useAuth } from '../src/contexts/AuthContext';
-import { supabase } from '../src/integrations/supabase/client';
 
 type BillingInterval = 'month' | 'year';
 
@@ -281,10 +281,11 @@ const cardStyles = StyleSheet.create({
 
 export default function PaywallScreen() {
   const { user } = useAuth();
-  const { purchase, isPurchasing } = useMockPurchase();
+  const { purchase, isPurchasing, purchaseError } = useRevenueCatPurchase();
+  const { restore, isRestoring } = useRestorePurchases();
+  const { platform, isActive } = useSubscriptionStatus();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
-  const [isRestoring, setIsRestoring] = useState(false);
 
   // Use Premium plan for representative savings percentage
   const premiumPlan = SUBSCRIPTION_PLANS.find((p) => p.id === 'midsize')!;
@@ -294,14 +295,23 @@ export default function PaywallScreen() {
     setPurchasingPlanId(plan.id);
     try {
       await purchase({ plan: plan.id, billingInterval });
-      Alert.alert('Welcome!', 'Your 7-day free trial has started.', [
+      Alert.alert('Welcome!', 'Your subscription is now active.', [
         {
           text: 'OK',
           onPress: () => router.replace('/'),
         },
       ]);
     } catch (error: any) {
-      Alert.alert('Purchase Failed', error.message || 'An error occurred. Please try again.');
+      if (error.message === 'Purchase cancelled') {
+        // User intentionally dismissed the store dialog -- do nothing
+      } else if (error.message === 'PURCHASE_PENDING') {
+        Alert.alert(
+          'Purchase Processing',
+          'Your purchase was successful but is still being confirmed. This usually takes a few seconds. If your subscription isn\'t active in a few minutes, try pulling down to refresh.'
+        );
+      } else {
+        Alert.alert('Purchase Failed', error.message || 'An error occurred. Please try again.');
+      }
     } finally {
       setPurchasingPlanId(null);
     }
@@ -309,38 +319,23 @@ export default function PaywallScreen() {
 
   const handleRestore = async () => {
     if (!user) return;
-    setIsRestoring(true);
     try {
-      // Simulate restore delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .in('status', ['active', 'trialing'])
-        .maybeSingle();
-
-      if (error) {
-        Alert.alert('Error', 'Unable to check for purchases. Please try again.');
-        return;
-      }
-
-      if (data) {
-        Alert.alert('Subscription Restored!', 'Your subscription has been restored successfully.', [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/'),
-          },
-        ]);
-      } else {
+      await restore();
+      Alert.alert('Restored!', 'Your subscription has been restored successfully.', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/'),
+        },
+      ]);
+    } catch (error: any) {
+      if (error.message?.includes('No active purchases')) {
         Alert.alert(
           'No Purchases Found',
           'No active subscription was found for this account.'
         );
+      } else {
+        Alert.alert('Unable to Restore', error.message || 'Please try again later.');
       }
-    } finally {
-      setIsRestoring(false);
     }
   };
 
@@ -387,56 +382,70 @@ export default function PaywallScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Subtitle */}
-        <Text style={styles.subtitle}>Start your 7-day free trial today</Text>
+        {/* Web subscriber guard */}
+        {isActive === true && platform === 'stripe' ? (
+          <View style={styles.webGuardContainer}>
+            <Ionicons name="information-circle-outline" size={48} color="#4F46E5" />
+            <Text style={styles.webGuardTitle}>Already Subscribed via Web</Text>
+            <Text style={styles.webGuardMessage}>
+              Your subscription is managed through the website. To change your plan, please visit
+              centsiblescholar.com.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Subtitle */}
+            <Text style={styles.subtitle}>Start your 7-day free trial today</Text>
 
-        {/* Billing Toggle */}
-        <BillingToggle
-          billingInterval={billingInterval}
-          onToggle={setBillingInterval}
-          savingsPercent={savingsPercent}
-        />
+            {/* Billing Toggle */}
+            <BillingToggle
+              billingInterval={billingInterval}
+              onToggle={setBillingInterval}
+              savingsPercent={savingsPercent}
+            />
 
-        {/* Plan Cards */}
-        {SUBSCRIPTION_PLANS.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            billingInterval={billingInterval}
-            isPurchasing={purchasingPlanId === plan.id}
-            onPurchase={handlePurchase}
-          />
-        ))}
+            {/* Plan Cards */}
+            {SUBSCRIPTION_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                billingInterval={billingInterval}
+                isPurchasing={purchasingPlanId === plan.id}
+                onPurchase={handlePurchase}
+              />
+            ))}
 
-        {/* Trial Disclosure */}
-        <Text style={styles.trialDisclosure}>
-          After your 7-day free trial, you will be charged the selected plan price per{' '}
-          {trialPeriod}. Cancel anytime.
-        </Text>
+            {/* Trial Disclosure */}
+            <Text style={styles.trialDisclosure}>
+              After your 7-day free trial, you will be charged the selected plan price per{' '}
+              {trialPeriod}. Cancel anytime.
+            </Text>
 
-        {/* Restore Purchases */}
-        <TouchableOpacity style={styles.restoreButton} onPress={handleRestore}>
-          <Text style={styles.restoreText}>Already subscribed? Restore Purchases</Text>
-        </TouchableOpacity>
+            {/* Restore Purchases */}
+            <TouchableOpacity style={styles.restoreButton} onPress={handleRestore}>
+              <Text style={styles.restoreText}>Already subscribed? Restore Purchases</Text>
+            </TouchableOpacity>
 
-        {/* Legal Links */}
-        <Text style={styles.legalText}>
-          By subscribing, you agree to our{' '}
-          <Text
-            style={styles.legalLink}
-            onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}
-          >
-            Terms of Service
-          </Text>{' '}
-          and{' '}
-          <Text
-            style={styles.legalLink}
-            onPress={() => Linking.openURL('https://centsiblescholar.com/privacy')}
-          >
-            Privacy Policy
-          </Text>
-          .
-        </Text>
+            {/* Legal Links */}
+            <Text style={styles.legalText}>
+              By subscribing, you agree to our{' '}
+              <Text
+                style={styles.legalLink}
+                onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}
+              >
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text
+                style={styles.legalLink}
+                onPress={() => Linking.openURL('https://centsiblescholar.com/privacy')}
+              >
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -534,5 +543,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#374151',
+  },
+  webGuardContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  webGuardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  webGuardMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
