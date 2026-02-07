@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 Phase: 5 of 7 (IAP Wiring)
 Plan: 2 of 4 (RevenueCat Webhook)
 Status: In progress
-Last activity: 2026-02-06 -- Completed 05-02-PLAN.md
+Last activity: 2026-02-06 -- Completed 05-01-PLAN.md (SDK Foundation)
 
 Progress: [█████████████████████████░░░░░] 87% (13/15 plans completed - Phases 1-4 complete, 05-01 and 05-02 done)
 
@@ -98,12 +98,19 @@ Recent decisions affecting current work:
 - [04-03]: Button text: "Manage Subscription" when active, "Subscribe Now" when inactive
 - [04-03]: Student limit enforced at both modal open and handleAddStudent (defense in depth)
 - [04-03]: Dev debug tools (__DEV__) for testing subscription states
+- [05-01]: RevenueCat configured without appUserID; user identification via logIn() after auth
+- [05-01]: Product IDs use com.centsiblescholar.{tier}.{interval} convention
+- [05-01]: RC package IDs use standard $rc_monthly and $rc_annual identifiers
+- [05-01]: Provider placed inside AuthProvider, outside StudentProvider in layout tree
+- [05-01]: Excluded supabase/functions from tsconfig to prevent Deno type errors
 - [05-02]: Mirror stripe-webhook patterns for RevenueCat webhook (structured logging, idempotency, two-step query-then-upsert, HTTP 200 on errors)
 - [05-02]: Platform filter IN (apple, google) on status-change updates protects Stripe subscriptions
 - [05-02]: PRODUCT_CHANGE reuses handleSubscriptionActive for upgrade/downgrade re-mapping
 
 ### Pending Todos
 
+- Replace RevenueCat API key placeholders in src/constants/revenuecatConfig.ts with real keys from RevenueCat Dashboard
+- Configure RevenueCat Dashboard: project, products, offerings, entitlements (see 05-01-SUMMARY.md User Setup Required)
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_iap_subscription_columns.sql
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
 - After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts, useStudentProfile.ts, and celebration.tsx
@@ -121,5 +128,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 05-02-PLAN.md (RevenueCat Webhook)
+Stopped at: Completed 05-01-PLAN.md (SDK Foundation)
 Resume file: None
