@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 5 of 7 (IAP Wiring)
-Plan: 0 of TBD (Phase 5 not planned yet)
-Status: Ready to plan Phase 5
-Last activity: 2026-02-06 -- Completed Phase 4 (all 3 plans)
+Plan: 2 of 4 (RevenueCat Webhook)
+Status: In progress
+Last activity: 2026-02-06 -- Completed 05-02-PLAN.md
 
-Progress: [████████████████████] 100% (11/TBD plans completed - Phases 1-4 complete)
+Progress: [█████████████████████████░░░░░] 87% (13/15 plans completed - Phases 1-4 complete, 05-01 and 05-02 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 3.5min
-- Total execution time: 40min
+- Total plans completed: 13
+- Average duration: 3.2min
+- Total execution time: 42min
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [████████████████████] 100% (1
 | 02-auth-student-routing | 3 | 11min | 3.7min |
 | 03-student-daily-experience | 3 | 11min | 3.7min |
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
+| 05-iap-wiring | 2/4 | 2min | 1min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (5min), 04-01 (3min), 04-02 (5min*), 04-03 (5min*)
-- *04-02 and 04-03 executed in parallel (5min wall clock for both)
-- Trend: stable
+- Last 5 plans: 04-01 (3min), 04-02 (5min*), 04-03 (5min*), 05-01, 05-02 (2min)
+- Trend: accelerating
 
 *Updated after each plan completion*
 
@@ -98,6 +98,9 @@ Recent decisions affecting current work:
 - [04-03]: Button text: "Manage Subscription" when active, "Subscribe Now" when inactive
 - [04-03]: Student limit enforced at both modal open and handleAddStudent (defense in depth)
 - [04-03]: Dev debug tools (__DEV__) for testing subscription states
+- [05-02]: Mirror stripe-webhook patterns for RevenueCat webhook (structured logging, idempotency, two-step query-then-upsert, HTTP 200 on errors)
+- [05-02]: Platform filter IN (apple, google) on status-change updates protects Stripe subscriptions
+- [05-02]: PRODUCT_CHANGE reuses handleSubscriptionActive for upgrade/downgrade re-mapping
 
 ### Pending Todos
 
@@ -105,6 +108,9 @@ Recent decisions affecting current work:
 - Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
 - After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts, useStudentProfile.ts, and celebration.tsx
 - Apply SQL migration for streak_count, longest_streak, total_xp, last_qod_date on student_profiles and xp_transactions table
+- Deploy revenuecat-webhook edge function: `supabase functions deploy revenuecat-webhook`
+- Set webhook secret: `supabase secrets set REVENUECAT_WEBHOOK_AUTH_KEY=<key>`
+- Configure webhook URL and auth header in RevenueCat dashboard
 
 ### Blockers/Concerns
 
@@ -115,5 +121,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed Phase 4 (all 3 plans: 04-01, 04-02, 04-03)
+Stopped at: Completed 05-02-PLAN.md (RevenueCat Webhook)
 Resume file: None
