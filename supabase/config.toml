@@ -1,0 +1,6 @@
+# Supabase Edge Function Configuration
+# Disable JWT verification for webhook endpoints that receive external calls.
+# These endpoints implement their own authorization (Bearer token verification).
+
+[functions.revenuecat-webhook]
+verify_jwt = false
