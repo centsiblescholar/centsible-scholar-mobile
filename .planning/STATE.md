@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Parents and students can do everything on mobile that they can on the web app -- same features, same data, native mobile experience.
-**Current focus:** Phase 5 - IAP Wiring
+**Current focus:** Phase 5 - IAP Wiring (COMPLETE)
 
 ## Current Position
 
 Phase: 5 of 7 (IAP Wiring)
-Plan: 3 of 4 (Real Purchase Flow)
-Status: In progress
-Last activity: 2026-02-06 -- Completed 05-03-PLAN.md (Real Purchase Flow)
+Plan: 4 of 4 (EAS Build Config)
+Status: Phase complete
+Last activity: 2026-02-06 -- Completed 05-04-PLAN.md (EAS Build Config)
 
-Progress: [██████████████████████████░░░░] 93% (14/15 plans completed - Phases 1-4 complete, 05-01 through 05-03 done)
+Progress: [██████████████████████████████] 100% (15/15 plans completed - Phases 1-5 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 3.2min
-- Total execution time: 45min
+- Total plans completed: 15
+- Average duration: 3.3min
+- Total execution time: 49min
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [███████████████████████
 | 02-auth-student-routing | 3 | 11min | 3.7min |
 | 03-student-daily-experience | 3 | 11min | 3.7min |
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
-| 05-iap-wiring | 3/4 | 5min | 1.7min |
+| 05-iap-wiring | 4/4 | 9min | 2.3min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (5min*), 04-03 (5min*), 05-01 (3min), 05-02 (2min), 05-03 (3min)
-- Trend: accelerating
+- Last 5 plans: 05-01 (3min), 05-02 (2min), 05-03 (3min), 05-04 (4min)
+- Trend: consistent fast execution
 
 *Updated after each plan completion*
 
@@ -111,6 +111,8 @@ Recent decisions affecting current work:
 - [05-03]: Cancelled purchases silently caught -- no alert shown to user
 - [05-03]: Web subscriber guard only triggers when isActive === true AND platform === 'stripe'
 - [05-03]: Restore uses same polling pattern as purchase for consistency
+- [05-04]: react-native-purchases v9.7.6 does not export Expo config plugin -- autolinked via native ios/android dirs
+- [05-04]: development:device extends development profile with simulator: false for physical device IAP testing
 
 ### Pending Todos
 
@@ -123,15 +125,18 @@ Recent decisions affecting current work:
 - Deploy revenuecat-webhook edge function: `supabase functions deploy revenuecat-webhook`
 - Set webhook secret: `supabase secrets set REVENUECAT_WEBHOOK_AUTH_KEY=<key>`
 - Configure webhook URL and auth header in RevenueCat dashboard
+- Fill in ascAppId and appleTeamId in eas.json submit configuration
+- Create google-service-account.json for Android submission
 
 ### Blockers/Concerns
 
-- RevenueCat webhook + Supabase edge function integration needs testing (Phase 5)
-- EAS build with New Architecture enabled may surface compatibility issues (Phase 5)
+- RevenueCat webhook + Supabase edge function integration needs end-to-end testing
+- EAS build with New Architecture enabled may surface compatibility issues at build time
 - SQL migrations must be applied before IAP features, onboarding gate, and XP/streak features work in production
+- EAS submit credentials (Apple Team ID, App Store Connect ID) still need configuration
 
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 05-03-PLAN.md (Real Purchase Flow)
+Stopped at: Completed 05-04-PLAN.md (EAS Build Config) -- Phase 5 complete
 Resume file: None
