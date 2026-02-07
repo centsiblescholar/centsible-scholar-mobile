@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 5 of 7 (IAP Wiring)
-Plan: 2 of 4 (RevenueCat Webhook)
+Plan: 3 of 4 (Real Purchase Flow)
 Status: In progress
-Last activity: 2026-02-06 -- Completed 05-01-PLAN.md (SDK Foundation)
+Last activity: 2026-02-06 -- Completed 05-03-PLAN.md (Real Purchase Flow)
 
-Progress: [█████████████████████████░░░░░] 87% (13/15 plans completed - Phases 1-4 complete, 05-01 and 05-02 done)
+Progress: [██████████████████████████░░░░] 93% (14/15 plans completed - Phases 1-4 complete, 05-01 through 05-03 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 3.2min
-- Total execution time: 42min
+- Total execution time: 45min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 02-auth-student-routing | 3 | 11min | 3.7min |
 | 03-student-daily-experience | 3 | 11min | 3.7min |
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
-| 05-iap-wiring | 2/4 | 2min | 1min |
+| 05-iap-wiring | 3/4 | 5min | 1.7min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (3min), 04-02 (5min*), 04-03 (5min*), 05-01, 05-02 (2min)
+- Last 5 plans: 04-02 (5min*), 04-03 (5min*), 05-01 (3min), 05-02 (2min), 05-03 (3min)
 - Trend: accelerating
 
 *Updated after each plan completion*
@@ -106,6 +106,11 @@ Recent decisions affecting current work:
 - [05-02]: Mirror stripe-webhook patterns for RevenueCat webhook (structured logging, idempotency, two-step query-then-upsert, HTTP 200 on errors)
 - [05-02]: Platform filter IN (apple, google) on status-change updates protects Stripe subscriptions
 - [05-02]: PRODUCT_CHANGE reuses handleSubscriptionActive for upgrade/downgrade re-mapping
+- [05-03]: pollForWebhookConfirmation polls Supabase at 2s intervals with 60s timeout (from REVENUECAT_CONFIG)
+- [05-03]: PURCHASE_PENDING is a special error the UI handles differently from other errors
+- [05-03]: Cancelled purchases silently caught -- no alert shown to user
+- [05-03]: Web subscriber guard only triggers when isActive === true AND platform === 'stripe'
+- [05-03]: Restore uses same polling pattern as purchase for consistency
 
 ### Pending Todos
 
@@ -128,5 +133,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 05-01-PLAN.md (SDK Foundation)
+Stopped at: Completed 05-03-PLAN.md (Real Purchase Flow)
 Resume file: None
