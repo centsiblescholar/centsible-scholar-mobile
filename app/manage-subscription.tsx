@@ -16,7 +16,7 @@ import {
   getAnnualSavingsPercent,
   SubscriptionPlan,
 } from '../src/constants/subscriptionPlans';
-import { useMockPurchase } from '../src/hooks/useMockPurchase';
+import { useRevenueCatPurchase } from '../src/hooks/useRevenueCatPurchase';
 import { useSubscriptionStatus, subscriptionKeys } from '../src/hooks/useSubscriptionStatus';
 import { useStudentManagement } from '../src/hooks/useStudentManagement';
 import { useAuth } from '../src/contexts/AuthContext';
@@ -37,7 +37,7 @@ export default function ManageSubscriptionScreen() {
     refetch: refetchSubscription,
   } = useSubscriptionStatus();
   const { activeStudents } = useStudentManagement();
-  const { purchase, isPurchasing } = useMockPurchase();
+  const { purchase, isPurchasing } = useRevenueCatPurchase();
 
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [switchingPlanId, setSwitchingPlanId] = useState<string | null>(null);
@@ -87,7 +87,16 @@ export default function ManageSubscriptionScreen() {
             Alert.alert('Plan Updated!', `You're now on the ${targetPlan.name} plan.`);
             refetchSubscription();
           } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to update plan. Please try again.');
+            if (error.message === 'Purchase cancelled') {
+              // User intentionally dismissed the store dialog -- do nothing
+            } else if (error.message === 'PURCHASE_PENDING') {
+              Alert.alert(
+                'Plan Change Processing',
+                'Your plan change was successful but is still being confirmed. This usually takes a few seconds. If your plan hasn\'t updated in a few minutes, try pulling down to refresh.'
+              );
+            } else {
+              Alert.alert('Error', error.message || 'Failed to update plan. Please try again.');
+            }
           } finally {
             setSwitchingPlanId(null);
           }
