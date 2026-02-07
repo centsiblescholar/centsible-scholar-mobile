@@ -11,6 +11,13 @@
         "simulator": true
       }
     },
+    "development:device": {
+      "extends": "development",
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
+    },
     "preview": {
       "distribution": "internal",
       "ios": {
