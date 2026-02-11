@@ -58,7 +58,7 @@ export function useMockPurchase() {
         // Update existing record
         const { data, error } = await supabase
           .from('user_subscriptions')
-          .update(subscriptionData as any)
+          .update(subscriptionData)
           .eq('id', existing.id)
           .select()
           .single();
@@ -72,7 +72,7 @@ export function useMockPurchase() {
         // Insert new record
         const { data, error } = await supabase
           .from('user_subscriptions')
-          .insert(subscriptionData as any)
+          .insert(subscriptionData)
           .select()
           .single();
 

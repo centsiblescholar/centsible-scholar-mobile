@@ -21,9 +21,7 @@ export default function CelebrationScreen() {
 
     setCompleting(true);
     try {
-      // Cast needed: has_completed_onboarding not in generated types until
-      // migration is applied. Remove cast after regenerating Supabase types.
-      const updatePayload = { has_completed_onboarding: true } as any;
+      const updatePayload = { has_completed_onboarding: true };
 
       const { error } = await supabase
         .from('student_profiles')

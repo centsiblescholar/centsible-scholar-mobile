@@ -119,7 +119,7 @@ export default function ManageSubscriptionScreen() {
             try {
               const { error } = await supabase
                 .from('user_subscriptions')
-                .update({ status: 'canceled', updated_at: new Date().toISOString() } as any)
+                .update({ status: 'canceled', updated_at: new Date().toISOString() })
                 .eq('id', subscription.id);
 
               if (error) {
@@ -147,7 +147,7 @@ export default function ManageSubscriptionScreen() {
     try {
       const { error } = await supabase
         .from('user_subscriptions')
-        .update({ status: newStatus, updated_at: new Date().toISOString() } as any)
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('user_id', user.id);
 
       if (error) {
