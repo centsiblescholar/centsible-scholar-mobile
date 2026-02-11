@@ -116,17 +116,17 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
+**Waiting on Apple/Google approval:**
 - Replace RevenueCat API key placeholders in src/constants/revenuecatConfig.ts with real keys from RevenueCat Dashboard
 - Configure RevenueCat Dashboard: project, products, offerings, entitlements (see 05-01-SUMMARY.md User Setup Required)
-- Apply SQL migration to Supabase: supabase/migrations/20260205_add_iap_subscription_columns.sql
-- Apply SQL migration to Supabase: supabase/migrations/20260205_add_student_onboarding_column.sql
-- After migrations, regenerate Supabase types and remove type casts in useSubscriptionStatus.ts, useStudentProfile.ts, and celebration.tsx
-- Apply SQL migration for streak_count, longest_streak, total_xp, last_qod_date on student_profiles and xp_transactions table
 - Deploy revenuecat-webhook edge function: `supabase functions deploy revenuecat-webhook`
 - Set webhook secret: `supabase secrets set REVENUECAT_WEBHOOK_AUTH_KEY=<key>`
 - Configure webhook URL and auth header in RevenueCat dashboard
 - Fill in ascAppId and appleTeamId in eas.json submit configuration
 - Create google-service-account.json for Android submission
+
+**Not blocked (can do now):**
+- Create migration for xp_transactions table (columns exist, but no migration file for documentation)
 
 ### Blockers/Concerns
 
