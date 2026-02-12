@@ -113,13 +113,15 @@ Plans:
   3. Account deletion cascades correctly (child records, student accounts if parent, auth user) and signs the user out
   4. All screens use consistent colors, typography, and spacing from the design system with no hardcoded values or placeholder text
   5. Every data-fetching screen has proper loading, error, and empty states with 44pt minimum touch targets and safe area compliance
-**Plans**: 4 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- ThemeContext + useTheme hook, reusable UI state components (skeleton, empty, error), ESLint enforcement
-- [ ] 06-02-PLAN.md -- Data export edge function + preview screen with format selection and native share sheet
+- [ ] 06-01-PLAN.md -- ThemeContext + useTheme hook, reusable UI state components (skeleton, empty, error), ESLint enforcement, DESIGN_SYSTEM.md
+- [ ] 06-02-PLAN.md -- Data export edge function (JSON + ZIP with multiple CSVs) + preview screen with native share sheet
 - [ ] 06-03-PLAN.md -- Account deletion edge function + two-step confirmation screen with cascade delete
-- [ ] 06-04-PLAN.md -- Full theme migration across all 25+ screens + skeleton/empty/error states for every data-fetching view
+- [ ] 06-04-PLAN.md -- ThemeProvider wiring + layout files + 7 tab screens migration to useTheme + skeleton/empty/error states
+- [ ] 06-05-PLAN.md -- Auth screens + onboarding screens + daily components migration to useTheme
+- [ ] 06-06-PLAN.md -- Modal/secondary screens migration to useTheme + skeleton/empty/error states for all data-fetching modals
 
 ### Phase 7: App Store Preparation
 **Goal**: The app is submitted to Apple App Store and Google Play with all required assets, metadata, and review materials
@@ -150,5 +152,5 @@ Note: Phase 4 depends on Phase 1 (not Phase 3), so Phases 2-3 and Phase 4 could 
 | 3. Student Daily Experience | 3/3 | Complete | 2026-02-06 |
 | 4. Subscription UI + Gates | 3/3 | Complete | 2026-02-06 |
 | 5. IAP Wiring | 4/4 | Complete (setup required) | 2026-02-06 |
-| 6. Data Management + UI Polish | 0/4 | Not started | - |
+| 6. Data Management + UI Polish | 0/6 | Not started | - |
 | 7. App Store Preparation | 0/TBD | Not started | - |
