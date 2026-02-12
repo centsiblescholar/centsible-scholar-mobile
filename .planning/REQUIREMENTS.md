@@ -25,12 +25,12 @@ Requirements for first App Store and Google Play submission.
 
 ### Data Management & Privacy
 
-- [ ] **DATA-01**: User can export all personal data (JSON/CSV download) and delete account (in-app cascade deletion with confirmation)
+- [x] **DATA-01**: User can export all personal data (JSON/CSV download) and delete account (in-app cascade deletion with confirmation)
 
 ### UI/UX Polish
 
-- [ ] **STYLE-01**: All screens match web app design system (colors, typography, spacing, consistent theme)
-- [ ] **STYLE-02**: UI meets App Store review quality (no placeholder text, loading/error/empty states, keyboard handling, 44pt touch targets, safe areas)
+- [x] **STYLE-01**: All screens match web app design system (colors, typography, spacing, consistent theme)
+- [x] **STYLE-02**: UI meets App Store review quality (no placeholder text, loading/error/empty states, keyboard handling, 44pt touch targets, safe areas)
 
 ### Store Submission
 
@@ -82,12 +82,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-03 | Phase 2: Auth + Student Routing | Complete |
 | DASH-04 | Phase 3: Student Daily Experience | Complete |
 | QOD-04 | Phase 3: Student Daily Experience | Complete |
-| SUB-01 | Phase 5: IAP Wiring | Pending |
+| SUB-01 | Phase 5: IAP Wiring | Complete |
 | SUB-02 | Phase 4: Subscription UI + Gates | Complete |
 | SUB-03 | Phase 4: Subscription UI + Gates | Complete |
-| DATA-01 | Phase 6: Data Management + UI Polish | Pending |
-| STYLE-01 | Phase 6: Data Management + UI Polish | Pending |
-| STYLE-02 | Phase 6: Data Management + UI Polish | Pending |
+| DATA-01 | Phase 6: Data Management + UI Polish | Complete |
+| STYLE-01 | Phase 6: Data Management + UI Polish | Complete |
+| STYLE-02 | Phase 6: Data Management + UI Polish | Complete |
 | STORE-01 | Phase 7: App Store Preparation | Pending |
 | STORE-02 | Phase 7: App Store Preparation | Pending |
 
