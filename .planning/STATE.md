@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 6 of 7 (Data Management + UI Polish)
-Plan: 5 of 6 (Auth/Onboarding/Daily Theme Migration)
+Plan: 4 of 6 (Layout & Tab Screen Theme Migration)
 Status: In progress
-Last activity: 2026-02-12 -- Completed 06-05-PLAN.md (Auth/Onboarding/Daily Theme Migration)
+Last activity: 2026-02-12 -- Completed 06-04-PLAN.md (Layout & Tab Screen Theme Migration)
 
-Progress: [██████████████████████████████████████] ~90% (19/21 plans completed - Phase 6 plan 5 of 6 done)
+Progress: [██████████████████████████████████████] ~95% (20/21 plans completed - Phase 6 plan 5 of 6 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
-- Average duration: 3.5min
-- Total execution time: 66min
+- Total plans completed: 20
+- Average duration: 3.8min
+- Total execution time: 76min
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [███████████████████████
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
 | 05-iap-wiring | 4/4 | 9min | 2.3min |
 
-| 06-data-management-ui-polish | 5/6 | 17min | 3.4min |
+| 06-data-management-ui-polish | 5/6 | 27min | 5.4min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01 (5min), 06-02 (4min), 06-03 (3min), 06-05 (5min)
+- Last 5 plans: 06-02 (4min), 06-03 (3min), 06-05 (5min), 06-04 (10min)
 - Trend: consistent fast execution
 
 *Updated after each plan completion*
@@ -132,6 +132,11 @@ Recent decisions affecting current work:
 - [06-05]: ProgressDots receive colors as prop (not useTheme) since they are local function components
 - [06-05]: BehaviorStep SCORE_COLORS converted to getScoreColors(colors) function from theme tokens
 - [06-05]: placeholderTextColor added to all TextInput components for full theme compliance
+- [06-04]: ThemeProvider placed inside RevenueCatProvider, outside StudentProvider in layout tree
+- [06-04]: RootNavigator extracted as nested component so Stack screenOptions can call useTheme()
+- [06-04]: Data visualization colors (chart/score colors) kept as hardcoded hex -- not UI chrome
+- [06-04]: ScoreRow in behavior receives colors as prop (local function component, not useTheme)
+- [06-04]: Dashboard parent view shows EmptyState when no student selected (not just loading)
 
 ### Pending Todos
 
@@ -159,5 +164,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Completed 06-05-PLAN.md (Auth/Onboarding/Daily Theme Migration)
+Stopped at: Completed 06-04-PLAN.md (Layout & Tab Screen Theme Migration)
 Resume file: None
