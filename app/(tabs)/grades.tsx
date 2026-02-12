@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,10 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
 import { GRADE_MULTIPLIERS } from '../../src/shared/calculations/constants';
+import { useTheme, type ThemeColors, indigo, gray, grades as gradeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -24,15 +28,14 @@ const GRADES = ['A', 'B', 'C', 'D', 'F'] as const;
 
 export default function GradesScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { selectedStudent, isParentView } = useStudent();
 
-  // Use selected student's user_id for data queries (not profile id)
-  // For parents viewing student data: use selectedStudent.user_id
-  // For students viewing own data: use their auth user.id
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
   const profileId = isParentView ? selectedStudent?.id : undefined;
 
-  const { grades, gradeEntries, totalReward, gpa, isLoading, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId, profileId);
+  const { grades, gradeEntries, totalReward, gpa, isLoading, error, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId, profileId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
@@ -41,7 +44,10 @@ export default function GradesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'grades' | 'analytics'>('grades');
 
-  // Calculate grade distribution for pie chart
+  const getGradeColor = (grade: string) => {
+    return gradeColors[grade as keyof typeof gradeColors] || colors.textSecondary;
+  };
+
   const getGradeDistribution = () => {
     const distribution: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     gradeEntries.forEach((entry) => {
@@ -56,12 +62,11 @@ export default function GradesScreen() {
         name: grade,
         count,
         color: getGradeColor(grade),
-        legendFontColor: '#374151',
+        legendFontColor: colors.text,
         legendFontSize: 12,
       }));
   };
 
-  // Calculate earnings by subject for bar chart
   const getSubjectEarnings = () => {
     const subjects: Record<string, number> = {};
     gradeEntries.forEach((entry) => {
@@ -116,28 +121,25 @@ export default function GradesScreen() {
       setSubject('');
       setSelectedGrade('');
       setBaseAmount('');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to submit grade');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit grade');
     }
   };
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 
-  const getGradeColor = (grade: string) => {
-    switch (grade) {
-      case 'A': return '#10B981';
-      case 'B': return '#3B82F6';
-      case 'C': return '#F59E0B';
-      case 'D': return '#F97316';
-      case 'F': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <SkeletonList count={4} cardHeight={80} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={error.message || 'Failed to load grades'} onRetry={() => refetch()} />
       </View>
     );
   }
@@ -182,18 +184,15 @@ export default function GradesScreen() {
         </View>
 
         {activeTab === 'analytics' ? (
-          /* Analytics View */
           <View style={styles.analyticsContainer}>
             {gradeEntries.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No Data Yet</Text>
-                <Text style={styles.emptyDescription}>
-                  Add grades to see your analytics
-                </Text>
-              </View>
+              <EmptyState
+                icon="school-outline"
+                title="No Data Yet"
+                description="Add grades to see your analytics"
+              />
             ) : (
               <>
-                {/* Grade Distribution */}
                 <View style={styles.chartCard}>
                   <Text style={styles.chartTitle}>Grade Distribution</Text>
                   <Text style={styles.chartSubtitle}>{gradeEntries.length} grades total</Text>
@@ -213,7 +212,6 @@ export default function GradesScreen() {
                   )}
                 </View>
 
-                {/* Earnings by Subject */}
                 {subjectEarnings.labels.length > 0 && (
                   <View style={styles.chartCard}>
                     <Text style={styles.chartTitle}>Earnings by Subject</Text>
@@ -229,9 +227,9 @@ export default function GradesScreen() {
                         yAxisLabel="$"
                         yAxisSuffix=""
                         chartConfig={{
-                          backgroundColor: '#fff',
-                          backgroundGradientFrom: '#fff',
-                          backgroundGradientTo: '#fff',
+                          backgroundColor: colors.card,
+                          backgroundGradientFrom: colors.card,
+                          backgroundGradientTo: colors.card,
                           decimalPlaces: 0,
                           color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
                           labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
@@ -245,7 +243,6 @@ export default function GradesScreen() {
                   </View>
                 )}
 
-                {/* Summary Stats */}
                 <View style={styles.statsCard}>
                   <Text style={styles.statsTitle}>Performance Summary</Text>
                   <View style={styles.statsGrid}>
@@ -258,7 +255,7 @@ export default function GradesScreen() {
                       <Text style={styles.statsGridLabel}>GPA</Text>
                     </View>
                     <View style={styles.statsGridItem}>
-                      <Text style={[styles.statsGridValue, styles.statsGridValueGreen]}>
+                      <Text style={[styles.statsGridValue, { color: colors.success }]}>
                         {formatCurrency(totalReward)}
                       </Text>
                       <Text style={styles.statsGridLabel}>Total Earned</Text>
@@ -274,7 +271,6 @@ export default function GradesScreen() {
                   </View>
                 </View>
 
-                {/* Grade Breakdown */}
                 <View style={styles.breakdownCard}>
                   <Text style={styles.breakdownTitle}>Grade Breakdown</Text>
                   {GRADES.map((g) => {
@@ -307,18 +303,16 @@ export default function GradesScreen() {
             )}
           </View>
         ) : (
-          /* Grades List View */
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Your Grades</Text>
 
               {gradeEntries.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyTitle}>No grades yet</Text>
-                  <Text style={styles.emptyDescription}>
-                    Tap the button below to add your first grade and start earning rewards!
-                  </Text>
-                </View>
+                <EmptyState
+                  icon="school-outline"
+                  title="No Grades Yet"
+                  description="Tap the button below to add your first grade and start earning rewards!"
+                />
               ) : (
                 <View style={styles.gradesList}>
                   {gradeEntries.map((grade) => (
@@ -378,6 +372,7 @@ export default function GradesScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Math, English, Science"
+                placeholderTextColor={colors.textTertiary}
                 value={subject}
                 onChangeText={setSubject}
               />
@@ -415,6 +410,7 @@ export default function GradesScreen() {
               <TextInput
                 style={styles.input}
                 placeholder={`${selectedStudent?.base_reward_amount || 50}`}
+                placeholderTextColor={colors.textTertiary}
                 value={baseAmount}
                 onChangeText={setBaseAmount}
                 keyboardType="decimal-pad"
@@ -434,7 +430,7 @@ export default function GradesScreen() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.textInverse} />
                 ) : (
                   <Text style={styles.submitButtonText}>Submit</Text>
                 )}
@@ -447,15 +443,16 @@ export default function GradesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.backgroundSecondary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   scrollView: {
     flex: 1,
@@ -467,19 +464,19 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#4F46E5',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     padding: 16,
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#C7D2FE',
+    color: indigo[200],
     textTransform: 'uppercase',
   },
   summaryValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textInverse,
     marginTop: 4,
   },
   section: {
@@ -489,36 +486,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 12,
-  },
-  emptyState: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
   },
   gradesList: {
     gap: 8,
   },
   gradeCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 44,
   },
   gradeInfo: {
     flex: 1,
@@ -526,11 +507,11 @@ const styles = StyleSheet.create({
   gradeSubject: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   gradeBase: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textTertiary,
     marginTop: 2,
   },
   gradeRight: {
@@ -546,25 +527,25 @@ const styles = StyleSheet.create({
   gradeLetter: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textInverse,
   },
   gradeReward: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: colors.success,
     marginTop: 4,
   },
   rewardScale: {
     margin: 16,
     marginTop: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
   },
   scaleTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   scaleRow: {
@@ -584,22 +565,23 @@ const styles = StyleSheet.create({
   scaleGrade: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textInverse,
   },
   scalePercent: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   addButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: colors.primary,
     margin: 16,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    minHeight: 44,
   },
   addButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -609,7 +591,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -618,7 +600,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 20,
   },
   inputGroup: {
@@ -627,15 +609,16 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderDark,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    color: colors.text,
   },
   gradeSelector: {
     flexDirection: 'row',
@@ -646,16 +629,18 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderDark,
     alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   gradeOptionText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#374151',
+    color: colors.text,
   },
   gradeOptionTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -667,19 +652,23 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderDark,
     alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   submitButton: {
     flex: 1,
     padding: 16,
     borderRadius: 8,
-    backgroundColor: '#4F46E5',
+    backgroundColor: colors.primary,
     alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   submitButtonDisabled: {
     opacity: 0.7,
@@ -687,13 +676,13 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textInverse,
   },
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.border,
     borderRadius: 12,
     padding: 4,
   },
@@ -702,9 +691,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 10,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   tabActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -714,17 +705,17 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   tabTextActive: {
-    color: '#4F46E5',
+    color: colors.primary,
   },
   analyticsContainer: {
     padding: 16,
     paddingTop: 0,
   },
   chartCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -732,15 +723,15 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   chartSubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textTertiary,
     marginBottom: 8,
   },
   statsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -748,7 +739,7 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 16,
   },
   statsGrid: {
@@ -763,18 +754,15 @@ const styles = StyleSheet.create({
   statsGridValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
-  },
-  statsGridValueGreen: {
-    color: '#10B981',
+    color: colors.text,
   },
   statsGridLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   breakdownCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -782,7 +770,7 @@ const styles = StyleSheet.create({
   breakdownTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 16,
   },
   breakdownRow: {
@@ -806,11 +794,11 @@ const styles = StyleSheet.create({
   breakdownGrade: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textInverse,
   },
   breakdownCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   breakdownRight: {
     flex: 1,
@@ -820,7 +808,7 @@ const styles = StyleSheet.create({
   breakdownBarBg: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.border,
     borderRadius: 4,
     marginRight: 8,
     overflow: 'hidden',
@@ -832,7 +820,7 @@ const styles = StyleSheet.create({
   breakdownPercent: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     width: 36,
     textAlign: 'right',
   },

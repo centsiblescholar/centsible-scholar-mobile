@@ -4,13 +4,12 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
   Modal,
   FlatList,
   Dimensions,
 } from 'react-native';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
@@ -21,6 +20,10 @@ import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
 import { useStudentProfile } from '../../src/hooks/useStudentProfile';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
 import { calculateAllocation } from '../../src/shared/calculations';
+import { useTheme, type ThemeColors, grades as gradeColors, indigo, financial, tints } from '@/theme';
+import { DashboardSkeleton } from '@/components/ui/SkeletonCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const METRIC_CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -34,8 +37,11 @@ const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
 // ---------------------------------------------------------------------------
 function StudentDashboardView() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const router = useRouter();
   const studentUserId = user?.id;
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const sStyles = useMemo(() => createStudentStyles(colors), [colors]);
 
   // Student profile for name, grade level, base reward
   const { profile: studentProfile } = useStudentProfile();
@@ -112,21 +118,21 @@ function StudentDashboardView() {
         gradeEntries.length > 0
           ? `${gradeEntries.length} grade${gradeEntries.length !== 1 ? 's' : ''} entered`
           : "You've got this!",
-      color: '#4F46E5',
+      color: colors.primary,
     },
     {
       id: 'earnings',
       value: formatCurrency(totalReward),
       subtitle: 'TOTAL REWARDS',
       context: baseRewardAmount > 0 ? `${formatCurrency(baseRewardAmount)} per grade` : 'Earn rewards for your grades',
-      color: '#10B981',
+      color: colors.success,
     },
     {
       id: 'streak',
       value: String(streakCount),
       subtitle: 'DAY STREAK',
       context: streakCount > 0 ? 'Keep it going!' : "Answer today's QOD!",
-      color: '#F59E0B',
+      color: colors.warning,
     },
     {
       id: 'behavior',
@@ -143,8 +149,7 @@ function StudentDashboardView() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Loading your data...</Text>
+        <DashboardSkeleton />
       </View>
     );
   }
@@ -153,60 +158,60 @@ function StudentDashboardView() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
       }
     >
       {/* A. Header */}
       <View style={styles.header}>
         <Text style={styles.greeting}>Hey, {firstName}!</Text>
-        <Text style={studentStyles.streakText}>
+        <Text style={sStyles.streakText}>
           {streakCount > 0 ? `${streakCount} day streak` : 'Start your streak!'}
         </Text>
-        <View style={studentStyles.studentBadge}>
+        <View style={sStyles.studentBadge}>
           <Text style={styles.parentBadgeText}>Student</Text>
         </View>
       </View>
 
       {/* B. Today's Tasks */}
-      <View style={studentStyles.tasksSection}>
-        <Text style={studentStyles.tasksSectionTitle}>What You Need To Do Today</Text>
-        <View style={studentStyles.tasksRow}>
+      <View style={sStyles.tasksSection}>
+        <Text style={sStyles.tasksSectionTitle}>What You Need To Do Today</Text>
+        <View style={sStyles.tasksRow}>
           {/* QOD Card */}
           <TouchableOpacity
-            style={studentStyles.taskCard}
+            style={sStyles.taskCard}
             onPress={() => router.push('/(tabs)/daily')}
             disabled={qodAnsweredToday && !!todayAssessment}
           >
-            <View style={studentStyles.taskStatusRow}>
+            <View style={sStyles.taskStatusRow}>
               <View
                 style={[
-                  studentStyles.statusDot,
-                  qodAnsweredToday ? studentStyles.statusDotComplete : studentStyles.statusDotPending,
+                  sStyles.statusDot,
+                  qodAnsweredToday ? sStyles.statusDotComplete : sStyles.statusDotPending,
                 ]}
               />
-              <Text style={studentStyles.taskCardTitle}>Question of the Day</Text>
+              <Text style={sStyles.taskCardTitle}>Question of the Day</Text>
             </View>
-            <Text style={studentStyles.taskStatusText}>
+            <Text style={sStyles.taskStatusText}>
               {qodAnsweredToday ? 'Completed!' : 'Ready to answer!'}
             </Text>
           </TouchableOpacity>
 
           {/* Behavior Card */}
           <TouchableOpacity
-            style={studentStyles.taskCard}
+            style={sStyles.taskCard}
             onPress={() => router.push('/(tabs)/daily')}
             disabled={qodAnsweredToday && !!todayAssessment}
           >
-            <View style={studentStyles.taskStatusRow}>
+            <View style={sStyles.taskStatusRow}>
               <View
                 style={[
-                  studentStyles.statusDot,
-                  todayAssessment ? studentStyles.statusDotComplete : studentStyles.statusDotPending,
+                  sStyles.statusDot,
+                  todayAssessment ? sStyles.statusDotComplete : sStyles.statusDotPending,
                 ]}
               />
-              <Text style={studentStyles.taskCardTitle}>Behavior Check-in</Text>
+              <Text style={sStyles.taskCardTitle}>Behavior Check-in</Text>
             </View>
-            <Text style={studentStyles.taskStatusText}>
+            <Text style={sStyles.taskStatusText}>
               {todayAssessment ? 'Completed!' : 'Time to reflect!'}
             </Text>
           </TouchableOpacity>
@@ -214,7 +219,7 @@ function StudentDashboardView() {
       </View>
 
       {/* C. Horizontal Scrollable Metric Cards */}
-      <View style={studentStyles.metricsSection}>
+      <View style={sStyles.metricsSection}>
         <FlatList
           ref={metricListRef}
           data={metricCards}
@@ -223,7 +228,7 @@ function StudentDashboardView() {
           snapToInterval={METRIC_CARD_WIDTH + METRIC_CARD_GAP}
           decelerationRate="fast"
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={studentStyles.metricsListContent}
+          contentContainerStyle={sStyles.metricsListContent}
           keyExtractor={(item) => item.id}
           onMomentumScrollEnd={(e) => {
             const index = Math.round(
@@ -232,21 +237,21 @@ function StudentDashboardView() {
             setActiveMetricIndex(index);
           }}
           renderItem={({ item }) => (
-            <View style={[studentStyles.metricCard, { width: METRIC_CARD_WIDTH }]}>
-              <Text style={[studentStyles.metricValue, { color: item.color }]}>{item.value}</Text>
-              <Text style={studentStyles.metricSubtitle}>{item.subtitle}</Text>
-              <Text style={studentStyles.metricContext}>{item.context}</Text>
+            <View style={[sStyles.metricCard, { width: METRIC_CARD_WIDTH }]}>
+              <Text style={[sStyles.metricValue, { color: item.color }]}>{item.value}</Text>
+              <Text style={sStyles.metricSubtitle}>{item.subtitle}</Text>
+              <Text style={sStyles.metricContext}>{item.context}</Text>
             </View>
           )}
         />
         {/* Page Indicator Dots */}
-        <View style={studentStyles.dotsContainer}>
+        <View style={sStyles.dotsContainer}>
           {metricCards.map((_, i) => (
             <View
               key={i}
               style={[
-                studentStyles.dot,
-                i === activeMetricIndex ? studentStyles.dotActive : studentStyles.dotInactive,
+                sStyles.dot,
+                i === activeMetricIndex ? sStyles.dotActive : sStyles.dotInactive,
               ]}
             />
           ))}
@@ -258,27 +263,27 @@ function StudentDashboardView() {
         <Text style={styles.sectionTitle}>Your Reward Structure</Text>
 
         {/* Base reward */}
-        <View style={studentStyles.rewardInfoCard}>
-          <Text style={studentStyles.rewardLabel}>Base Reward</Text>
-          <Text style={studentStyles.rewardValue}>
+        <View style={sStyles.rewardInfoCard}>
+          <Text style={sStyles.rewardLabel}>Base Reward</Text>
+          <Text style={sStyles.rewardValue}>
             {baseRewardAmount > 0 ? `${formatCurrency(baseRewardAmount)} per grade` : 'Not set yet'}
           </Text>
         </View>
 
         {/* Bonuses earned */}
         {(educationBonusAmount > 0 || behaviorBonusAmount > 0) && (
-          <View style={studentStyles.bonusesRow}>
+          <View style={sStyles.bonusesRow}>
             {educationBonusAmount > 0 && (
-              <View style={studentStyles.bonusChip}>
-                <Text style={studentStyles.bonusChipText}>
+              <View style={sStyles.bonusChip}>
+                <Text style={sStyles.bonusChipText}>
                   Education Bonus: {formatCurrency(educationBonusAmount)}
                   {educationTier ? ` (${educationTier})` : ''}
                 </Text>
               </View>
             )}
             {behaviorBonusAmount > 0 && (
-              <View style={studentStyles.bonusChip}>
-                <Text style={studentStyles.bonusChipText}>
+              <View style={sStyles.bonusChip}>
+                <Text style={sStyles.bonusChipText}>
                   Behavior Bonus: {formatCurrency(behaviorBonusAmount)}
                   {behaviorTier ? ` (${behaviorTier})` : ''}
                 </Text>
@@ -288,8 +293,8 @@ function StudentDashboardView() {
         )}
 
         {/* Allocation Breakdown */}
-        <View style={studentStyles.allocationHeader}>
-          <Text style={studentStyles.allocationTitle}>Where Your Money Goes</Text>
+        <View style={sStyles.allocationHeader}>
+          <Text style={sStyles.allocationTitle}>Where Your Money Goes</Text>
         </View>
         <View style={styles.allocationCard}>
           <View style={styles.allocationRow}>
@@ -335,6 +340,9 @@ export default function DashboardScreen() {
 
 function ParentDashboardView() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const {
     selectedStudent,
     setSelectedStudent,
@@ -409,9 +417,18 @@ function ParentDashboardView() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Loading your data...</Text>
+        <DashboardSkeleton />
       </View>
+    );
+  }
+
+  if (!selectedStudent && !studentsLoading) {
+    return (
+      <EmptyState
+        icon="home-outline"
+        title="Welcome to Centsible Scholar"
+        description="Your dashboard will show your progress here. Add a student to get started."
+      />
     );
   }
 
@@ -419,7 +436,7 @@ function ParentDashboardView() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
       }
     >
       <View style={styles.header}>
@@ -501,7 +518,7 @@ function ParentDashboardView() {
               <Text style={styles.bonusIcon}>📚</Text>
               <Text style={styles.bonusTitle}>Education</Text>
             </View>
-            <Text style={[styles.bonusValue, educationBonusAmount > 0 && styles.bonusValueActive]}>
+            <Text style={[styles.bonusValueText, educationBonusAmount > 0 && styles.bonusValueActive]}>
               {educationBonusAmount > 0 ? formatCurrency(educationBonusAmount) : '--'}
             </Text>
             {qodTotal > 0 ? (
@@ -527,7 +544,7 @@ function ParentDashboardView() {
               <Text style={styles.bonusIcon}>⭐</Text>
               <Text style={styles.bonusTitle}>Behavior</Text>
             </View>
-            <Text style={[styles.bonusValue, behaviorBonusAmount > 0 && styles.bonusValueActive]}>
+            <Text style={[styles.bonusValueText, behaviorBonusAmount > 0 && styles.bonusValueActive]}>
               {behaviorBonusAmount > 0 ? formatCurrency(behaviorBonusAmount) : '--'}
             </Text>
             {assessments.length > 0 ? (
@@ -586,7 +603,7 @@ function ParentDashboardView() {
                   <Text style={styles.gradeBase}>Base: {formatCurrency(grade.baseAmount)}</Text>
                 </View>
                 <View style={styles.gradeRight}>
-                  <Text style={[styles.gradeLetter, getGradeStyle(grade.grade)]}>{grade.grade}</Text>
+                  <Text style={[styles.gradeLetter, { color: gradeColors[grade.grade as keyof typeof gradeColors] || colors.textSecondary }]}>{grade.grade}</Text>
                   <Text style={styles.gradeReward}>{formatCurrency(grade.rewardAmount)}</Text>
                 </View>
               </View>
@@ -642,62 +659,48 @@ function ParentDashboardView() {
   );
 }
 
-function getGradeStyle(grade: string) {
-  switch (grade) {
-    case 'A': return { color: '#10B981' };
-    case 'B': return { color: '#3B82F6' };
-    case 'C': return { color: '#F59E0B' };
-    case 'D': return { color: '#F97316' };
-    case 'F': return { color: '#EF4444' };
-    default: return { color: '#6B7280' };
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Shared styles (used by both views)
+// Shared styles factory (used by both views)
 // ---------------------------------------------------------------------------
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.backgroundSecondary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
+    backgroundColor: colors.backgroundSecondary,
+    padding: 16,
   },
   header: {
     padding: 20,
-    backgroundColor: '#4F46E5',
+    backgroundColor: colors.primary,
   },
   studentSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
   },
   selectorChevron: {
     fontSize: 12,
-    color: '#C7D2FE',
+    color: indigo[200],
     marginLeft: 8,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textInverse,
   },
   email: {
     fontSize: 14,
-    color: '#C7D2FE',
+    color: indigo[200],
     marginTop: 4,
   },
   gradeLevel: {
     fontSize: 14,
-    color: '#C7D2FE',
+    color: indigo[200],
     marginTop: 2,
   },
   parentBadge: {
@@ -710,7 +713,7 @@ const styles = StyleSheet.create({
   },
   parentBadgeText: {
     fontSize: 12,
-    color: '#fff',
+    color: colors.textInverse,
     fontWeight: '600',
   },
   cardsContainer: {
@@ -721,7 +724,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -732,19 +735,19 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
   cardValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginTop: 4,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textTertiary,
     marginTop: 4,
   },
   section: {
@@ -753,11 +756,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 12,
   },
   allocationCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -771,19 +774,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.backgroundSecondary,
   },
   allocationRowLast: {
     borderBottomWidth: 0,
   },
   allocationLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   allocationValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   allocationTotal: {
     flexDirection: 'row',
@@ -791,20 +794,20 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     marginTop: 4,
     borderTopWidth: 2,
-    borderTopColor: '#4F46E5',
+    borderTopColor: colors.primary,
   },
   allocationTotalLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
   },
   allocationTotalValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: colors.primary,
   },
   gradesCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -819,16 +822,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.backgroundSecondary,
+    minHeight: 44,
   },
   gradeSubject: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.text,
   },
   gradeBase: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textTertiary,
     marginTop: 2,
   },
   gradeRight: {
@@ -840,7 +844,7 @@ const styles = StyleSheet.create({
   },
   gradeReward: {
     fontSize: 14,
-    color: '#10B981',
+    color: colors.success,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -849,7 +853,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -858,7 +862,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 16,
   },
   studentOption: {
@@ -868,36 +872,38 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.backgroundSecondary,
+    minHeight: 44,
   },
   studentOptionSelected: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primaryLight,
     borderWidth: 2,
-    borderColor: '#4F46E5',
+    borderColor: colors.primary,
   },
   studentName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   studentGrade: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   checkmark: {
     fontSize: 20,
-    color: '#4F46E5',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   cancelButton: {
     marginTop: 8,
     padding: 16,
     alignItems: 'center',
+    minHeight: 44,
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   bonusCardsContainer: {
     flexDirection: 'row',
@@ -905,7 +911,7 @@ const styles = StyleSheet.create({
   },
   bonusCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -917,8 +923,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   bonusCardActive: {
-    borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
+    borderColor: colors.success,
+    backgroundColor: tints.green,
   },
   bonusHeader: {
     flexDirection: 'row',
@@ -932,26 +938,26 @@ const styles = StyleSheet.create({
   bonusTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
   },
-  bonusValue: {
+  bonusValueText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#9CA3AF',
+    color: colors.textTertiary,
     marginBottom: 4,
   },
   bonusValueActive: {
-    color: '#10B981',
+    color: colors.success,
   },
   bonusAccuracy: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   bonusDetail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   tierBadge: {
@@ -962,25 +968,25 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   tierBadgeEducation: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: tints.blue,
   },
   tierBadgeBehavior: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: tints.amber,
   },
   tierBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.text,
   },
 });
 
 // ---------------------------------------------------------------------------
-// Student-specific styles
+// Student-specific styles factory
 // ---------------------------------------------------------------------------
-const studentStyles = StyleSheet.create({
+const createStudentStyles = (colors: ThemeColors) => StyleSheet.create({
   streakText: {
     fontSize: 14,
-    color: '#C7D2FE',
+    color: indigo[200],
     marginTop: 4,
   },
   studentBadge: {
@@ -999,7 +1005,7 @@ const studentStyles = StyleSheet.create({
   tasksSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 12,
   },
   tasksRow: {
@@ -1008,7 +1014,7 @@ const studentStyles = StyleSheet.create({
   },
   taskCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 14,
     shadowColor: '#000',
@@ -1016,6 +1022,7 @@ const studentStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    minHeight: 44,
   },
   taskStatusRow: {
     flexDirection: 'row',
@@ -1029,20 +1036,20 @@ const studentStyles = StyleSheet.create({
     marginRight: 8,
   },
   statusDotComplete: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.success,
   },
   statusDotPending: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: colors.warning,
   },
   taskCardTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
     flex: 1,
   },
   taskStatusText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginLeft: 18,
   },
 
@@ -1055,7 +1062,7 @@ const studentStyles = StyleSheet.create({
     gap: METRIC_CARD_GAP,
   },
   metricCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -1072,14 +1079,14 @@ const studentStyles = StyleSheet.create({
   },
   metricSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     fontWeight: '600',
     marginTop: 4,
   },
   metricContext: {
     fontSize: 14,
-    color: '#4B5563',
+    color: colors.textSecondary,
     marginTop: 4,
   },
 
@@ -1096,15 +1103,15 @@ const studentStyles = StyleSheet.create({
     borderRadius: 4,
   },
   dotActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: colors.primary,
   },
   dotInactive: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: colors.borderDark,
   },
 
   // Reward Structure
   rewardInfoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -1116,14 +1123,14 @@ const studentStyles = StyleSheet.create({
   },
   rewardLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
   rewardValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.text,
     marginTop: 4,
   },
   bonusesRow: {
@@ -1131,17 +1138,17 @@ const studentStyles = StyleSheet.create({
     gap: 8,
   },
   bonusChip: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: tints.green,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: financial[200],
   },
   bonusChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#166534',
+    color: financial[800],
   },
   allocationHeader: {
     marginBottom: 8,
@@ -1149,6 +1156,6 @@ const studentStyles = StyleSheet.create({
   allocationTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 });
