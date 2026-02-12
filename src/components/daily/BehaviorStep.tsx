@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import Slider from '@react-native-community/slider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBehaviorAssessments } from '../../hooks/useBehaviorAssessments';
 import { BehaviorScores } from '../../shared/types/index';
+import { useTheme, type ThemeColors } from '@/theme';
 
 interface BehaviorStepProps {
   onComplete: () => void;
@@ -40,13 +41,15 @@ const SCORE_LABELS: Record<number, string> = {
   5: 'Excellent',
 };
 
-const SCORE_COLORS: Record<number, string> = {
-  1: '#EF4444',
-  2: '#F97316',
-  3: '#EAB308',
-  4: '#3B82F6',
-  5: '#10B981',
-};
+function getScoreColors(colors: ThemeColors): Record<number, string> {
+  return {
+    1: colors.error,
+    2: colors.warning,
+    3: colors.warning,
+    4: colors.info,
+    5: colors.success,
+  };
+}
 
 const DEFAULT_SCORES: BehaviorScores = {
   diet: 3,
@@ -62,6 +65,9 @@ const DEFAULT_SCORES: BehaviorScores = {
 };
 
 export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const scoreColors = useMemo(() => getScoreColors(colors), [colors]);
   const { user } = useAuth();
   const {
     todayAssessment,
@@ -102,7 +108,7 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -112,7 +118,7 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
     item: { key: keyof BehaviorScores; label: string; description: string },
   ) => {
     const value = scores[item.key];
-    const color = SCORE_COLORS[value] || '#6B7280';
+    const color = scoreColors[value] || colors.textSecondary;
 
     return (
       <View key={item.key} style={styles.categoryRow}>
@@ -135,9 +141,9 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
               step={1}
               value={value}
               onValueChange={(val) => updateScore(item.key, val)}
-              minimumTrackTintColor="#4F46E5"
-              maximumTrackTintColor="#E5E7EB"
-              thumbTintColor="#4F46E5"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.primary}
               style={styles.slider}
             />
           </View>
@@ -154,7 +160,7 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
         <View style={styles.legend}>
           <Text style={styles.legendTitle}>Score Guide: </Text>
           {[1, 2, 3, 4, 5].map((score) => (
-            <Text key={score} style={[styles.legendItem, { color: SCORE_COLORS[score] }]}>
+            <Text key={score} style={[styles.legendItem, { color: scoreColors[score] }]}>
               {score}={SCORE_LABELS[score]}
               {score < 5 ? '  ' : ''}
             </Text>
@@ -187,7 +193,7 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
           disabled={isSaving}
         >
           {isSaving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textInverse} />
           ) : (
             <Text style={styles.submitButtonText}>Submit Check-in</Text>
           )}
@@ -197,145 +203,149 @@ export default function BehaviorStep({ onComplete }: BehaviorStepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  outerContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    outerContainer: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 32,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
 
-  // Legend
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  legendTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  legendItem: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+    // Legend
+    legend: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
+      alignItems: 'center',
+    },
+    legendTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    legendItem: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
 
-  // Section
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  sectionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
+    // Section
+    section: {
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    sectionDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 12,
+    },
 
-  // Category Row
-  categoryRow: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  categoryInfo: {
-    flex: 1,
-  },
-  categoryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  categoryDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  scoreDisplay: {
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  scoreValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  scoreLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
+    // Category Row
+    categoryRow: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    categoryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 8,
+    },
+    categoryInfo: {
+      flex: 1,
+    },
+    categoryLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    categoryDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    scoreDisplay: {
+      alignItems: 'center',
+      marginLeft: 12,
+    },
+    scoreValue: {
+      fontSize: 24,
+      fontWeight: 'bold',
+    },
+    scoreLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
 
-  // Slider
-  sliderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sliderContainer: {
-    flex: 1,
-  },
-  slider: {
-    height: 40,
-  },
-  sliderEndLabel: {
-    fontSize: 9,
-    color: '#9CA3AF',
-    width: 50,
-    textAlign: 'center',
-  },
+    // Slider
+    sliderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    sliderContainer: {
+      flex: 1,
+    },
+    slider: {
+      height: 40,
+    },
+    sliderEndLabel: {
+      fontSize: 9,
+      color: colors.textTertiary,
+      width: 50,
+      textAlign: 'center',
+    },
 
-  // Button
-  buttonContainer: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+    // Button
+    buttonContainer: {
+      padding: 16,
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    submitButtonDisabled: {
+      opacity: 0.5,
+    },
+    submitButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
+}

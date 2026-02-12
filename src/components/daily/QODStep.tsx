@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { useQuestionOfTheDay } from '../../hooks/useQuestionOfTheDay';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
+import { useTheme, type ThemeColors } from '@/theme';
 
 interface QODStepProps {
   onComplete: (wasCorrect: boolean) => void;
 }
 
 export default function QODStep({ onComplete }: QODStepProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useStudentProfile();
   const gradeLevel = profile?.grade_level;
 
@@ -54,7 +57,7 @@ export default function QODStep({ onComplete }: QODStepProps) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading today's question...</Text>
       </View>
     );
@@ -152,7 +155,7 @@ export default function QODStep({ onComplete }: QODStepProps) {
           disabled={selectedAnswer === null || saving}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textInverse} />
           ) : (
             <Text style={styles.submitButtonText}>Submit Answer</Text>
           )}
@@ -175,202 +178,216 @@ export default function QODStep({ onComplete }: QODStepProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  questionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  topicBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  topicText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  question: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    lineHeight: 26,
-  },
-  optionsContainer: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  option: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  optionSelected: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#4F46E5',
-  },
-  optionCorrect: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  optionIncorrect: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#EF4444',
-  },
-  optionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  optionLetter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optionLetterSelected: {
-    backgroundColor: '#4F46E5',
-  },
-  optionLetterText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#6B7280',
-  },
-  optionLetterTextSelected: {
-    color: '#fff',
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#374151',
-  },
-  optionTextSelected: {
-    flex: 1,
-    fontSize: 16,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-  optionTextCorrect: {
-    flex: 1,
-    fontSize: 16,
-    color: '#059669',
-    fontWeight: '500',
-  },
-  optionTextIncorrect: {
-    flex: 1,
-    fontSize: 16,
-    color: '#DC2626',
-    fontWeight: '500',
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resultCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  resultCorrect: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  resultIncorrect: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 2,
-    borderColor: '#EF4444',
-  },
-  resultTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  resultExplanation: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  continueButton: {
-    backgroundColor: '#4F46E5',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 32,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 40,
+    },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    emptyDescription: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    questionCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    topicBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      marginBottom: 16,
+    },
+    topicText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    question: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      lineHeight: 26,
+    },
+    optionsContainer: {
+      gap: 12,
+      marginBottom: 20,
+    },
+    option: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      minHeight: 52,
+      justifyContent: 'center',
+    },
+    optionSelected: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 2,
+      borderColor: colors.primary,
+      minHeight: 52,
+      justifyContent: 'center',
+    },
+    optionCorrect: {
+      backgroundColor: colors.secondaryLight,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 2,
+      borderColor: colors.success,
+      minHeight: 52,
+      justifyContent: 'center',
+    },
+    optionIncorrect: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 2,
+      borderColor: colors.error,
+      minHeight: 52,
+      justifyContent: 'center',
+    },
+    optionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    optionLetter: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.backgroundTertiary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    optionLetterSelected: {
+      backgroundColor: colors.primary,
+    },
+    optionLetterText: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: colors.textSecondary,
+    },
+    optionLetterTextSelected: {
+      color: colors.textInverse,
+    },
+    optionText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    optionTextSelected: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+    optionTextCorrect: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.success,
+      fontWeight: '500',
+    },
+    optionTextIncorrect: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.error,
+      fontWeight: '500',
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginBottom: 20,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    submitButtonDisabled: {
+      opacity: 0.5,
+    },
+    submitButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    resultCard: {
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 20,
+    },
+    resultCorrect: {
+      backgroundColor: colors.secondaryLight,
+      borderWidth: 2,
+      borderColor: colors.success,
+    },
+    resultIncorrect: {
+      backgroundColor: colors.primaryLight,
+      borderWidth: 2,
+      borderColor: colors.error,
+    },
+    resultTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    resultExplanation: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      lineHeight: 24,
+      marginBottom: 16,
+    },
+    continueButton: {
+      backgroundColor: colors.primary,
+      padding: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    continueButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
+}
