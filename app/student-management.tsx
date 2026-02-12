@@ -19,6 +19,8 @@ import { useUserProfile } from '../src/hooks/useUserProfile';
 import { getStudentLimit } from '../src/constants/subscriptionPlans';
 import { useSubscriptionStatus } from '../src/hooks/useSubscriptionStatus';
 import { useTheme, type ThemeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -248,7 +250,15 @@ export default function StudentManagementScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <SkeletonList count={3} cardHeight={120} />
+      </View>
+    );
+  }
+
+  if (error && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load students" onRetry={refetch} />
       </View>
     );
   }
@@ -726,6 +736,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundSecondary,
+      padding: 16,
     },
     accessDenied: {
       flex: 1,

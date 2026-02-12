@@ -16,6 +16,8 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { supabase } from '../src/integrations/supabase/client';
 import { useTheme, type ThemeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const GRADE_LEVELS = [
   '7', '8', '9', '10', '11', '12',
@@ -26,7 +28,7 @@ export default function EditProfileScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { profile, isLoading: profileLoading, refetch, isStudent } = useUserProfile();
+  const { profile, isLoading: profileLoading, error, refetch, isStudent } = useUserProfile();
 
   const [name, setName] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
@@ -112,7 +114,15 @@ export default function EditProfileScreen() {
   if (profileLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <SkeletonList count={3} cardHeight={80} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load profile" onRetry={refetch} />
       </View>
     );
   }
@@ -248,6 +258,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundSecondary,
+      padding: 16,
     },
     scrollView: {
       flex: 1,

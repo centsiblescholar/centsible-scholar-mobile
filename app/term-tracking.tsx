@@ -20,6 +20,8 @@ import { useTermTracking, TermSnapshot } from '../src/hooks/useTermTracking';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { LineChart } from 'react-native-chart-kit';
 import { useTheme, type ThemeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -43,6 +45,8 @@ export default function TermTrackingScreen() {
     termProgress,
     cumulativeStats,
     isLoading,
+    configError,
+    snapshotsError,
     setupNewTerm,
     isSettingUpTerm,
     refetch,
@@ -75,7 +79,15 @@ export default function TermTrackingScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <SkeletonList count={3} cardHeight={120} />
+      </View>
+    );
+  }
+
+  if ((configError || snapshotsError) && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load term data" onRetry={refetch} />
       </View>
     );
   }
@@ -484,6 +496,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundSecondary,
+      padding: 16,
     },
     content: {
       padding: 16,

@@ -29,6 +29,8 @@ import {
   useTheme,
   type ThemeColors,
 } from '../src/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -48,6 +50,8 @@ export default function GradeApprovalScreen() {
     pendingByStudent,
     stats,
     isLoading,
+    pendingError,
+    reviewedError,
     approveGrade,
     rejectGrade,
     bulkApproveGrades,
@@ -146,7 +150,15 @@ export default function GradeApprovalScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <SkeletonList count={4} cardHeight={100} />
+      </View>
+    );
+  }
+
+  if ((pendingError || reviewedError) && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load grades" onRetry={refetch} />
       </View>
     );
   }
@@ -522,6 +534,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.backgroundSecondary,
+      padding: spacing[4],
     },
     accessDenied: {
       flex: 1,

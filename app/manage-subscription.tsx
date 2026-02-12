@@ -22,6 +22,8 @@ import { useStudentManagement } from '../src/hooks/useStudentManagement';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/integrations/supabase/client';
 import { useTheme, type ThemeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 type BillingInterval = 'month' | 'year';
 
@@ -32,6 +34,8 @@ export default function ManageSubscriptionScreen() {
   const queryClient = useQueryClient();
   const {
     subscription,
+    isLoading: subscriptionLoading,
+    error: subscriptionError,
     isActive,
     tier,
     status,
@@ -189,6 +193,22 @@ export default function ManageSubscriptionScreen() {
       : `$${currentPlan.annualPrice.toFixed(2)}/yr`
     : '--';
 
+  if (subscriptionLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <SkeletonList count={3} cardHeight={100} />
+      </View>
+    );
+  }
+
+  if (subscriptionError) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load subscription" onRetry={refetchSubscription} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Current Plan Summary */}
@@ -343,6 +363,13 @@ function createStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.backgroundSecondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+      padding: 16,
     },
     scrollContent: {
       padding: 16,

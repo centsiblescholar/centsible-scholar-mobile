@@ -21,6 +21,8 @@ import { useUserProfile } from '../src/hooks/useUserProfile';
 import { useFamilyMeetings, FamilyMeeting } from '../src/hooks/useFamilyMeetings';
 import { useNotifications } from '../src/hooks/useNotifications';
 import { useTheme, type ThemeColors } from '@/theme';
+import { SkeletonList } from '@/components/ui/SkeletonCard';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -48,6 +50,7 @@ export default function FamilyMeetingsScreen() {
     completedMeetings,
     stats,
     isLoading,
+    error,
     scheduleMeeting,
     completeMeeting,
     cancelMeeting,
@@ -172,7 +175,15 @@ export default function FamilyMeetingsScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <SkeletonList count={3} cardHeight={100} />
+      </View>
+    );
+  }
+
+  if (error && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ErrorState message="Failed to load meetings" onRetry={refetch} />
       </View>
     );
   }
@@ -554,7 +565,7 @@ function MeetingHistoryItem({ meeting, assessments, colors, styles }: { meeting:
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.backgroundSecondary },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.backgroundSecondary, padding: 16 },
     content: { padding: 16 },
     statsRow: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
     statItem: { flex: 1, alignItems: 'center' },
