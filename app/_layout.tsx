@@ -82,6 +82,13 @@ export default function RootLayout() {
                   title: 'Manage Subscription',
                 }}
               />
+              <Stack.Screen
+                name="data-export"
+                options={{
+                  title: 'Export Data',
+                  presentation: 'modal',
+                }}
+              />
             </Stack>
           </StudentProvider>
         </RevenueCatProvider>

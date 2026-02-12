@@ -407,6 +407,25 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Privacy Section (parents only) */}
+        {isParent && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Privacy</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={[styles.linkRow, styles.linkRowLast]}
+                onPress={() => router.push('/data-export' as any)}
+              >
+                <View style={styles.privacyRow}>
+                  <Ionicons name="download-outline" size={22} color="#4F46E5" />
+                  <Text style={styles.linkText}>Export My Data</Text>
+                </View>
+                <Text style={styles.chevron}>&rsaquo;</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* App Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
@@ -709,5 +728,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginLeft: 12,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
 });
