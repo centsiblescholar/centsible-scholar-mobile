@@ -54,6 +54,12 @@ export {
   sizing,
 } from './spacing';
 
+// Theme context (reactive theme with dark mode support)
+export { ThemeProvider, useTheme, type ThemeMode } from './ThemeContext';
+
+// Common styles factory
+export { createCommonStyles } from './commonStyles';
+
 // Combined theme object for convenience
 import { colors as themeColors, grades as gradeColors, tints as tintColors } from './colors';
 import { textStyles as typography, fontSize as fontSizes, fontWeight as fontWeights } from './typography';

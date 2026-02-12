@@ -205,9 +205,9 @@ export const darkTheme = {
   tabInactive: gray[500],
 } as const;
 
-// Export current theme (light by default)
+// DEPRECATED: Use useTheme().colors instead. This static export will be removed after migration.
 export const colors = lightTheme;
 
-// Type exports
-export type ThemeColors = typeof lightTheme;
+// Type exports -- uses { [K in keyof typeof lightTheme]: string } so both light and dark themes satisfy it
+export type ThemeColors = { [K in keyof typeof lightTheme]: string };
 export type GradeKey = keyof typeof grades;

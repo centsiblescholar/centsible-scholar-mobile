@@ -1,517 +1,435 @@
 /**
  * Common Style Patterns
  * Reusable style objects for consistent UI across the app
+ *
+ * New code should use: createCommonStyles(colors) from useTheme()
+ * Static exports are kept for backward compatibility during migration.
  */
 
-import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors, tints } from './colors';
+import { StyleSheet } from 'react-native';
+import { colors as staticColors, tints, type ThemeColors } from './colors';
 import { textStyles } from './typography';
 import { spacing, layout, borderRadius, shadows } from './spacing';
 
-// Card styles
-export const cardStyles = StyleSheet.create({
-  // Standard card
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: layout.cardPadding,
-    ...shadows.md,
-  },
-
-  // Card with border instead of shadow
-  cardOutline: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: layout.cardPadding,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-
-  // Compact card
-  cardCompact: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.md,
-    padding: spacing[3],
-    ...shadows.sm,
-  },
-
-  // Card header
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-  },
-
-  // Card title
-  cardTitle: {
-    ...textStyles.h3,
-    color: colors.text,
-  },
-
-  // Card description
-  cardDescription: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing[1],
-  },
-
-  // Card footer
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: spacing[4],
-    paddingTop: spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-});
-
-// Button styles
-export const buttonStyles = StyleSheet.create({
-  // Primary button
-  buttonPrimary: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: layout.buttonPaddingHorizontal,
-    paddingVertical: layout.buttonPaddingVertical,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: layout.buttonGap,
-  },
-
-  buttonPrimaryText: {
-    ...textStyles.button,
-    color: colors.textInverse,
-  },
-
-  // Secondary button
-  buttonSecondary: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: layout.buttonPaddingHorizontal,
-    paddingVertical: layout.buttonPaddingVertical,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: layout.buttonGap,
-  },
-
-  buttonSecondaryText: {
-    ...textStyles.button,
-    color: colors.primary,
-  },
-
-  // Outline button
-  buttonOutline: {
-    backgroundColor: 'transparent',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: layout.buttonPaddingHorizontal,
-    paddingVertical: layout.buttonPaddingVertical,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: layout.buttonGap,
-  },
-
-  buttonOutlineText: {
-    ...textStyles.button,
-    color: colors.text,
-  },
-
-  // Ghost button (no background)
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: layout.buttonGap,
-  },
-
-  buttonGhostText: {
-    ...textStyles.button,
-    color: colors.primary,
-  },
-
-  // Destructive button
-  buttonDestructive: {
-    backgroundColor: colors.error,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: layout.buttonPaddingHorizontal,
-    paddingVertical: layout.buttonPaddingVertical,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: layout.buttonGap,
-  },
-
-  buttonDestructiveText: {
-    ...textStyles.button,
-    color: colors.textInverse,
-  },
-
-  // Disabled state
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-
-  // Small button
-  buttonSmall: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-  },
-
-  buttonSmallText: {
-    ...textStyles.buttonSmall,
-  },
-});
-
-// Input styles
-export const inputStyles = StyleSheet.create({
-  // Container
-  inputContainer: {
-    marginBottom: spacing[4],
-  },
-
-  // Label
-  inputLabel: {
-    ...textStyles.label,
-    color: colors.text,
-    marginBottom: spacing[2],
-  },
-
-  // Input field
-  input: {
-    backgroundColor: colors.input,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    paddingHorizontal: layout.inputPaddingHorizontal,
-    paddingVertical: layout.inputPaddingVertical,
-    ...textStyles.body,
-    color: colors.text,
-  },
-
-  // Focused state
-  inputFocused: {
-    borderColor: colors.inputFocus,
-    borderWidth: 2,
-  },
-
-  // Error state
-  inputError: {
-    borderColor: colors.error,
-  },
-
-  // Helper text
-  inputHelper: {
-    ...textStyles.caption,
-    color: colors.textTertiary,
-    marginTop: spacing[1],
-  },
-
-  // Error text
-  inputErrorText: {
-    ...textStyles.caption,
-    color: colors.error,
-    marginTop: spacing[1],
-  },
-
-  // Textarea
-  textarea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-});
-
-// List styles
-export const listStyles = StyleSheet.create({
-  // List container
-  list: {
-    gap: layout.itemGap,
-  },
-
-  // List item
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3],
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.md,
-    gap: spacing[3],
-  },
-
-  // List item with border
-  listItemBordered: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing[3],
-  },
-
-  // List item content
-  listItemContent: {
-    flex: 1,
-  },
-
-  // List item title
-  listItemTitle: {
-    ...textStyles.body,
-    color: colors.text,
-  },
-
-  // List item subtitle
-  listItemSubtitle: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing[0.5],
-  },
-
-  // List item trailing content
-  listItemTrailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-});
-
-// Badge styles
-export const badgeStyles = StyleSheet.create({
-  // Base badge
-  badge: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.full,
-    alignSelf: 'flex-start',
-  },
-
-  badgeText: {
-    ...textStyles.caption,
-    fontWeight: '600',
-  },
-
-  // Variants
-  badgePrimary: {
-    backgroundColor: colors.primaryLight,
-  },
-  badgePrimaryText: {
-    color: colors.primary,
-  },
-
-  badgeSuccess: {
-    backgroundColor: tints.green,
-  },
-  badgeSuccessText: {
-    color: colors.success,
-  },
-
-  badgeWarning: {
-    backgroundColor: tints.amber,
-  },
-  badgeWarningText: {
-    color: colors.warning,
-  },
-
-  badgeError: {
-    backgroundColor: tints.red,
-  },
-  badgeErrorText: {
-    color: colors.error,
-  },
-
-  badgeInfo: {
-    backgroundColor: tints.blue,
-  },
-  badgeInfoText: {
-    color: colors.info,
-  },
-});
-
-// Screen/Container styles
-export const containerStyles = StyleSheet.create({
-  // Full screen container
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-  },
-
-  // Scrollable content
-  scrollContent: {
-    padding: layout.screenPaddingHorizontal,
-    paddingBottom: spacing[10],
-  },
-
-  // Centered content
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: layout.screenPaddingHorizontal,
-  },
-
-  // Section container
-  section: {
-    marginBottom: layout.sectionMarginBottom,
-  },
-
-  // Section title
-  sectionTitle: {
-    ...textStyles.overline,
-    color: colors.textSecondary,
-    marginBottom: spacing[3],
-  },
-
-  // Row layout
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  // Space between row
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  // Flex grow
-  flex1: {
-    flex: 1,
-  },
-});
-
-// Modal styles
-export const modalStyles = StyleSheet.create({
-  // Overlay
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Modal content
-  content: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.xl,
-    padding: layout.modalPadding,
-    width: '90%',
-    maxWidth: 400,
-    ...shadows.xl,
-  },
-
-  // Modal header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing[4],
-  },
-
-  // Modal title
-  title: {
-    ...textStyles.h3,
-    color: colors.text,
-  },
-
-  // Modal body
-  body: {
-    marginBottom: spacing[6],
-  },
-
-  // Modal footer
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing[3],
-  },
-
-  // Bottom sheet style
-  bottomSheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: layout.modalPadding,
-    paddingTop: spacing[2],
-  },
-
-  // Bottom sheet handle
-  bottomSheetHandle: {
-    width: layout.bottomSheetHandleWidth,
-    height: layout.bottomSheetHandle,
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.full,
-    alignSelf: 'center',
-    marginBottom: spacing[4],
-  },
-});
-
-// Stats/Metric styles
-export const statStyles = StyleSheet.create({
-  // Stat container
-  stat: {
-    alignItems: 'center',
-    padding: spacing[3],
-  },
-
-  // Stat value
-  statValue: {
-    ...textStyles.metricLarge,
-    color: colors.text,
-  },
-
-  // Stat label
-  statLabel: {
-    ...textStyles.caption,
-    color: colors.textSecondary,
-    marginTop: spacing[1],
-  },
-
-  // Stat row
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-
-  // Stat divider
-  statDivider: {
-    width: 1,
-    backgroundColor: colors.border,
-  },
-});
-
-// Empty state styles
-export const emptyStateStyles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing[8],
-  },
-
-  icon: {
-    marginBottom: spacing[4],
-  },
-
-  title: {
-    ...textStyles.h3,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing[2],
-  },
-
-  description: {
-    ...textStyles.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing[6],
-  },
-});
+/**
+ * Factory function to create themed common styles.
+ * Use with useTheme():
+ *   const { colors } = useTheme();
+ *   const common = createCommonStyles(colors);
+ */
+export function createCommonStyles(themeColors: ThemeColors) {
+  const cardStyles = StyleSheet.create({
+    card: {
+      backgroundColor: themeColors.card,
+      borderRadius: borderRadius.lg,
+      padding: layout.cardPadding,
+      ...shadows.md,
+    },
+    cardOutline: {
+      backgroundColor: themeColors.card,
+      borderRadius: borderRadius.lg,
+      padding: layout.cardPadding,
+      borderWidth: 1,
+      borderColor: themeColors.cardBorder,
+    },
+    cardCompact: {
+      backgroundColor: themeColors.card,
+      borderRadius: borderRadius.md,
+      padding: spacing[3],
+      ...shadows.sm,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing[3],
+    },
+    cardTitle: {
+      ...textStyles.h3,
+      color: themeColors.text,
+    },
+    cardDescription: {
+      ...textStyles.bodySmall,
+      color: themeColors.textSecondary,
+      marginTop: spacing[1],
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      marginTop: spacing[4],
+      paddingTop: spacing[4],
+      borderTopWidth: 1,
+      borderTopColor: themeColors.border,
+    },
+  });
+
+  const buttonStyles = StyleSheet.create({
+    buttonPrimary: {
+      backgroundColor: themeColors.primary,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: layout.buttonPaddingHorizontal,
+      paddingVertical: layout.buttonPaddingVertical,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: layout.buttonGap,
+    },
+    buttonPrimaryText: {
+      ...textStyles.button,
+      color: themeColors.textInverse,
+    },
+    buttonSecondary: {
+      backgroundColor: themeColors.primaryLight,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: layout.buttonPaddingHorizontal,
+      paddingVertical: layout.buttonPaddingVertical,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: layout.buttonGap,
+    },
+    buttonSecondaryText: {
+      ...textStyles.button,
+      color: themeColors.primary,
+    },
+    buttonOutline: {
+      backgroundColor: 'transparent',
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      paddingHorizontal: layout.buttonPaddingHorizontal,
+      paddingVertical: layout.buttonPaddingVertical,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: layout.buttonGap,
+    },
+    buttonOutlineText: {
+      ...textStyles.button,
+      color: themeColors.text,
+    },
+    buttonGhost: {
+      backgroundColor: 'transparent',
+      borderRadius: borderRadius.md,
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: layout.buttonGap,
+    },
+    buttonGhostText: {
+      ...textStyles.button,
+      color: themeColors.primary,
+    },
+    buttonDestructive: {
+      backgroundColor: themeColors.error,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: layout.buttonPaddingHorizontal,
+      paddingVertical: layout.buttonPaddingVertical,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: layout.buttonGap,
+    },
+    buttonDestructiveText: {
+      ...textStyles.button,
+      color: themeColors.textInverse,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonSmall: {
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+    },
+    buttonSmallText: {
+      ...textStyles.buttonSmall,
+    },
+  });
+
+  const inputStyles = StyleSheet.create({
+    inputContainer: {
+      marginBottom: spacing[4],
+    },
+    inputLabel: {
+      ...textStyles.label,
+      color: themeColors.text,
+      marginBottom: spacing[2],
+    },
+    input: {
+      backgroundColor: themeColors.input,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: themeColors.inputBorder,
+      paddingHorizontal: layout.inputPaddingHorizontal,
+      paddingVertical: layout.inputPaddingVertical,
+      ...textStyles.body,
+      color: themeColors.text,
+    },
+    inputFocused: {
+      borderColor: themeColors.inputFocus,
+      borderWidth: 2,
+    },
+    inputError: {
+      borderColor: themeColors.error,
+    },
+    inputHelper: {
+      ...textStyles.caption,
+      color: themeColors.textTertiary,
+      marginTop: spacing[1],
+    },
+    inputErrorText: {
+      ...textStyles.caption,
+      color: themeColors.error,
+      marginTop: spacing[1],
+    },
+    textarea: {
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+  });
+
+  const listStyles = StyleSheet.create({
+    list: {
+      gap: layout.itemGap,
+    },
+    listItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing[3],
+      backgroundColor: themeColors.card,
+      borderRadius: borderRadius.md,
+      gap: spacing[3],
+    },
+    listItemBordered: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing[3],
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+      gap: spacing[3],
+    },
+    listItemContent: {
+      flex: 1,
+    },
+    listItemTitle: {
+      ...textStyles.body,
+      color: themeColors.text,
+    },
+    listItemSubtitle: {
+      ...textStyles.bodySmall,
+      color: themeColors.textSecondary,
+      marginTop: spacing[0.5],
+    },
+    listItemTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+  });
+
+  const badgeStyles = StyleSheet.create({
+    badge: {
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
+      borderRadius: borderRadius.full,
+      alignSelf: 'flex-start',
+    },
+    badgeText: {
+      ...textStyles.caption,
+      fontWeight: '600',
+    },
+    badgePrimary: {
+      backgroundColor: themeColors.primaryLight,
+    },
+    badgePrimaryText: {
+      color: themeColors.primary,
+    },
+    badgeSuccess: {
+      backgroundColor: tints.green,
+    },
+    badgeSuccessText: {
+      color: themeColors.success,
+    },
+    badgeWarning: {
+      backgroundColor: tints.amber,
+    },
+    badgeWarningText: {
+      color: themeColors.warning,
+    },
+    badgeError: {
+      backgroundColor: tints.red,
+    },
+    badgeErrorText: {
+      color: themeColors.error,
+    },
+    badgeInfo: {
+      backgroundColor: tints.blue,
+    },
+    badgeInfoText: {
+      color: themeColors.info,
+    },
+  });
+
+  const containerStyles = StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: themeColors.backgroundSecondary,
+    },
+    scrollContent: {
+      padding: layout.screenPaddingHorizontal,
+      paddingBottom: spacing[10],
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: layout.screenPaddingHorizontal,
+    },
+    section: {
+      marginBottom: layout.sectionMarginBottom,
+    },
+    sectionTitle: {
+      ...textStyles.overline,
+      color: themeColors.textSecondary,
+      marginBottom: spacing[3],
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    rowBetween: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    flex1: {
+      flex: 1,
+    },
+  });
+
+  const modalStyles = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    content: {
+      backgroundColor: themeColors.card,
+      borderRadius: borderRadius.xl,
+      padding: layout.modalPadding,
+      width: '90%',
+      maxWidth: 400,
+      ...shadows.xl,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing[4],
+    },
+    title: {
+      ...textStyles.h3,
+      color: themeColors.text,
+    },
+    body: {
+      marginBottom: spacing[6],
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing[3],
+    },
+    bottomSheet: {
+      backgroundColor: themeColors.card,
+      borderTopLeftRadius: borderRadius['2xl'],
+      borderTopRightRadius: borderRadius['2xl'],
+      padding: layout.modalPadding,
+      paddingTop: spacing[2],
+    },
+    bottomSheetHandle: {
+      width: layout.bottomSheetHandleWidth,
+      height: layout.bottomSheetHandle,
+      backgroundColor: themeColors.border,
+      borderRadius: borderRadius.full,
+      alignSelf: 'center',
+      marginBottom: spacing[4],
+    },
+  });
+
+  const statStyles = StyleSheet.create({
+    stat: {
+      alignItems: 'center',
+      padding: spacing[3],
+    },
+    statValue: {
+      ...textStyles.metricLarge,
+      color: themeColors.text,
+    },
+    statLabel: {
+      ...textStyles.caption,
+      color: themeColors.textSecondary,
+      marginTop: spacing[1],
+    },
+    statRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+    statDivider: {
+      width: 1,
+      backgroundColor: themeColors.border,
+    },
+  });
+
+  const emptyStateStyles = StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing[8],
+    },
+    icon: {
+      marginBottom: spacing[4],
+    },
+    title: {
+      ...textStyles.h3,
+      color: themeColors.text,
+      textAlign: 'center',
+      marginBottom: spacing[2],
+    },
+    description: {
+      ...textStyles.body,
+      color: themeColors.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing[6],
+    },
+  });
+
+  return {
+    cardStyles,
+    buttonStyles,
+    inputStyles,
+    listStyles,
+    badgeStyles,
+    containerStyles,
+    modalStyles,
+    statStyles,
+    emptyStateStyles,
+  };
+}
+
+// DEPRECATED: Static exports for backward compatibility during migration.
+// Use createCommonStyles(colors) from useTheme() instead.
+const _static = createCommonStyles(staticColors);
+
+export const cardStyles = _static.cardStyles;
+export const buttonStyles = _static.buttonStyles;
+export const inputStyles = _static.inputStyles;
+export const listStyles = _static.listStyles;
+export const badgeStyles = _static.badgeStyles;
+export const containerStyles = _static.containerStyles;
+export const modalStyles = _static.modalStyles;
+export const statStyles = _static.statStyles;
+export const emptyStateStyles = _static.emptyStateStyles;
