@@ -1,24 +1,28 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useTheme } from '@/theme';
 
 export default function TabLayout() {
   const { userRole } = useAuth();
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.tabActive,
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarStyle: {
           paddingBottom: 8,
           paddingTop: 8,
           height: 64,
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.tabBarBorder,
         },
         headerStyle: {
-          backgroundColor: '#4F46E5',
+          backgroundColor: colors.primary,
         },
-        headerTintColor: '#fff',
+        headerTintColor: colors.textInverse,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
