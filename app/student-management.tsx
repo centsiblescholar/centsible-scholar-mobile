@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useStudentManagement, StudentProfile, CreateStudentInput } from '../src
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { getStudentLimit } from '../src/constants/subscriptionPlans';
 import { useSubscriptionStatus } from '../src/hooks/useSubscriptionStatus';
+import { useTheme, type ThemeColors } from '@/theme';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -38,6 +39,8 @@ function generatePassword(): string {
 }
 
 export default function StudentManagementScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isParent } = useUserProfile();
   const { tier } = useSubscriptionStatus();
   const studentLimit = getStudentLimit(tier);
@@ -59,6 +62,7 @@ export default function StudentManagementScreen() {
     activeStudents,
     inactiveStudents,
     isLoading,
+    error,
     refetch,
     createStudent,
     isCreating,
@@ -226,7 +230,7 @@ export default function StudentManagementScreen() {
   if (!isParent) {
     return (
       <View style={styles.accessDenied}>
-        <Ionicons name="lock-closed" size={64} color="#9CA3AF" />
+        <Ionicons name="lock-closed" size={64} color={colors.textTertiary} />
         <Text style={styles.accessDeniedTitle}>Parent Access Only</Text>
         <Text style={styles.accessDeniedText}>
           This feature is only available for parent accounts.
@@ -244,7 +248,7 @@ export default function StudentManagementScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -266,7 +270,7 @@ export default function StudentManagementScreen() {
             style={styles.addButton}
             onPress={handleOpenAddModal}
           >
-            <Ionicons name="add" size={24} color="#fff" />
+            <Ionicons name="add" size={24} color={colors.textInverse} />
           </TouchableOpacity>
         </View>
 
@@ -280,12 +284,14 @@ export default function StudentManagementScreen() {
                 onEdit={() => openEditModal(student)}
                 onDeactivate={() => handleDeactivate(student)}
                 formatCurrency={formatCurrency}
+                colors={colors}
+                styles={styles}
               />
             ))}
           </View>
         ) : (
           <View style={styles.emptyCard}>
-            <Ionicons name="people-outline" size={64} color="#9CA3AF" />
+            <Ionicons name="people-outline" size={64} color={colors.textTertiary} />
             <Text style={styles.emptyTitle}>No Students Yet</Text>
             <Text style={styles.emptyText}>
               Add your first student to get started with Centsible Scholar.
@@ -294,7 +300,7 @@ export default function StudentManagementScreen() {
               style={styles.addFirstButton}
               onPress={handleOpenAddModal}
             >
-              <Ionicons name="add-circle" size={20} color="#fff" />
+              <Ionicons name="add-circle" size={20} color={colors.textInverse} />
               <Text style={styles.addFirstButtonText}>Add Student</Text>
             </TouchableOpacity>
           </View>
@@ -313,7 +319,7 @@ export default function StudentManagementScreen() {
               <Ionicons
                 name={showInactive ? 'chevron-up' : 'chevron-down'}
                 size={20}
-                color="#6B7280"
+                color={colors.textSecondary}
               />
             </TouchableOpacity>
 
@@ -325,6 +331,8 @@ export default function StudentManagementScreen() {
                     student={student}
                     onReactivate={() => handleReactivate(student)}
                     isReactivating={isReactivating}
+                    colors={colors}
+                    styles={styles}
                   />
                 ))}
               </View>
@@ -354,6 +362,7 @@ export default function StudentManagementScreen() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter student name"
+                  placeholderTextColor={colors.textTertiary}
                   autoCapitalize="words"
                 />
               </View>
@@ -365,6 +374,7 @@ export default function StudentManagementScreen() {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="student@email.com"
+                  placeholderTextColor={colors.textTertiary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -382,6 +392,7 @@ export default function StudentManagementScreen() {
                       value={password}
                       onChangeText={setPassword}
                       placeholder="Min 8 characters"
+                      placeholderTextColor={colors.textTertiary}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -393,7 +404,7 @@ export default function StudentManagementScreen() {
                       <Ionicons
                         name={showPassword ? 'eye-off' : 'eye'}
                         size={20}
-                        color="#6B7280"
+                        color={colors.textSecondary}
                       />
                     </TouchableOpacity>
                   </View>
@@ -401,7 +412,7 @@ export default function StudentManagementScreen() {
                     style={styles.generateButton}
                     onPress={() => setPassword(generatePassword())}
                   >
-                    <Ionicons name="refresh" size={20} color="#4F46E5" />
+                    <Ionicons name="refresh" size={20} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.inputHint}>
@@ -447,6 +458,7 @@ export default function StudentManagementScreen() {
                     value={baseReward}
                     onChangeText={setBaseReward}
                     placeholder="10.00"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -471,7 +483,7 @@ export default function StudentManagementScreen() {
                   disabled={isCreating}
                 >
                   {isCreating ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={colors.textInverse} />
                   ) : (
                     <Text style={styles.confirmButtonText}>Add Student</Text>
                   )}
@@ -505,6 +517,7 @@ export default function StudentManagementScreen() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter student name"
+                  placeholderTextColor={colors.textTertiary}
                   autoCapitalize="words"
                 />
               </View>
@@ -516,6 +529,7 @@ export default function StudentManagementScreen() {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="student@email.com"
+                  placeholderTextColor={colors.textTertiary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -559,6 +573,7 @@ export default function StudentManagementScreen() {
                     value={baseReward}
                     onChangeText={setBaseReward}
                     placeholder="10.00"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -581,7 +596,7 @@ export default function StudentManagementScreen() {
                   disabled={isUpdating}
                 >
                   {isUpdating ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={colors.textInverse} />
                   ) : (
                     <Text style={styles.confirmButtonText}>Save Changes</Text>
                   )}
@@ -601,11 +616,15 @@ function StudentCard({
   onEdit,
   onDeactivate,
   formatCurrency,
+  colors,
+  styles,
 }: {
   student: StudentProfile;
   onEdit: () => void;
   onDeactivate: () => void;
   formatCurrency: (amount: number) => string;
+  colors: ThemeColors;
+  styles: any;
 }) {
   return (
     <View style={styles.studentCard}>
@@ -638,11 +657,11 @@ function StudentCard({
 
       <View style={styles.studentActions}>
         <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-          <Ionicons name="pencil" size={18} color="#4F46E5" />
+          <Ionicons name="pencil" size={18} color={colors.primary} />
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.deactivateButton} onPress={onDeactivate}>
-          <Ionicons name="person-remove" size={18} color="#EF4444" />
+          <Ionicons name="person-remove" size={18} color={colors.error} />
           <Text style={styles.deactivateButtonText}>Deactivate</Text>
         </TouchableOpacity>
       </View>
@@ -655,10 +674,14 @@ function InactiveStudentCard({
   student,
   onReactivate,
   isReactivating,
+  colors,
+  styles,
 }: {
   student: StudentProfile;
   onReactivate: () => void;
   isReactivating: boolean;
+  colors: ThemeColors;
+  styles: any;
 }) {
   return (
     <View style={[styles.studentCard, styles.inactiveCard]}>
@@ -680,10 +703,10 @@ function InactiveStudentCard({
         disabled={isReactivating}
       >
         {isReactivating ? (
-          <ActivityIndicator size="small" color="#4F46E5" />
+          <ActivityIndicator size="small" color={colors.primary} />
         ) : (
           <>
-            <Ionicons name="person-add" size={18} color="#4F46E5" />
+            <Ionicons name="person-add" size={18} color={colors.primary} />
             <Text style={styles.reactivateButtonText}>Reactivate</Text>
           </>
         )}
@@ -692,401 +715,419 @@ function InactiveStudentCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  accessDenied: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    padding: 32,
-  },
-  accessDeniedTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-  },
-  accessDeniedText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  backButton: {
-    marginTop: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  content: {
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  studentsList: {
-    gap: 16,
-  },
-  studentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inactiveCard: {
-    opacity: 0.7,
-  },
-  studentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  studentAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inactiveAvatar: {
-    backgroundColor: '#9CA3AF',
-  },
-  studentInitial: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  inactiveInitial: {
-    color: '#fff',
-  },
-  studentInfo: {
-    marginLeft: 16,
-  },
-  studentName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  inactiveName: {
-    color: '#6B7280',
-  },
-  studentGrade: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  studentDetails: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 16,
-    marginBottom: 16,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  studentActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  editButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    gap: 8,
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  deactivateButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 10,
-    gap: 8,
-  },
-  deactivateButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  reactivateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    gap: 8,
-  },
-  reactivateButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 40,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  addFirstButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  addFirstButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    marginTop: 24,
-  },
-  inactiveHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  inactiveTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalScrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-  },
-  inputHint: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 6,
-  },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  passwordInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    padding: 14,
-    fontSize: 16,
-  },
-  passwordToggle: {
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-  },
-  generateButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gradePicker: {
-    flexGrow: 0,
-  },
-  gradeOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    marginRight: 8,
-  },
-  gradeOptionActive: {
-    backgroundColor: '#4F46E5',
-  },
-  gradeOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  gradeOptionTextActive: {
-    color: '#fff',
-  },
-  currencyInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginRight: 4,
-  },
-  currencyField: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  confirmButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+    },
+    accessDenied: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+      padding: 32,
+    },
+    accessDeniedTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+    },
+    accessDeniedText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+    backButton: {
+      marginTop: 24,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    backButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    content: {
+      padding: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    addButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    studentsList: {
+      gap: 16,
+    },
+    studentCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    inactiveCard: {
+      opacity: 0.7,
+    },
+    studentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    studentAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    inactiveAvatar: {
+      backgroundColor: colors.textTertiary,
+    },
+    studentInitial: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textInverse,
+    },
+    inactiveInitial: {
+      color: colors.textInverse,
+    },
+    studentInfo: {
+      marginLeft: 16,
+    },
+    studentName: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    inactiveName: {
+      color: colors.textSecondary,
+    },
+    studentGrade: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    studentDetails: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 16,
+      marginBottom: 16,
+    },
+    detailItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+    },
+    detailLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    detailValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    studentActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    editButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 10,
+      gap: 8,
+      minHeight: 44,
+    },
+    editButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    deactivateButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      backgroundColor: colors.error + '15',
+      borderRadius: 10,
+      gap: 8,
+      minHeight: 44,
+    },
+    deactivateButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.error,
+    },
+    reactivateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 10,
+      gap: 8,
+      minHeight: 44,
+    },
+    reactivateButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 40,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 16,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      marginBottom: 20,
+    },
+    addFirstButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+      minHeight: 48,
+    },
+    addFirstButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    section: {
+      marginTop: 24,
+    },
+    inactiveHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      marginBottom: 12,
+      minHeight: 44,
+    },
+    inactiveTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalScrollContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    modalContent: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 16,
+      color: colors.text,
+    },
+    inputHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 6,
+    },
+    passwordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    passwordInputWrapper: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+    },
+    passwordInput: {
+      flex: 1,
+      padding: 14,
+      fontSize: 16,
+      color: colors.text,
+    },
+    passwordToggle: {
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+    },
+    generateButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gradePicker: {
+      flexGrow: 0,
+    },
+    gradeOption: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 8,
+      backgroundColor: colors.backgroundSecondary,
+      marginRight: 8,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    gradeOptionActive: {
+      backgroundColor: colors.primary,
+    },
+    gradeOptionText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    gradeOptionTextActive: {
+      color: colors.textInverse,
+    },
+    currencyInput: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+    },
+    currencySymbol: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginRight: 4,
+    },
+    currencyField: {
+      flex: 1,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: colors.text,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 8,
+    },
+    cancelButton: {
+      flex: 1,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    confirmButton: {
+      flex: 1,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    confirmButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textInverse,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+  });
+}

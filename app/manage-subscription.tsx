@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,11 +21,14 @@ import { useSubscriptionStatus, subscriptionKeys } from '../src/hooks/useSubscri
 import { useStudentManagement } from '../src/hooks/useStudentManagement';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/integrations/supabase/client';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type BillingInterval = 'month' | 'year';
 
 export default function ManageSubscriptionScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const queryClient = useQueryClient();
   const {
     subscription,
@@ -198,13 +201,13 @@ export default function ManageSubscriptionScreen() {
         </View>
         <View style={styles.summaryDetails}>
           <View style={styles.summaryRow}>
-            <Ionicons name="people-outline" size={18} color="#6B7280" />
+            <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.summaryText}>
               {activeStudents.length} of {studentLimit > 0 ? studentLimit : '--'} students
             </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+            <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.summaryText}>
               {status === 'trialing'
                 ? `Trial ends ${periodEndDate || '--'}`
@@ -212,7 +215,7 @@ export default function ManageSubscriptionScreen() {
             </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Ionicons name="card-outline" size={18} color="#6B7280" />
+            <Ionicons name="card-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.summaryText}>{currentPrice}</Text>
           </View>
         </View>
@@ -278,7 +281,7 @@ export default function ManageSubscriptionScreen() {
                     disabled={isPurchasing || isSwitching}
                   >
                     {isSwitching ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color={colors.textInverse} />
                     ) : (
                       <Text style={styles.switchButtonText}>Switch</Text>
                     )}
@@ -303,25 +306,25 @@ export default function ManageSubscriptionScreen() {
           <Text style={styles.debugTitle}>Debug Tools (Dev Only)</Text>
           <View style={styles.debugGrid}>
             <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#10B981' }]}
+              style={[styles.debugButton, { backgroundColor: colors.success }]}
               onPress={() => handleDebugSetStatus('active')}
             >
               <Text style={styles.debugButtonText}>Set Active</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#3B82F6' }]}
+              style={[styles.debugButton, { backgroundColor: colors.info }]}
               onPress={() => handleDebugSetStatus('trialing')}
             >
               <Text style={styles.debugButtonText}>Set Trialing</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#F97316' }]}
+              style={[styles.debugButton, { backgroundColor: colors.warning }]}
               onPress={() => handleDebugSetStatus('canceled')}
             >
               <Text style={styles.debugButtonText}>Set Canceled</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: '#EF4444' }]}
+              style={[styles.debugButton, { backgroundColor: colors.error }]}
               onPress={handleDebugDeleteSub}
             >
               <Text style={styles.debugButtonText}>Delete Sub</Text>
@@ -335,217 +338,223 @@ export default function ManageSubscriptionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  summaryPlanName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeActive: {
-    backgroundColor: '#D1FAE5',
-  },
-  badgeTrialing: {
-    backgroundColor: '#DBEAFE',
-  },
-  badgeInactive: {
-    backgroundColor: '#FEE2E2',
-  },
-  statusBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  summaryDetails: {
-    gap: 10,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  summaryText: {
-    fontSize: 15,
-    color: '#6B7280',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 16,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  toggleActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  toggleTextActive: {
-    color: '#4F46E5',
-  },
-  planRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  planRowCurrent: {
-    borderColor: '#4F46E5',
-    borderWidth: 2,
-    backgroundColor: '#FAFAFE',
-  },
-  planInfo: {
-    flex: 1,
-  },
-  planName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  planPrice: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 4,
-  },
-  planPeriod: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#6B7280',
-  },
-  planLimit: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  planAction: {
-    marginLeft: 12,
-  },
-  currentBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  currentBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  switchButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    minWidth: 80,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  switchButtonDisabled: {
-    opacity: 0.7,
-  },
-  switchButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginBottom: 24,
-  },
-  cancelButtonText: {
-    color: '#EF4444',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  debugSection: {
-    marginTop: 8,
-    backgroundColor: '#FFF7ED',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#FDBA74',
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#9A3412',
-    marginBottom: 12,
-  },
-  debugGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  debugButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  debugButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    scrollContent: {
+      padding: 16,
+    },
+    summaryCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    summaryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    summaryPlanName: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    statusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    badgeActive: {
+      backgroundColor: colors.success + '22',
+    },
+    badgeTrialing: {
+      backgroundColor: colors.info + '22',
+    },
+    badgeInactive: {
+      backgroundColor: colors.error + '22',
+    },
+    statusBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    summaryDetails: {
+      gap: 10,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    summaryText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 12,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.border,
+      borderRadius: 10,
+      padding: 4,
+      marginBottom: 16,
+    },
+    toggleButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    toggleActive: {
+      backgroundColor: colors.card,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    toggleText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    toggleTextActive: {
+      color: colors.primary,
+    },
+    planRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    planRowCurrent: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+      backgroundColor: colors.primaryLight,
+    },
+    planInfo: {
+      flex: 1,
+    },
+    planName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    planPrice: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 4,
+    },
+    planPeriod: {
+      fontSize: 14,
+      fontWeight: '400',
+      color: colors.textSecondary,
+    },
+    planLimit: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    planAction: {
+      marginLeft: 12,
+    },
+    currentBadge: {
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    currentBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    switchButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 8,
+      minWidth: 80,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    switchButtonDisabled: {
+      opacity: 0.7,
+    },
+    switchButtonText: {
+      color: colors.textInverse,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    cancelButton: {
+      alignItems: 'center',
+      paddingVertical: 14,
+      marginBottom: 24,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    cancelButtonText: {
+      color: colors.error,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    debugSection: {
+      marginTop: 8,
+      backgroundColor: colors.warning + '15',
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.warning + '66',
+    },
+    debugTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.warning,
+      marginBottom: 12,
+    },
+    debugGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    debugButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 8,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    debugButtonText: {
+      color: colors.textInverse,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+  });
+}

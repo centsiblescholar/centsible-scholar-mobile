@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { supabase } from '../src/integrations/supabase/client';
+import { useTheme, type ThemeColors } from '@/theme';
 
 const GRADE_LEVELS = [
   '7', '8', '9', '10', '11', '12',
@@ -23,6 +24,8 @@ const GRADE_LEVELS = [
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile, isLoading: profileLoading, refetch, isStudent } = useUserProfile();
 
   const [name, setName] = useState('');
@@ -109,7 +112,7 @@ export default function EditProfileScreen() {
   if (profileLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -129,6 +132,7 @@ export default function EditProfileScreen() {
               value={name}
               onChangeText={setName}
               placeholder="Enter your name"
+              placeholderTextColor={colors.textTertiary}
               autoCapitalize="words"
               autoCorrect={false}
             />
@@ -156,7 +160,7 @@ export default function EditProfileScreen() {
                   <Text style={gradeLevel ? styles.pickerText : styles.pickerPlaceholder}>
                     {gradeLevel ? `Grade ${gradeLevel}` : 'Select grade level'}
                   </Text>
-                  <Text style={styles.pickerChevron}>{showGradePicker ? '▲' : '▼'}</Text>
+                  <Text style={styles.pickerChevron}>{showGradePicker ? '\u25B2' : '\u25BC'}</Text>
                 </TouchableOpacity>
 
                 {showGradePicker && (
@@ -197,6 +201,7 @@ export default function EditProfileScreen() {
                     value={baseRewardAmount}
                     onChangeText={setBaseRewardAmount}
                     placeholder="0.00"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -212,7 +217,7 @@ export default function EditProfileScreen() {
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
@@ -232,146 +237,152 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-  },
-  fieldContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  readOnlyField: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  readOnlyText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  helpText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  pickerButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  pickerText: {
-    fontSize: 16,
-    color: '#111827',
-  },
-  pickerPlaceholder: {
-    fontSize: 16,
-    color: '#9CA3AF',
-  },
-  pickerChevron: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  gradePickerContainer: {
-    marginTop: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-  gradeOption: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  gradeOptionSelected: {
-    backgroundColor: '#EEF2FF',
-  },
-  gradeOptionText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  gradeOptionTextSelected: {
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-  currencyInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-  },
-  currencySymbol: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginRight: 4,
-  },
-  currencyInput: {
-    flex: 1,
-    padding: 16,
-    paddingLeft: 0,
-    fontSize: 16,
-    color: '#111827',
-  },
-  saveButton: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  cancelButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      padding: 16,
+    },
+    fieldContainer: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    readOnlyField: {
+      backgroundColor: colors.input,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    readOnlyText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    helpText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 4,
+    },
+    pickerButton: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pickerText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    pickerPlaceholder: {
+      fontSize: 16,
+      color: colors.textTertiary,
+    },
+    pickerChevron: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    gradePickerContainer: {
+      marginTop: 8,
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    gradeOption: {
+      padding: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.backgroundSecondary,
+    },
+    gradeOptionSelected: {
+      backgroundColor: colors.primaryLight,
+    },
+    gradeOptionText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    gradeOptionTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    currencyInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+    },
+    currencySymbol: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginRight: 4,
+    },
+    currencyInput: {
+      flex: 1,
+      padding: 16,
+      paddingLeft: 0,
+      fontSize: 16,
+      color: colors.text,
+    },
+    saveButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 12,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    saveButtonDisabled: {
+      opacity: 0.7,
+    },
+    saveButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    cancelButton: {
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 8,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    cancelButtonText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+    },
+  });
+}

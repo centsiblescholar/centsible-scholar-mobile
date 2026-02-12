@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
 import { useRevenueCatPurchase, useRestorePurchases } from '../src/hooks/useRevenueCatPurchase';
 import { useSubscriptionStatus } from '../src/hooks/useSubscriptionStatus';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type BillingInterval = 'month' | 'year';
 
@@ -27,11 +28,15 @@ function BillingToggle({
   billingInterval,
   onToggle,
   savingsPercent,
+  colors,
 }: {
   billingInterval: BillingInterval;
   onToggle: (interval: BillingInterval) => void;
   savingsPercent: number;
+  colors: ThemeColors;
 }) {
+  const toggleStyles = useMemo(() => createToggleStyles(colors), [colors]);
+
   return (
     <View style={toggleStyles.container}>
       <View style={toggleStyles.toggleRow}>
@@ -77,65 +82,20 @@ function BillingToggle({
   );
 }
 
-const toggleStyles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 4,
-  },
-  toggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    gap: 6,
-  },
-  toggleButtonActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  toggleTextActive: {
-    color: '#4F46E5',
-  },
-  savingsBadge: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  savingsText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
-
 function PlanCard({
   plan,
   billingInterval,
   isPurchasing,
   onPurchase,
+  colors,
 }: {
   plan: SubscriptionPlan;
   billingInterval: BillingInterval;
   isPurchasing: boolean;
   onPurchase: (plan: SubscriptionPlan) => void;
+  colors: ThemeColors;
 }) {
+  const cardStyles = useMemo(() => createCardStyles(colors), [colors]);
   const isPremium = plan.id === 'midsize';
   const price = billingInterval === 'month' ? plan.monthlyPrice : plan.annualPrice;
   const periodLabel = billingInterval === 'month' ? '/mo' : '/yr';
@@ -172,7 +132,7 @@ function PlanCard({
         disabled={isPurchasing}
       >
         {isPurchasing ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={colors.textInverse} />
         ) : (
           <Text style={cardStyles.ctaText}>Start Free Trial</Text>
         )}
@@ -181,106 +141,10 @@ function PlanCard({
   );
 }
 
-const cardStyles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  containerPremium: {
-    borderColor: '#4F46E5',
-    borderWidth: 2,
-    backgroundColor: '#FAFAFE',
-  },
-  badge: {
-    position: 'absolute',
-    top: -12,
-    alignSelf: 'center',
-    left: '50%',
-    marginLeft: -50,
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 12,
-    width: 100,
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 12,
-  },
-  price: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  period: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginLeft: 2,
-  },
-  annualSaving: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  studentLimit: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 8,
-  },
-  featureCount: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  ctaButton: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  ctaButtonDisabled: {
-    opacity: 0.7,
-  },
-  ctaText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
-
 export default function PaywallScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { purchase, isPurchasing, purchaseError } = useRevenueCatPurchase();
   const { restore, isRestoring } = useRestorePurchases();
   const { platform, isActive } = useSubscriptionStatus();
@@ -356,7 +220,7 @@ export default function PaywallScreen() {
       {(isPurchasing || isRestoring) && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#4F46E5" />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>
               {isRestoring ? 'Restoring...' : 'Processing...'}
             </Text>
@@ -373,7 +237,7 @@ export default function PaywallScreen() {
           onPress={handleDismiss}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="close" size={28} color="#374151" />
+          <Ionicons name="close" size={28} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -385,7 +249,7 @@ export default function PaywallScreen() {
         {/* Web subscriber guard */}
         {isActive === true && platform === 'stripe' ? (
           <View style={styles.webGuardContainer}>
-            <Ionicons name="information-circle-outline" size={48} color="#4F46E5" />
+            <Ionicons name="information-circle-outline" size={48} color={colors.primary} />
             <Text style={styles.webGuardTitle}>Already Subscribed via Web</Text>
             <Text style={styles.webGuardMessage}>
               Your subscription is managed through the website. To change your plan, please visit
@@ -402,6 +266,7 @@ export default function PaywallScreen() {
               billingInterval={billingInterval}
               onToggle={setBillingInterval}
               savingsPercent={savingsPercent}
+              colors={colors}
             />
 
             {/* Plan Cards */}
@@ -412,6 +277,7 @@ export default function PaywallScreen() {
                 billingInterval={billingInterval}
                 isPurchasing={purchasingPlanId === plan.id}
                 onPurchase={handlePurchase}
+                colors={colors}
               />
             ))}
 
@@ -453,113 +319,265 @@ export default function PaywallScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerSpacer: {
-    width: 44,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    flex: 1,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  trialDisclosure: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 16,
-    lineHeight: 18,
-    paddingHorizontal: 8,
-  },
-  restoreButton: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  restoreText: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-  legalText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 18,
-    paddingHorizontal: 16,
-  },
-  legalLink: {
-    color: '#4F46E5',
-    textDecorationLine: 'underline',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 999,
-  },
-  loadingBox: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  webGuardContainer: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  webGuardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  webGuardMessage: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-});
+function createToggleStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      marginBottom: 20,
+      alignItems: 'center',
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.border,
+      borderRadius: 12,
+      padding: 4,
+    },
+    toggleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+      borderRadius: 10,
+      gap: 6,
+    },
+    toggleButtonActive: {
+      backgroundColor: colors.card,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    toggleText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    toggleTextActive: {
+      color: colors.primary,
+    },
+    savingsBadge: {
+      backgroundColor: colors.success,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    savingsText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textInverse,
+    },
+  });
+}
+
+function createCardStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    containerPremium: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+      backgroundColor: colors.primaryLight,
+    },
+    badge: {
+      position: 'absolute',
+      top: -12,
+      alignSelf: 'center',
+      left: '50%',
+      marginLeft: -50,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      borderRadius: 12,
+      width: 100,
+      alignItems: 'center',
+    },
+    badgeText: {
+      color: colors.textInverse,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    name: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 4,
+    },
+    description: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginTop: 12,
+    },
+    price: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    period: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginLeft: 2,
+    },
+    annualSaving: {
+      fontSize: 12,
+      color: colors.success,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    studentLimit: {
+      fontSize: 14,
+      color: colors.text,
+      marginTop: 8,
+    },
+    featureCount: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    ctaButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 16,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    ctaButtonDisabled: {
+      opacity: 0.7,
+    },
+    ctaText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+}
+
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    headerSpacer: {
+      width: 44,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      flex: 1,
+    },
+    closeButton: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    trialDisclosure: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      textAlign: 'center',
+      marginTop: 4,
+      marginBottom: 16,
+      lineHeight: 18,
+      paddingHorizontal: 8,
+    },
+    restoreButton: {
+      alignItems: 'center',
+      paddingVertical: 12,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    restoreText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+    legalText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      textAlign: 'center',
+      marginTop: 8,
+      lineHeight: 18,
+      paddingHorizontal: 16,
+    },
+    legalLink: {
+      color: colors.primary,
+      textDecorationLine: 'underline',
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 999,
+    },
+    loadingBox: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 32,
+      alignItems: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    webGuardContainer: {
+      alignItems: 'center',
+      paddingVertical: 48,
+      paddingHorizontal: 24,
+      gap: 12,
+    },
+    webGuardTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    webGuardMessage: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+  });
+}

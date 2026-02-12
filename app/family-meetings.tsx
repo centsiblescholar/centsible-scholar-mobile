@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,14 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { useFamilyMeetings, FamilyMeeting } from '../src/hooks/useFamilyMeetings';
 import { useNotifications } from '../src/hooks/useNotifications';
+import { useTheme, type ThemeColors } from '@/theme';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function FamilyMeetingsScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isParent } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -169,7 +172,7 @@ export default function FamilyMeetingsScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -208,7 +211,7 @@ export default function FamilyMeetingsScreen() {
           {nextMeeting ? (
             <View style={styles.nextMeetingCard}>
               <View style={styles.nextMeetingHeader}>
-                <Ionicons name="calendar" size={32} color="#4F46E5" />
+                <Ionicons name="calendar" size={32} color={colors.primary} />
                 <View style={styles.nextMeetingInfo}>
                   <Text style={styles.nextMeetingDate}>
                     {formatDate(nextMeeting.scheduledDate)}
@@ -226,7 +229,7 @@ export default function FamilyMeetingsScreen() {
                   style={styles.completeButton}
                   onPress={() => handleCompleteMeeting(nextMeeting)}
                 >
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                  <Ionicons name="checkmark-circle" size={18} color={colors.textInverse} />
                   <Text style={styles.completeButtonText}>Complete</Text>
                 </TouchableOpacity>
                 {!isParent && (
@@ -237,7 +240,7 @@ export default function FamilyMeetingsScreen() {
                       setShowAssessmentModal(true);
                     }}
                   >
-                    <Ionicons name="clipboard" size={18} color="#4F46E5" />
+                    <Ionicons name="clipboard" size={18} color={colors.primary} />
                     <Text style={styles.assessButtonText}>Self-Assess</Text>
                   </TouchableOpacity>
                 )}
@@ -245,7 +248,7 @@ export default function FamilyMeetingsScreen() {
             </View>
           ) : (
             <View style={styles.emptyCard}>
-              <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
+              <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyText}>No upcoming meetings</Text>
               <TouchableOpacity
                 style={styles.scheduleButton}
@@ -263,7 +266,7 @@ export default function FamilyMeetingsScreen() {
             style={styles.addMeetingButton}
             onPress={() => setShowScheduleModal(true)}
           >
-            <Ionicons name="add-circle-outline" size={20} color="#fff" />
+            <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
             <Text style={styles.addMeetingButtonText}>Schedule New Meeting</Text>
           </TouchableOpacity>
         )}
@@ -284,6 +287,8 @@ export default function FamilyMeetingsScreen() {
                     setShowAssessmentModal(true);
                   }}
                   isParent={isParent}
+                  colors={colors}
+                  styles={styles}
                 />
               ))}
             </View>
@@ -300,12 +305,14 @@ export default function FamilyMeetingsScreen() {
                   key={meeting.id}
                   meeting={meeting}
                   assessments={getAssessmentsForMeeting(meeting.id)}
+                  colors={colors}
+                  styles={styles}
                 />
               ))}
             </View>
           ) : (
             <View style={styles.emptyCard}>
-              <Ionicons name="time-outline" size={48} color="#9CA3AF" />
+              <Ionicons name="time-outline" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyText}>No meeting history yet</Text>
             </View>
           )}
@@ -366,6 +373,7 @@ export default function FamilyMeetingsScreen() {
                 value={notes}
                 onChangeText={setNotes}
                 placeholder="Add any notes or agenda items..."
+                placeholderTextColor={colors.textTertiary}
                 multiline
                 numberOfLines={3}
               />
@@ -406,21 +414,9 @@ export default function FamilyMeetingsScreen() {
               Rate your meeting participation
             </Text>
 
-            <RatingInput
-              label="Participation"
-              value={participation}
-              onChange={setParticipation}
-            />
-            <RatingInput
-              label="Goal Progress"
-              value={goalProgress}
-              onChange={setGoalProgress}
-            />
-            <RatingInput
-              label="Communication"
-              value={communication}
-              onChange={setCommunication}
-            />
+            <RatingInput label="Participation" value={participation} onChange={setParticipation} colors={colors} styles={styles} />
+            <RatingInput label="Goal Progress" value={goalProgress} onChange={setGoalProgress} colors={colors} styles={styles} />
+            <RatingInput label="Communication" value={communication} onChange={setCommunication} colors={colors} styles={styles} />
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Notes (optional)</Text>
@@ -429,6 +425,7 @@ export default function FamilyMeetingsScreen() {
                 value={assessmentNotes}
                 onChangeText={setAssessmentNotes}
                 placeholder="How did the meeting go?"
+                placeholderTextColor={colors.textTertiary}
                 multiline
                 numberOfLines={2}
               />
@@ -459,15 +456,7 @@ export default function FamilyMeetingsScreen() {
 }
 
 // Rating Input Component
-function RatingInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
+function RatingInput({ label, value, onChange, colors, styles }: { label: string; value: number; onChange: (value: number) => void; colors: ThemeColors; styles: any }) {
   return (
     <View style={styles.ratingContainer}>
       <Text style={styles.ratingLabel}>{label}</Text>
@@ -475,18 +464,10 @@ function RatingInput({
         {[1, 2, 3, 4, 5].map((rating) => (
           <TouchableOpacity
             key={rating}
-            style={[
-              styles.ratingButton,
-              value === rating && styles.ratingButtonActive,
-            ]}
+            style={[styles.ratingButton, value === rating && styles.ratingButtonActive]}
             onPress={() => onChange(rating)}
           >
-            <Text
-              style={[
-                styles.ratingButtonText,
-                value === rating && styles.ratingButtonTextActive,
-              ]}
-            >
+            <Text style={[styles.ratingButtonText, value === rating && styles.ratingButtonTextActive]}>
               {rating}
             </Text>
           </TouchableOpacity>
@@ -497,41 +478,25 @@ function RatingInput({
 }
 
 // Meeting Item Component
-function MeetingItem({
-  meeting,
-  onComplete,
-  onCancel,
-  onAssess,
-  isParent,
-}: {
-  meeting: FamilyMeeting;
-  onComplete: () => void;
-  onCancel: () => void;
-  onAssess: () => void;
-  isParent: boolean;
-}) {
+function MeetingItem({ meeting, onComplete, onCancel, onAssess, isParent, colors, styles }: { meeting: FamilyMeeting; onComplete: () => void; onCancel: () => void; onAssess: () => void; isParent: boolean; colors: ThemeColors; styles: any }) {
   return (
     <View style={styles.meetingItem}>
       <View style={styles.meetingItemHeader}>
         <View>
-          <Text style={styles.meetingItemDate}>
-            {format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}
-          </Text>
-          <Text style={styles.meetingItemTime}>
-            {format(parseISO(meeting.scheduledDate), 'h:mm a')}
-          </Text>
+          <Text style={styles.meetingItemDate}>{format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}</Text>
+          <Text style={styles.meetingItemTime}>{format(parseISO(meeting.scheduledDate), 'h:mm a')}</Text>
         </View>
         <View style={styles.meetingItemActions}>
           <TouchableOpacity onPress={onComplete} style={styles.iconButton}>
-            <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
+            <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
           </TouchableOpacity>
           {!isParent && (
             <TouchableOpacity onPress={onAssess} style={styles.iconButton}>
-              <Ionicons name="clipboard-outline" size={24} color="#4F46E5" />
+              <Ionicons name="clipboard-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={onCancel} style={styles.iconButton}>
-            <Ionicons name="close-circle-outline" size={24} color="#EF4444" />
+            <Ionicons name="close-circle-outline" size={24} color={colors.error} />
           </TouchableOpacity>
         </View>
       </View>
@@ -541,42 +506,24 @@ function MeetingItem({
 }
 
 // Meeting History Item Component
-function MeetingHistoryItem({
-  meeting,
-  assessments,
-}: {
-  meeting: FamilyMeeting;
-  assessments: any[];
-}) {
+function MeetingHistoryItem({ meeting, assessments, colors, styles }: { meeting: FamilyMeeting; assessments: any[]; colors: ThemeColors; styles: any }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <TouchableOpacity
-      style={styles.historyItem}
-      onPress={() => setExpanded(!expanded)}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.historyItem} onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
       <View style={styles.historyItemHeader}>
         <View style={styles.historyItemInfo}>
           <View style={styles.completedBadge}>
-            <Ionicons name="checkmark" size={12} color="#10B981" />
+            <Ionicons name="checkmark" size={12} color={colors.success} />
           </View>
           <View>
-            <Text style={styles.historyItemDate}>
-              {format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}
-            </Text>
+            <Text style={styles.historyItemDate}>{format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}</Text>
             {meeting.attendees && meeting.attendees.length > 0 && (
-              <Text style={styles.attendeesText}>
-                {meeting.attendees.length} attendee(s)
-              </Text>
+              <Text style={styles.attendeesText}>{meeting.attendees.length} attendee(s)</Text>
             )}
           </View>
         </View>
-        <Ionicons
-          name={expanded ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color="#6B7280"
-        />
+        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
       </View>
 
       {expanded && (
@@ -593,9 +540,7 @@ function MeetingHistoryItem({
               {assessments.map((assessment, index) => (
                 <View key={index} style={styles.assessmentItem}>
                   <Text style={styles.assessmentName}>{assessment.studentName}</Text>
-                  <Text style={styles.assessmentScore}>
-                    Overall: {assessment.ratings.overall.toFixed(1)}/5
-                  </Text>
+                  <Text style={styles.assessmentScore}>Overall: {assessment.ratings.overall.toFixed(1)}/5</Text>
                 </View>
               ))}
             </View>
@@ -606,422 +551,81 @@ function MeetingHistoryItem({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  content: {
-    padding: 16,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  nextMeetingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  nextMeetingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  nextMeetingInfo: {
-    marginLeft: 16,
-  },
-  nextMeetingDate: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  nextMeetingTime: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  meetingNotes: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-    fontStyle: 'italic',
-  },
-  nextMeetingActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  completeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10B981',
-    padding: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  completeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  assessButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
-    padding: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  assessButtonText: {
-    color: '#4F46E5',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  scheduleButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  scheduleButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  addMeetingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    gap: 8,
-  },
-  addMeetingButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  meetingsList: {
-    gap: 12,
-  },
-  meetingItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  meetingItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  meetingItemDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  meetingItemTime: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  meetingItemActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 4,
-  },
-  meetingItemNotes: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 12,
-    fontStyle: 'italic',
-  },
-  historyItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  historyItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  historyItemInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  completedBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#D1FAE5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyItemDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  attendeesText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  historyDetails: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  detailSection: {
-    marginBottom: 12,
-  },
-  detailLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#111827',
-  },
-  assessmentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  assessmentName: {
-    fontSize: 14,
-    color: '#111827',
-  },
-  assessmentScore: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: screenWidth - 48,
-    maxWidth: 400,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  datePresets: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  datePreset: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  datePresetActive: {
-    backgroundColor: '#4F46E5',
-  },
-  datePresetText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  datePresetTextActive: {
-    color: '#fff',
-  },
-  selectedDateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  ratingContainer: {
-    marginBottom: 20,
-  },
-  ratingLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  ratingButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  ratingButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-  },
-  ratingButtonActive: {
-    backgroundColor: '#4F46E5',
-  },
-  ratingButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  ratingButtonTextActive: {
-    color: '#fff',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  confirmButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.backgroundSecondary },
+    content: { padding: 16 },
+    statsRow: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+    statItem: { flex: 1, alignItems: 'center' },
+    statDivider: { width: 1, backgroundColor: colors.border },
+    statValue: { fontSize: 24, fontWeight: '700', color: colors.text },
+    statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+    section: { marginBottom: 24 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 12 },
+    nextMeetingCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+    nextMeetingHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    nextMeetingInfo: { marginLeft: 16 },
+    nextMeetingDate: { fontSize: 20, fontWeight: '700', color: colors.text },
+    nextMeetingTime: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    meetingNotes: { fontSize: 14, color: colors.textSecondary, marginBottom: 16, fontStyle: 'italic' },
+    nextMeetingActions: { flexDirection: 'row', gap: 12 },
+    completeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success, padding: 12, borderRadius: 10, gap: 8, minHeight: 44 },
+    completeButtonText: { color: colors.textInverse, fontSize: 14, fontWeight: '600' },
+    assessButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight, padding: 12, borderRadius: 10, gap: 8, minHeight: 44 },
+    assessButtonText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+    emptyCard: { backgroundColor: colors.card, borderRadius: 16, padding: 32, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+    emptyText: { fontSize: 16, color: colors.textSecondary, marginTop: 12, marginBottom: 16 },
+    scheduleButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, minHeight: 44, justifyContent: 'center' },
+    scheduleButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
+    addMeetingButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, padding: 16, borderRadius: 12, marginBottom: 24, gap: 8, minHeight: 48 },
+    addMeetingButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
+    meetingsList: { gap: 12 },
+    meetingItem: { backgroundColor: colors.card, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+    meetingItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    meetingItemDate: { fontSize: 16, fontWeight: '600', color: colors.text },
+    meetingItemTime: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+    meetingItemActions: { flexDirection: 'row', gap: 8 },
+    iconButton: { padding: 4, minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+    meetingItemNotes: { fontSize: 14, color: colors.textSecondary, marginTop: 12, fontStyle: 'italic' },
+    historyItem: { backgroundColor: colors.card, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+    historyItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    historyItemInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    completedBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.success + '22', alignItems: 'center', justifyContent: 'center' },
+    historyItemDate: { fontSize: 16, fontWeight: '600', color: colors.text },
+    attendeesText: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    historyDetails: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
+    detailSection: { marginBottom: 12 },
+    detailLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 4 },
+    detailText: { fontSize: 14, color: colors.text },
+    assessmentItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.backgroundSecondary },
+    assessmentName: { fontSize: 14, color: colors.text },
+    assessmentScore: { fontSize: 14, fontWeight: '600', color: colors.primary },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { backgroundColor: colors.card, borderRadius: 16, padding: 24, width: screenWidth - 48, maxWidth: 400, maxHeight: '80%' },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8, marginBottom: 24 },
+    inputContainer: { marginBottom: 16 },
+    inputLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 },
+    input: { backgroundColor: colors.input, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 12, padding: 14, fontSize: 16, color: colors.text },
+    textArea: { minHeight: 80, textAlignVertical: 'top' },
+    datePresets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    datePreset: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.backgroundSecondary, minHeight: 44, justifyContent: 'center' },
+    datePresetActive: { backgroundColor: colors.primary },
+    datePresetText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    datePresetTextActive: { color: colors.textInverse },
+    selectedDateText: { fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'center', marginBottom: 24 },
+    ratingContainer: { marginBottom: 20 },
+    ratingLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 },
+    ratingButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    ratingButton: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.backgroundSecondary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+    ratingButtonActive: { backgroundColor: colors.primary },
+    ratingButtonText: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
+    ratingButtonTextActive: { color: colors.textInverse },
+    modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    cancelButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: colors.backgroundSecondary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+    cancelButtonText: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
+    confirmButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+    confirmButtonText: { fontSize: 16, fontWeight: '600', color: colors.textInverse },
+  });
+}

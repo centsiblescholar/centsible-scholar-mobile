@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import { format, parseISO } from 'date-fns';
 import { useGradeApproval, PendingGrade } from '../src/hooks/useGradeApproval';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import {
-  colors,
   spacing,
   textStyles,
   borderRadius,
@@ -27,11 +26,15 @@ import {
   tints,
   layout,
   sizing,
+  useTheme,
+  type ThemeColors,
 } from '../src/theme';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function GradeApprovalScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isParent } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -266,6 +269,8 @@ export default function GradeApprovalScreen() {
                       formatDate={formatDate}
                       formatCurrency={formatCurrency}
                       getGradeColor={getGradeColor}
+                      colors={colors}
+                      styles={styles}
                     />
                   ))}
                 </View>
@@ -290,6 +295,8 @@ export default function GradeApprovalScreen() {
                   formatDate={formatDate}
                   formatCurrency={formatCurrency}
                   getGradeColor={getGradeColor}
+                  colors={colors}
+                  styles={styles}
                 />
               ))
             ) : (
@@ -387,6 +394,8 @@ function GradeCard({
   formatDate,
   formatCurrency,
   getGradeColor,
+  colors,
+  styles,
 }: {
   grade: PendingGrade;
   onApprove: () => void;
@@ -395,6 +404,8 @@ function GradeCard({
   formatDate: (date: string) => string;
   formatCurrency: (amount: number) => string;
   getGradeColor: (grade: string) => string;
+  colors: ThemeColors;
+  styles: any;
 }) {
   return (
     <View style={styles.gradeCard}>
@@ -442,11 +453,15 @@ function HistoryCard({
   formatDate,
   formatCurrency,
   getGradeColor,
+  colors,
+  styles,
 }: {
   grade: PendingGrade;
   formatDate: (date: string) => string;
   formatCurrency: (amount: number) => string;
   getGradeColor: (grade: string) => string;
+  colors: ThemeColors;
+  styles: any;
 }) {
   const isApproved = grade.status === 'approved';
 
@@ -496,404 +511,417 @@ function HistoryCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-  },
-  accessDenied: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing[8],
-  },
-  accessDeniedTitle: {
-    ...textStyles.h3,
-    color: colors.text,
-    marginTop: spacing[4],
-  },
-  accessDeniedText: {
-    ...textStyles.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-  },
-  backButton: {
-    marginTop: spacing[6],
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-  },
-  backButtonText: {
-    ...textStyles.button,
-    color: colors.textInverse,
-  },
-  content: {
-    padding: layout.screenPaddingHorizontal,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing[5],
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[2],
-  },
-  statValue: {
-    ...textStyles.metric,
-  },
-  statLabel: {
-    ...textStyles.caption,
-    color: colors.textSecondary,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing[1],
-    marginBottom: spacing[5],
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    ...textStyles.label,
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: colors.textInverse,
-  },
-  bulkApproveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.success,
-    padding: spacing[3.5],
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing[5],
-    gap: spacing[2],
-  },
-  bulkApproveText: {
-    ...textStyles.button,
-    color: colors.textInverse,
-  },
-  studentSection: {
-    marginBottom: spacing[6],
-  },
-  studentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-  },
-  studentAvatar: {
-    width: sizing.avatarMd,
-    height: sizing.avatarMd,
-    borderRadius: sizing.avatarMd / 2,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  studentInitial: {
-    ...textStyles.h4,
-    color: colors.textInverse,
-  },
-  studentName: {
-    ...textStyles.h4,
-    color: colors.text,
-    marginLeft: spacing[3],
-    flex: 1,
-  },
-  pendingBadge: {
-    backgroundColor: tints.amber,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.lg,
-  },
-  pendingBadgeText: {
-    ...textStyles.caption,
-    fontWeight: '600',
-    color: colors.warning,
-  },
-  gradeCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: layout.cardPadding,
-    marginBottom: spacing[3],
-    ...shadows.sm,
-  },
-  gradeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing[3],
-  },
-  gradeInfo: {},
-  gradeSubject: {
-    ...textStyles.body,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  gradeDate: {
-    ...textStyles.caption,
-    color: colors.textSecondary,
-    marginTop: spacing[0.5],
-  },
-  gradeBadge: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1.5],
-    borderRadius: borderRadius.md,
-  },
-  gradeBadgeText: {
-    ...textStyles.body,
-    fontWeight: '700',
-    color: colors.textInverse,
-  },
-  gradeBadgeSmall: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.sm,
-  },
-  gradeBadgeTextSmall: {
-    ...textStyles.label,
-    fontWeight: '700',
-    color: colors.textInverse,
-  },
-  gradeDetails: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing[3],
-    marginBottom: spacing[3],
-  },
-  gradeReward: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-  },
-  gradeActions: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  approveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.success,
-    padding: spacing[3],
-    borderRadius: borderRadius.md,
-    gap: spacing[1.5],
-  },
-  approveButtonText: {
-    ...textStyles.label,
-    color: colors.textInverse,
-  },
-  rejectCardButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tints.red,
-    padding: spacing[3],
-    borderRadius: borderRadius.md,
-    gap: spacing[1.5],
-  },
-  rejectCardButtonText: {
-    ...textStyles.label,
-    color: colors.error,
-  },
-  emptyCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.xl,
-    padding: spacing[10],
-    alignItems: 'center',
-    ...shadows.md,
-  },
-  emptyTitle: {
-    ...textStyles.h3,
-    color: colors.text,
-    marginTop: spacing[4],
-  },
-  emptyText: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-  },
-  historyList: {
-    gap: spacing[3],
-  },
-  historyCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: layout.cardPadding,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success,
-  },
-  rejectedCard: {
-    borderLeftColor: colors.error,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  historyInfo: {},
-  historyStudent: {
-    ...textStyles.bodySmall,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  historySubject: {
-    ...textStyles.body,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: spacing[0.5],
-  },
-  historyRight: {
-    alignItems: 'flex-end',
-    gap: spacing[2],
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.sm,
-    gap: spacing[1],
-  },
-  approvedBadge: {
-    backgroundColor: tints.green,
-  },
-  rejectedBadge: {
-    backgroundColor: tints.red,
-  },
-  statusBadgeText: {
-    ...textStyles.caption,
-    fontWeight: '600',
-  },
-  approvedText: {
-    color: colors.success,
-  },
-  rejectedText: {
-    color: colors.error,
-  },
-  notesSection: {
-    marginTop: spacing[3],
-    paddingTop: spacing[3],
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  notesLabel: {
-    ...textStyles.caption,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing[1],
-  },
-  notesText: {
-    ...textStyles.bodySmall,
-    color: colors.text,
-    fontStyle: 'italic',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.xl,
-    padding: layout.modalPadding,
-    width: screenWidth - 48,
-    maxWidth: 400,
-  },
-  modalTitle: {
-    ...textStyles.h3,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing[4],
-  },
-  gradePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[3],
-    marginBottom: spacing[5],
-  },
-  gradePreviewSubject: {
-    ...textStyles.body,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  inputContainer: {
-    marginBottom: spacing[5],
-  },
-  inputLabel: {
-    ...textStyles.label,
-    color: colors.text,
-    marginBottom: spacing[2],
-  },
-  input: {
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: borderRadius.lg,
-    padding: spacing[3.5],
-    ...textStyles.body,
-    color: colors.text,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  cancelButton: {
-    flex: 1,
-    padding: spacing[3.5],
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.backgroundSecondary,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    ...textStyles.button,
-    color: colors.textSecondary,
-  },
-  rejectButton: {
-    flex: 1,
-    padding: spacing[3.5],
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.error,
-    alignItems: 'center',
-  },
-  rejectButtonText: {
-    ...textStyles.button,
-    color: colors.textInverse,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+    },
+    accessDenied: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+      padding: spacing[8],
+    },
+    accessDeniedTitle: {
+      ...textStyles.h3,
+      color: colors.text,
+      marginTop: spacing[4],
+    },
+    accessDeniedText: {
+      ...textStyles.body,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+    },
+    backButton: {
+      marginTop: spacing[6],
+      paddingHorizontal: spacing[6],
+      paddingVertical: spacing[3],
+      backgroundColor: colors.primary,
+      borderRadius: borderRadius.lg,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    backButtonText: {
+      ...textStyles.button,
+      color: colors.textInverse,
+    },
+    content: {
+      padding: layout.screenPaddingHorizontal,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginBottom: spacing[5],
+    },
+    statItem: {
+      alignItems: 'center',
+    },
+    statBadge: {
+      width: 56,
+      height: 56,
+      borderRadius: borderRadius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing[2],
+    },
+    statValue: {
+      ...textStyles.metric,
+    },
+    statLabel: {
+      ...textStyles.caption,
+      color: colors.textSecondary,
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderRadius: borderRadius.lg,
+      padding: spacing[1],
+      marginBottom: spacing[5],
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: spacing[3],
+      alignItems: 'center',
+      borderRadius: borderRadius.md,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    tabActive: {
+      backgroundColor: colors.primary,
+    },
+    tabText: {
+      ...textStyles.label,
+      color: colors.textSecondary,
+    },
+    tabTextActive: {
+      color: colors.textInverse,
+    },
+    bulkApproveButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.success,
+      padding: spacing[3.5],
+      borderRadius: borderRadius.lg,
+      marginBottom: spacing[5],
+      gap: spacing[2],
+      minHeight: 48,
+    },
+    bulkApproveText: {
+      ...textStyles.button,
+      color: colors.textInverse,
+    },
+    studentSection: {
+      marginBottom: spacing[6],
+    },
+    studentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing[3],
+    },
+    studentAvatar: {
+      width: sizing.avatarMd,
+      height: sizing.avatarMd,
+      borderRadius: sizing.avatarMd / 2,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    studentInitial: {
+      ...textStyles.h4,
+      color: colors.textInverse,
+    },
+    studentName: {
+      ...textStyles.h4,
+      color: colors.text,
+      marginLeft: spacing[3],
+      flex: 1,
+    },
+    pendingBadge: {
+      backgroundColor: tints.amber,
+      paddingHorizontal: spacing[2.5],
+      paddingVertical: spacing[1],
+      borderRadius: borderRadius.lg,
+    },
+    pendingBadgeText: {
+      ...textStyles.caption,
+      fontWeight: '600',
+      color: colors.warning,
+    },
+    gradeCard: {
+      backgroundColor: colors.card,
+      borderRadius: borderRadius.lg,
+      padding: layout.cardPadding,
+      marginBottom: spacing[3],
+      ...shadows.sm,
+    },
+    gradeHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: spacing[3],
+    },
+    gradeInfo: {},
+    gradeSubject: {
+      ...textStyles.body,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    gradeDate: {
+      ...textStyles.caption,
+      color: colors.textSecondary,
+      marginTop: spacing[0.5],
+    },
+    gradeBadge: {
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[1.5],
+      borderRadius: borderRadius.md,
+    },
+    gradeBadgeText: {
+      ...textStyles.body,
+      fontWeight: '700',
+      color: colors.textInverse,
+    },
+    gradeBadgeSmall: {
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
+      borderRadius: borderRadius.sm,
+    },
+    gradeBadgeTextSmall: {
+      ...textStyles.label,
+      fontWeight: '700',
+      color: colors.textInverse,
+    },
+    gradeDetails: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: spacing[3],
+      marginBottom: spacing[3],
+    },
+    gradeReward: {
+      ...textStyles.bodySmall,
+      color: colors.textSecondary,
+    },
+    gradeActions: {
+      flexDirection: 'row',
+      gap: spacing[3],
+    },
+    approveButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.success,
+      padding: spacing[3],
+      borderRadius: borderRadius.md,
+      gap: spacing[1.5],
+      minHeight: 44,
+    },
+    approveButtonText: {
+      ...textStyles.label,
+      color: colors.textInverse,
+    },
+    rejectCardButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: tints.red,
+      padding: spacing[3],
+      borderRadius: borderRadius.md,
+      gap: spacing[1.5],
+      minHeight: 44,
+    },
+    rejectCardButtonText: {
+      ...textStyles.label,
+      color: colors.error,
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: borderRadius.xl,
+      padding: spacing[10],
+      alignItems: 'center',
+      ...shadows.md,
+    },
+    emptyTitle: {
+      ...textStyles.h3,
+      color: colors.text,
+      marginTop: spacing[4],
+    },
+    emptyText: {
+      ...textStyles.bodySmall,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+    },
+    historyList: {
+      gap: spacing[3],
+    },
+    historyCard: {
+      backgroundColor: colors.card,
+      borderRadius: borderRadius.lg,
+      padding: layout.cardPadding,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.success,
+    },
+    rejectedCard: {
+      borderLeftColor: colors.error,
+    },
+    historyHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    historyInfo: {},
+    historyStudent: {
+      ...textStyles.bodySmall,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    historySubject: {
+      ...textStyles.body,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: spacing[0.5],
+    },
+    historyRight: {
+      alignItems: 'flex-end',
+      gap: spacing[2],
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
+      borderRadius: borderRadius.sm,
+      gap: spacing[1],
+    },
+    approvedBadge: {
+      backgroundColor: tints.green,
+    },
+    rejectedBadge: {
+      backgroundColor: tints.red,
+    },
+    statusBadgeText: {
+      ...textStyles.caption,
+      fontWeight: '600',
+    },
+    approvedText: {
+      color: colors.success,
+    },
+    rejectedText: {
+      color: colors.error,
+    },
+    notesSection: {
+      marginTop: spacing[3],
+      paddingTop: spacing[3],
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    notesLabel: {
+      ...textStyles.caption,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: spacing[1],
+    },
+    notesText: {
+      ...textStyles.bodySmall,
+      color: colors.text,
+      fontStyle: 'italic',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.card,
+      borderRadius: borderRadius.xl,
+      padding: layout.modalPadding,
+      width: screenWidth - 48,
+      maxWidth: 400,
+    },
+    modalTitle: {
+      ...textStyles.h3,
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: spacing[4],
+    },
+    gradePreview: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing[3],
+      marginBottom: spacing[5],
+    },
+    gradePreviewSubject: {
+      ...textStyles.body,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    inputContainer: {
+      marginBottom: spacing[5],
+    },
+    inputLabel: {
+      ...textStyles.label,
+      color: colors.text,
+      marginBottom: spacing[2],
+    },
+    input: {
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: borderRadius.lg,
+      padding: spacing[3.5],
+      ...textStyles.body,
+      color: colors.text,
+    },
+    textArea: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: spacing[3],
+    },
+    cancelButton: {
+      flex: 1,
+      padding: spacing[3.5],
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    cancelButtonText: {
+      ...textStyles.button,
+      color: colors.textSecondary,
+    },
+    rejectButton: {
+      flex: 1,
+      padding: spacing[3.5],
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.error,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    rejectButtonText: {
+      ...textStyles.button,
+      color: colors.textInverse,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+  });
+}

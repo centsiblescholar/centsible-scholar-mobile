@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,11 +19,14 @@ import { useStudent } from '../src/contexts/StudentContext';
 import { useTermTracking, TermSnapshot } from '../src/hooks/useTermTracking';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { LineChart } from 'react-native-chart-kit';
+import { useTheme, type ThemeColors } from '@/theme';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function TermTrackingScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isParent } = useUserProfile();
   const { selectedStudent } = useStudent();
   const [refreshing, setRefreshing] = useState(false);
@@ -72,7 +75,7 @@ export default function TermTrackingScreen() {
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -161,7 +164,7 @@ export default function TermTrackingScreen() {
                   style={styles.newTermButton}
                   onPress={() => setShowSetupModal(true)}
                 >
-                  <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                  <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
                   <Text style={styles.newTermButtonText}>Start New Term</Text>
                 </TouchableOpacity>
               )}
@@ -169,7 +172,7 @@ export default function TermTrackingScreen() {
           ) : (
             <View style={styles.card}>
               <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
                 <Text style={styles.emptyStateTitle}>No Term Set Up</Text>
                 <Text style={styles.emptyStateText}>
                   Set up your first term to start tracking your progress.
@@ -191,28 +194,28 @@ export default function TermTrackingScreen() {
             <Text style={styles.sectionTitle}>All-Time Stats</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Ionicons name="wallet" size={24} color="#10B981" />
+                <Ionicons name="wallet" size={24} color={colors.success} />
                 <Text style={styles.statValue}>
                   {formatCurrency(cumulativeStats.totalEarnings)}
                 </Text>
                 <Text style={styles.statLabel}>Total Earnings</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="school" size={24} color="#4F46E5" />
+                <Ionicons name="school" size={24} color={colors.primary} />
                 <Text style={styles.statValue}>
                   {cumulativeStats.overallAverageGPA?.toFixed(2) || 'N/A'}
                 </Text>
                 <Text style={styles.statLabel}>Avg GPA</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="ribbon" size={24} color="#F59E0B" />
+                <Ionicons name="ribbon" size={24} color={colors.warning} />
                 <Text style={styles.statValue}>
                   {formatCurrency(cumulativeStats.gradeEarnings)}
                 </Text>
                 <Text style={styles.statLabel}>Grade Earnings</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="star" size={24} color="#EC4899" />
+                <Ionicons name="star" size={24} color={colors.error} />
                 <Text style={styles.statValue}>
                   {formatCurrency(cumulativeStats.behaviorEarnings)}
                 </Text>
@@ -242,9 +245,9 @@ export default function TermTrackingScreen() {
                 yAxisSuffix=""
                 yAxisInterval={1}
                 chartConfig={{
-                  backgroundColor: '#fff',
-                  backgroundGradientFrom: '#fff',
-                  backgroundGradientTo: '#fff',
+                  backgroundColor: colors.card,
+                  backgroundGradientFrom: colors.card,
+                  backgroundGradientTo: colors.card,
                   decimalPlaces: 2,
                   color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
@@ -254,7 +257,7 @@ export default function TermTrackingScreen() {
                   propsForDots: {
                     r: '6',
                     strokeWidth: '2',
-                    stroke: '#4F46E5',
+                    stroke: colors.primary,
                   },
                 }}
                 bezier
@@ -270,13 +273,13 @@ export default function TermTrackingScreen() {
           {termSnapshots.length > 0 ? (
             <View style={styles.historyList}>
               {termSnapshots.map((snapshot) => (
-                <TermHistoryItem key={snapshot.id} snapshot={snapshot} />
+                <TermHistoryItem key={snapshot.id} snapshot={snapshot} colors={colors} styles={styles} />
               ))}
             </View>
           ) : (
             <View style={styles.card}>
               <View style={styles.emptyState}>
-                <Ionicons name="time-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="time-outline" size={48} color={colors.textTertiary} />
                 <Text style={styles.emptyStateTitle}>No History Yet</Text>
                 <Text style={styles.emptyStateText}>
                   Complete your first term to see your history here.
@@ -311,6 +314,7 @@ export default function TermTrackingScreen() {
                 onChangeText={setTermLength}
                 keyboardType="number-pad"
                 placeholder="9"
+                placeholderTextColor={colors.textTertiary}
                 maxLength={2}
               />
             </View>
@@ -350,7 +354,7 @@ export default function TermTrackingScreen() {
                 disabled={isSettingUpTerm}
               >
                 {isSettingUpTerm ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <Text style={styles.confirmButtonText}>Start Term</Text>
                 )}
@@ -364,7 +368,7 @@ export default function TermTrackingScreen() {
 }
 
 // Term History Item Component
-function TermHistoryItem({ snapshot }: { snapshot: TermSnapshot }) {
+function TermHistoryItem({ snapshot, colors, styles }: { snapshot: TermSnapshot; colors: ThemeColors; styles: any }) {
   const [expanded, setExpanded] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -392,7 +396,7 @@ function TermHistoryItem({ snapshot }: { snapshot: TermSnapshot }) {
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color="#6B7280"
+          color={colors.textSecondary}
         />
       </View>
 
@@ -469,396 +473,408 @@ function TermHistoryItem({ snapshot }: { snapshot: TermSnapshot }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  content: {
-    padding: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  termNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateRange: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  activeBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  endedBadge: {
-    backgroundColor: '#FEE2E2',
-  },
-  activeBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
-  },
-  progressBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  progressBar: {
-    flex: 1,
-    height: 12,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 6,
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4F46E5',
-    borderRadius: 6,
-  },
-  progressPercent: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4F46E5',
-    width: 45,
-    textAlign: 'right',
-  },
-  progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  progressStat: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  progressStatDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E5E7EB',
-  },
-  progressStatValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  progressStatLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  newTermButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 8,
-  },
-  newTermButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: 12,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  setupButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  setupButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    width: (screenWidth - 44) / 2,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  chartCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
-  historyList: {
-    gap: 12,
-  },
-  historyItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  historyTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  termBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  termBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  historyDates: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  historyStats: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  historyStat: {},
-  historyStatLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  historyStatValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 2,
-  },
-  earnedValue: {
-    color: '#10B981',
-  },
-  historyDetails: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  detailDivider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 8,
-  },
-  allocationTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: screenWidth - 48,
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  presetButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  presetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  presetButtonActive: {
-    backgroundColor: '#4F46E5',
-  },
-  presetButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  presetButtonTextActive: {
-    color: '#fff',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  confirmButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+    },
+    content: {
+      padding: 16,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    termNumber: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    progressHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    dateRange: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    activeBadge: {
+      backgroundColor: colors.success + '22',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    endedBadge: {
+      backgroundColor: colors.error + '22',
+    },
+    activeBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    progressBarContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    progressBar: {
+      flex: 1,
+      height: 12,
+      backgroundColor: colors.border,
+      borderRadius: 6,
+      marginRight: 12,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: colors.primary,
+      borderRadius: 6,
+    },
+    progressPercent: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.primary,
+      width: 45,
+      textAlign: 'right',
+    },
+    progressStats: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+    },
+    progressStat: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    progressStatDivider: {
+      width: 1,
+      height: 40,
+      backgroundColor: colors.border,
+    },
+    progressStatValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    progressStatLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    newTermButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      padding: 14,
+      borderRadius: 12,
+      marginTop: 16,
+      gap: 8,
+      minHeight: 48,
+    },
+    newTermButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingVertical: 24,
+    },
+    emptyStateTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 12,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    setupButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    setupButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    statCard: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      width: (screenWidth - 44) / 2,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    statValue: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    chartCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    chart: {
+      marginVertical: 8,
+      borderRadius: 16,
+    },
+    historyList: {
+      gap: 12,
+    },
+    historyItem: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    historyHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    historyTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    termBadge: {
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    termBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    historyDates: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    historyStats: {
+      flexDirection: 'row',
+      gap: 24,
+    },
+    historyStat: {},
+    historyStatLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    historyStatValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 2,
+    },
+    earnedValue: {
+      color: colors.success,
+    },
+    historyDetails: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+    },
+    detailLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    detailValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    detailDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 8,
+    },
+    allocationTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 24,
+      width: screenWidth - 48,
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    modalSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      marginBottom: 24,
+    },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 16,
+      textAlign: 'center',
+      color: colors.text,
+    },
+    presetButtons: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 12,
+      marginBottom: 24,
+    },
+    presetButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: colors.backgroundSecondary,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    presetButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    presetButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    presetButtonTextActive: {
+      color: colors.textInverse,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    cancelButton: {
+      flex: 1,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    confirmButton: {
+      flex: 1,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    confirmButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textInverse,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+  });
+}
