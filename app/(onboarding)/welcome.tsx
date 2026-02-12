@@ -1,18 +1,20 @@
+import { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudentProfile } from '../../src/hooks/useStudentProfile';
+import { useTheme, type ThemeColors } from '@/theme';
 
-function ProgressDots({ current, total }: { current: number; total: number }) {
+function ProgressDots({ current, total, colors }: { current: number; total: number; colors: ThemeColors }) {
   return (
-    <View style={styles.progressContainer}>
+    <View style={progressStyles.container}>
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
           style={[
-            styles.dot,
-            { backgroundColor: i < current ? '#4F46E5' : '#D1D5DB' },
+            progressStyles.dot,
+            { backgroundColor: i < current ? colors.primary : colors.inputBorder },
           ]}
         />
       ))}
@@ -20,18 +22,34 @@ function ProgressDots({ current, total }: { current: number; total: number }) {
   );
 }
 
+const progressStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+});
+
 export default function WelcomeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useStudentProfile();
   const firstName = profile?.name?.split(' ')[0] || 'Scholar';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ProgressDots current={1} total={3} />
+        <ProgressDots current={1} total={3} colors={colors} />
 
         <View style={styles.content}>
           <View style={styles.iconRow}>
-            <Ionicons name="school" size={48} color="#4F46E5" />
+            <Ionicons name="school" size={48} color={colors.primary} />
             <Text style={styles.iconEmoji}>💰</Text>
           </View>
 
@@ -57,70 +75,63 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  container: {
-    flex: 1,
-    padding: 24,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 24,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 32,
-  },
-  iconEmoji: {
-    fontSize: 44,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  readyText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      padding: 24,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 32,
+    },
+    iconEmoji: {
+      fontSize: 44,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.primary,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 24,
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    readyText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    button: {
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+  });
+}

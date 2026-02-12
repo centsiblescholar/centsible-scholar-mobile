@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,12 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { signUpWithEmail, ensureParentProfile } from '../../src/integrations/supabase/client';
+import { useTheme, type ThemeColors } from '@/theme';
 
 export default function SignupScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -105,6 +109,7 @@ export default function SignupScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="First"
+                  placeholderTextColor={colors.textTertiary}
                   value={firstName}
                   onChangeText={setFirstName}
                   autoCapitalize="words"
@@ -117,6 +122,7 @@ export default function SignupScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Last"
+                  placeholderTextColor={colors.textTertiary}
                   value={lastName}
                   onChangeText={setLastName}
                   autoCapitalize="words"
@@ -130,6 +136,7 @@ export default function SignupScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
+                placeholderTextColor={colors.textTertiary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -144,6 +151,7 @@ export default function SignupScreen() {
                 <TextInput
                   style={[styles.input, styles.passwordInput]}
                   placeholder="Min 8 characters"
+                  placeholderTextColor={colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -164,6 +172,7 @@ export default function SignupScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Re-enter password"
+                placeholderTextColor={colors.textTertiary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPassword}
@@ -178,7 +187,7 @@ export default function SignupScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.textInverse} />
               ) : (
                 <Text style={styles.buttonText}>Create Account</Text>
               )}
@@ -199,112 +208,118 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  form: {
-    gap: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  nameInput: {
-    flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#F9FAFB',
-  },
-  passwordWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  passwordInput: {
-    flex: 1,
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  eyeButton: {
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    borderColor: '#D1D5DB',
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-    padding: 12,
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-  },
-  eyeText: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 32,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  footerLink: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    content: {
+      flex: 1,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    header: {
+      marginBottom: 32,
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.primary,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    form: {
+      gap: 4,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    nameInput: {
+      flex: 1,
+    },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      backgroundColor: colors.input,
+      color: colors.text,
+    },
+    passwordWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    passwordInput: {
+      flex: 1,
+      borderTopRightRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    eyeButton: {
+      borderWidth: 1,
+      borderLeftWidth: 0,
+      borderColor: colors.inputBorder,
+      borderTopRightRadius: 8,
+      borderBottomRightRadius: 8,
+      padding: 12,
+      backgroundColor: colors.input,
+      justifyContent: 'center',
+      minHeight: 48,
+    },
+    eyeText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    footer: {
+      marginTop: 32,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    footerText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    footerLink: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  });
+}

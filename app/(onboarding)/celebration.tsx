@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,8 +7,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../src/integrations/supabase/client';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { studentProfileKeys } from '../../src/hooks/useStudentProfile';
+import { useTheme, type ThemeColors } from '@/theme';
 
 export default function CelebrationScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [completing, setCompleting] = useState(false);
@@ -84,11 +87,11 @@ export default function CelebrationScreen() {
           disabled={completing}
         >
           {completing ? (
-            <ActivityIndicator color="#ffffff" size="small" />
+            <ActivityIndicator color={colors.textInverse} size="small" />
           ) : (
             <View style={styles.buttonContent}>
               <Text style={styles.buttonText}>Go to Dashboard</Text>
-              <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+              <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
             </View>
           )}
         </TouchableOpacity>
@@ -97,67 +100,71 @@ export default function CelebrationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  container: {
-    flex: 1,
-    padding: 24,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  celebrationEmoji: {
-    fontSize: 64,
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  reminder: {
-    fontSize: 15,
-    color: '#4B5563',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-    lineHeight: 22,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    padding: 16,
-    overflow: 'hidden',
-  },
-  button: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      padding: 24,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    celebrationEmoji: {
+      fontSize: 64,
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.primary,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 16,
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    reminder: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 24,
+      lineHeight: 22,
+      backgroundColor: colors.secondaryLight,
+      borderRadius: 12,
+      padding: 16,
+      overflow: 'hidden',
+    },
+    button: {
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+  });
+}

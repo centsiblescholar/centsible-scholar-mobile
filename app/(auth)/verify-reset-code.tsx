@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,12 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../src/integrations/supabase/client';
+import { useTheme, type ThemeColors } from '@/theme';
 
 export default function VerifyResetCodeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const { email } = useLocalSearchParams<{ email: string }>();
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -120,6 +124,7 @@ export default function VerifyResetCodeScreen() {
               <TextInput
                 style={[styles.input, styles.codeInput]}
                 placeholder="000000"
+                placeholderTextColor={colors.textTertiary}
                 value={code}
                 onChangeText={setCode}
                 keyboardType="number-pad"
@@ -134,6 +139,7 @@ export default function VerifyResetCodeScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Min 6 characters"
+                placeholderTextColor={colors.textTertiary}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
@@ -147,6 +153,7 @@ export default function VerifyResetCodeScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Re-enter password"
+                placeholderTextColor={colors.textTertiary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -161,7 +168,7 @@ export default function VerifyResetCodeScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.textInverse} />
               ) : (
                 <Text style={styles.buttonText}>Reset Password</Text>
               )}
@@ -169,7 +176,11 @@ export default function VerifyResetCodeScreen() {
           </View>
 
           <View style={styles.footer}>
-            <TouchableOpacity onPress={handleResendCode} disabled={resending}>
+            <TouchableOpacity
+              style={styles.footerTouchable}
+              onPress={handleResendCode}
+              disabled={resending}
+            >
               <Text style={styles.footerLink}>
                 {resending ? 'Sending...' : "Didn't receive a code? Send again"}
               </Text>
@@ -181,82 +192,91 @@ export default function VerifyResetCodeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 4,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#F9FAFB',
-  },
-  codeInput: {
-    fontSize: 24,
-    letterSpacing: 8,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 32,
-    alignItems: 'center',
-  },
-  footerLink: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    content: {
+      flex: 1,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    header: {
+      marginBottom: 32,
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.primary,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    form: {
+      gap: 4,
+    },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      backgroundColor: colors.input,
+      color: colors.text,
+    },
+    codeInput: {
+      fontSize: 24,
+      letterSpacing: 8,
+      textAlign: 'center',
+      fontWeight: '600',
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    footer: {
+      marginTop: 32,
+      alignItems: 'center',
+    },
+    footerTouchable: {
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    footerLink: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+  });
+}

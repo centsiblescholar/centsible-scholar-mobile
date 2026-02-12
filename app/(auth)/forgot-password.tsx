@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,12 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../src/integrations/supabase/client';
+import { useTheme, type ThemeColors } from '@/theme';
 
 export default function ForgotPasswordScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -73,6 +77,7 @@ export default function ForgotPasswordScreen() {
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
+              placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -91,7 +96,7 @@ export default function ForgotPasswordScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text style={styles.buttonText}>Send Reset Code</Text>
             )}
@@ -99,7 +104,10 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.footerTouchable}
+            onPress={() => router.back()}
+          >
             <Text style={styles.footerLink}>Back to Sign In</Text>
           </TouchableOpacity>
         </View>
@@ -108,78 +116,87 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#F9FAFB',
-  },
-  helperText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 6,
-  },
-  button: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 40,
-    alignItems: 'center',
-  },
-  footerLink: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    header: {
+      marginBottom: 40,
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.primary,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    form: {
+      gap: 16,
+    },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      backgroundColor: colors.input,
+      color: colors.text,
+    },
+    helperText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 6,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    footer: {
+      marginTop: 40,
+      alignItems: 'center',
+    },
+    footerTouchable: {
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    footerLink: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  });
+}
