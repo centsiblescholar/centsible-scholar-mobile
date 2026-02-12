@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 6 of 7 (Data Management + UI Polish)
-Plan: 2 of 6 (GDPR Data Export)
+Plan: 3 of 6 (Account Deletion)
 Status: In progress
-Last activity: 2026-02-12 -- Completed 06-02-PLAN.md (GDPR Data Export)
+Last activity: 2026-02-12 -- Completed 06-03-PLAN.md (Account Deletion)
 
-Progress: [█████████████████████████████████] ~81% (17/21 plans completed - Phase 6 plan 2 of 6 done)
+Progress: [██████████████████████████████████] ~86% (18/21 plans completed - Phase 6 plan 3 of 6 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 3.4min
-- Total execution time: 58min
+- Total execution time: 61min
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [███████████████████████
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
 | 05-iap-wiring | 4/4 | 9min | 2.3min |
 
-| 06-data-management-ui-polish | 2/6 | 9min | 4.5min |
+| 06-data-management-ui-polish | 3/6 | 12min | 4.0min |
 
 **Recent Trend:**
-- Last 5 plans: 05-03 (3min), 05-04 (4min), 06-01 (5min), 06-02 (4min)
+- Last 5 plans: 05-04 (4min), 06-01 (5min), 06-02 (4min), 06-03 (3min)
 - Trend: consistent fast execution
 
 *Updated after each plan completion*
@@ -124,6 +124,10 @@ Recent decisions affecting current work:
 - [06-02]: New expo-file-system File API for both JSON (UTF8) and ZIP (base64) writing
 - [06-02]: Summary fetched on mount via actual export call (reuses same edge function)
 - [06-02]: Privacy section placed between Notifications and App sections in Settings
+- [06-03]: auth.admin.deleteUser for cascade (not manual table deletes) -- foreign key CASCADE handles all public table cleanup
+- [06-03]: Two-step confirmation (warning + type DELETE) satisfies Apple deletion UX requirements
+- [06-03]: Subscription check on both server (edge function) and client (hook) for defense in depth
+- [06-03]: Students hidden from Delete Account option via isParent guard in Settings
 
 ### Pending Todos
 
@@ -139,6 +143,7 @@ Recent decisions affecting current work:
 **Not blocked (can do now):**
 - Create migration for xp_transactions table (columns exist, but no migration file for documentation)
 - Deploy export-user-data edge function: `supabase functions deploy export-user-data`
+- Deploy delete-account edge function: `supabase functions deploy delete-account`
 
 ### Blockers/Concerns
 
@@ -150,5 +155,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Completed 06-02-PLAN.md (GDPR Data Export)
+Stopped at: Completed 06-03-PLAN.md (Account Deletion)
 Resume file: None
