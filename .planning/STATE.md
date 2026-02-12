@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 6 of 7 (Data Management + UI Polish)
-Plan: 3 of 6 (Account Deletion)
+Plan: 5 of 6 (Auth/Onboarding/Daily Theme Migration)
 Status: In progress
-Last activity: 2026-02-12 -- Completed 06-03-PLAN.md (Account Deletion)
+Last activity: 2026-02-12 -- Completed 06-05-PLAN.md (Auth/Onboarding/Daily Theme Migration)
 
-Progress: [██████████████████████████████████] ~86% (18/21 plans completed - Phase 6 plan 3 of 6 done)
+Progress: [██████████████████████████████████████] ~90% (19/21 plans completed - Phase 6 plan 5 of 6 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: 3.4min
-- Total execution time: 61min
+- Total plans completed: 19
+- Average duration: 3.5min
+- Total execution time: 66min
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [███████████████████████
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
 | 05-iap-wiring | 4/4 | 9min | 2.3min |
 
-| 06-data-management-ui-polish | 3/6 | 12min | 4.0min |
+| 06-data-management-ui-polish | 5/6 | 17min | 3.4min |
 
 **Recent Trend:**
-- Last 5 plans: 05-04 (4min), 06-01 (5min), 06-02 (4min), 06-03 (3min)
+- Last 5 plans: 06-01 (5min), 06-02 (4min), 06-03 (3min), 06-05 (5min)
 - Trend: consistent fast execution
 
 *Updated after each plan completion*
@@ -128,6 +128,10 @@ Recent decisions affecting current work:
 - [06-03]: Two-step confirmation (warning + type DELETE) satisfies Apple deletion UX requirements
 - [06-03]: Subscription check on both server (edge function) and client (hook) for defense in depth
 - [06-03]: Students hidden from Delete Account option via isParent guard in Settings
+- [06-05]: createStyles factory + useMemo pattern for all screen-level styles in auth/onboarding/daily
+- [06-05]: ProgressDots receive colors as prop (not useTheme) since they are local function components
+- [06-05]: BehaviorStep SCORE_COLORS converted to getScoreColors(colors) function from theme tokens
+- [06-05]: placeholderTextColor added to all TextInput components for full theme compliance
 
 ### Pending Todos
 
@@ -155,5 +159,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Completed 06-03-PLAN.md (Account Deletion)
+Stopped at: Completed 06-05-PLAN.md (Auth/Onboarding/Daily Theme Migration)
 Resume file: None
