@@ -89,6 +89,14 @@ export default function RootLayout() {
                   presentation: 'modal',
                 }}
               />
+              <Stack.Screen
+                name="delete-account"
+                options={{
+                  title: 'Delete Account',
+                  headerStyle: { backgroundColor: '#EF4444' },
+                  headerTintColor: '#fff',
+                }}
+              />
             </Stack>
           </StudentProvider>
         </RevenueCatProvider>

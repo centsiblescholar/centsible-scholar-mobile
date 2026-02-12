@@ -116,20 +116,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data including grades, behavior records, and subscription.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: () => {
-            Linking.openURL('https://centsiblescholar.com/settings/delete-account');
-          },
-        },
-      ]
-    );
+    router.push('/delete-account' as any);
   };
 
   const handleNotificationToggle = async (enabled: boolean) => {
@@ -489,12 +476,14 @@ export default function SettingsScreen() {
             <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
               <Text style={styles.signOutRowText}>Sign Out</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.deleteRow, styles.linkRowLast]}
-              onPress={handleDeleteAccount}
-            >
-              <Text style={styles.deleteRowText}>Delete Account</Text>
-            </TouchableOpacity>
+            {isParent && (
+              <TouchableOpacity
+                style={[styles.deleteRow, styles.linkRowLast]}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.deleteRowText}>Delete Account</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
