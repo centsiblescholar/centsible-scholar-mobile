@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 6 of 7 (Data Management + UI Polish)
-Plan: 1 of 6 (Design System Foundation)
+Plan: 2 of 6 (GDPR Data Export)
 Status: In progress
-Last activity: 2026-02-12 -- Completed 06-01-PLAN.md (Design System Foundation)
+Last activity: 2026-02-12 -- Completed 06-02-PLAN.md (GDPR Data Export)
 
-Progress: [████████████████████████████████] ~76% (16/21 plans completed - Phase 6 plan 1 of 6 done)
+Progress: [█████████████████████████████████] ~81% (17/21 plans completed - Phase 6 plan 2 of 6 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 3.4min
-- Total execution time: 54min
+- Total execution time: 58min
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [███████████████████████
 | 04-subscription-ui-gates | 3 | 13min | 4.3min |
 | 05-iap-wiring | 4/4 | 9min | 2.3min |
 
-| 06-data-management-ui-polish | 1/6 | 5min | 5min |
+| 06-data-management-ui-polish | 2/6 | 9min | 4.5min |
 
 **Recent Trend:**
-- Last 5 plans: 05-02 (2min), 05-03 (3min), 05-04 (4min), 06-01 (5min)
+- Last 5 plans: 05-03 (3min), 05-04 (4min), 06-01 (5min), 06-02 (4min)
 - Trend: consistent fast execution
 
 *Updated after each plan completion*
@@ -120,6 +120,10 @@ Recent decisions affecting current work:
 - [06-01]: ESLint rules set to warn (not error) during migration -- change to error after Phase 6 complete
 - [06-01]: moti/skeleton Expo variant used (auto-provides LinearGradient) -- no fallback needed
 - [06-01]: expo-file-system and expo-sharing installed ahead of Plans 02/03 to avoid duplicate installs
+- [06-02]: fflate over JSZip for server-side ZIP creation in Deno (lighter, synchronous API)
+- [06-02]: New expo-file-system File API for both JSON (UTF8) and ZIP (base64) writing
+- [06-02]: Summary fetched on mount via actual export call (reuses same edge function)
+- [06-02]: Privacy section placed between Notifications and App sections in Settings
 
 ### Pending Todos
 
@@ -134,6 +138,7 @@ Recent decisions affecting current work:
 
 **Not blocked (can do now):**
 - Create migration for xp_transactions table (columns exist, but no migration file for documentation)
+- Deploy export-user-data edge function: `supabase functions deploy export-user-data`
 
 ### Blockers/Concerns
 
@@ -145,5 +150,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-12
-Stopped at: Completed 06-01-PLAN.md (Design System Foundation)
+Stopped at: Completed 06-02-PLAN.md (GDPR Data Export)
 Resume file: None
