@@ -27,8 +27,8 @@ export default function CompletionCelebration({ onDismiss, wasCorrect }: Complet
         <Text style={styles.title}>Great work today!</Text>
         <Text style={styles.subtitle}>
           {wasCorrect
-            ? "Perfect! You aced today's question and completed your check-in."
-            : 'You completed your daily check-in.'}
+            ? "Perfect! You aced today's question!"
+            : "You've completed today's question. Keep learning!"}
         </Text>
 
         <TouchableOpacity style={styles.button} onPress={onDismiss}>

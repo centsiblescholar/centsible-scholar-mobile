@@ -4,16 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
-import { useBehaviorAssessments } from '../../src/hooks/useBehaviorAssessments';
 import { useStudentProfile } from '../../src/hooks/useStudentProfile';
 import { useAuth } from '../../src/contexts/AuthContext';
 import QODStep from '../../src/components/daily/QODStep';
-import BehaviorStep from '../../src/components/daily/BehaviorStep';
 import CompletionCelebration from '../../src/components/daily/CompletionCelebration';
 import { useTheme, type ThemeColors, tints, financial } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
 
-type WizardStep = 'qod' | 'behavior' | 'celebration' | 'completed';
+type WizardStep = 'qod' | 'celebration' | 'completed';
 
 export default function DailyScreen() {
   const router = useRouter();
@@ -24,31 +22,19 @@ export default function DailyScreen() {
   const gradeLevel = profile?.grade_level;
 
   const { hasAnsweredToday, loading: qodLoading, streakCount } = useQuestionOfTheDay(gradeLevel);
-  const { todayAssessment, isLoading: behaviorLoading } = useBehaviorAssessments(user?.id);
 
   const [step, setStep] = useState<WizardStep>('qod');
   const [wasCorrect, setWasCorrect] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (qodLoading || behaviorLoading || initialized) return;
-    if (hasAnsweredToday && todayAssessment) { setStep('completed'); }
-    else if (hasAnsweredToday && !todayAssessment) { setStep('behavior'); }
+    if (qodLoading || initialized) return;
+    if (hasAnsweredToday) { setStep('completed'); }
     else { setStep('qod'); }
     setInitialized(true);
-  }, [qodLoading, behaviorLoading, hasAnsweredToday, todayAssessment, initialized]);
+  }, [qodLoading, hasAnsweredToday, initialized]);
 
-  const getProgress = () => {
-    switch (step) { case 'qod': return 0; case 'behavior': return 50; case 'celebration': case 'completed': return 100; }
-  };
-  const getStepLabel = () => {
-    switch (step) { case 'qod': return 'Step 1 of 2'; case 'behavior': return 'Step 2 of 2'; default: return ''; }
-  };
-
-  const progress = getProgress();
-  const showProgress = step === 'qod' || step === 'behavior';
-
-  if ((qodLoading || behaviorLoading) && !initialized) {
+  if (qodLoading && !initialized) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.skeletonContainer}>
@@ -60,17 +46,7 @@ export default function DailyScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {showProgress && (
-        <View style={styles.progressHeader}>
-          <Text style={styles.stepLabel}>{getStepLabel()}</Text>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-          </View>
-        </View>
-      )}
-
-      {step === 'qod' && (<QODStep onComplete={(correct) => { setWasCorrect(correct); setStep('behavior'); }} />)}
-      {step === 'behavior' && (<BehaviorStep onComplete={() => setStep('celebration')} />)}
+      {step === 'qod' && (<QODStep onComplete={(correct) => { setWasCorrect(correct); setStep('celebration'); }} />)}
       {step === 'celebration' && (<CompletionCelebration wasCorrect={wasCorrect} onDismiss={() => router.replace('/(tabs)/dashboard')} />)}
       {step === 'completed' && (
         <View style={styles.completedContainer}>
@@ -79,7 +55,6 @@ export default function DailyScreen() {
             <Text style={styles.completedTitle}>All done for today!</Text>
             <View style={styles.completedChecklist}>
               <View style={styles.completedRow}><Ionicons name="checkmark-circle" size={20} color={colors.success} /><Text style={styles.completedRowText}>Question of the Day</Text></View>
-              <View style={styles.completedRow}><Ionicons name="checkmark-circle" size={20} color={colors.success} /><Text style={styles.completedRowText}>Behavior Check-in</Text></View>
             </View>
             {streakCount > 0 && (<View style={styles.streakBadge}><Text style={styles.streakText}>{streakCount} day streak</Text></View>)}
             <Text style={styles.completedSubtitle}>Come back tomorrow!</Text>
@@ -96,10 +71,6 @@ export default function DailyScreen() {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.backgroundSecondary },
   skeletonContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  progressHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: colors.backgroundSecondary },
-  stepLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textAlign: 'center' },
-  progressBarBackground: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
   completedContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   completedCard: { backgroundColor: colors.card, borderRadius: 20, padding: 32, alignItems: 'center', width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
   completedTitle: { fontSize: 24, fontWeight: 'bold', color: colors.text, marginTop: 16, marginBottom: 24 },
