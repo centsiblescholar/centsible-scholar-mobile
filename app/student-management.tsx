@@ -25,9 +25,9 @@ import { ErrorState } from '@/components/ui/ErrorState';
 const screenWidth = Dimensions.get('window').width;
 
 const GRADE_LEVELS = [
-  '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', '5th Grade',
-  '6th Grade', '7th Grade', '8th Grade', '9th Grade', '10th Grade',
-  '11th Grade', '12th Grade',
+  '7th Grade', '8th Grade', '9th Grade', '10th Grade',
+  '11th Grade', '12th Grade', '13th Grade', '14th Grade',
+  '15th Grade', '16th Grade',
 ];
 
 function generatePassword(): string {

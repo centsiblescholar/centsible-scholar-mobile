@@ -46,6 +46,39 @@ function extractRole(user: User | null): UserRole {
   return null;
 }
 
+/**
+ * Fallback: detect role by checking profile tables when metadata is missing.
+ * Also patches the user's auth metadata so this lookup only happens once.
+ */
+async function detectRoleFromProfiles(userId: string): Promise<UserRole> {
+  // Check student_profiles first
+  const { data: studentProfile } = await supabase
+    .from('student_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (studentProfile) {
+    // Patch metadata so future logins don't need this fallback
+    await supabase.auth.updateUser({ data: { user_type: 'student' } });
+    return 'student';
+  }
+
+  // Check parent_profiles
+  const { data: parentProfile } = await supabase
+    .from('parent_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (parentProfile) {
+    await supabase.auth.updateUser({ data: { user_type: 'parent' } });
+    return 'parent';
+  }
+
+  return null;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -65,10 +98,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
-        const role = extractRole(initialSession?.user ?? null);
+        let role = extractRole(initialSession?.user ?? null);
+
+        // Fallback: detect role from profile tables if metadata is missing
+        if (initialSession?.user && !role) {
+          role = await detectRoleFromProfiles(initialSession.user.id);
+        }
+
         setUserRole(role);
 
-        // If there is a user but role is invalid, sign out with error
+        // If there is a user but role is still invalid after fallback, sign out with error
         if (initialSession?.user && !role) {
           await signOutWithError(
             'Your account is missing role information. Please contact support.'
@@ -96,10 +135,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        const role = extractRole(newSession?.user ?? null);
+        let role = extractRole(newSession?.user ?? null);
+
+        // Fallback: detect role from profile tables if metadata is missing
+        if (event === 'SIGNED_IN' && newSession?.user && !role) {
+          role = await detectRoleFromProfiles(newSession.user.id);
+        }
+
         setUserRole(role);
 
-        // If user just signed in but role is invalid, sign out with error
+        // If user just signed in but role is still invalid after fallback, sign out with error
         if (event === 'SIGNED_IN' && newSession?.user && !role) {
           await signOutWithError(
             'Your account is missing role information. Please contact support.'

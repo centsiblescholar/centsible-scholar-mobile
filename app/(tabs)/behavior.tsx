@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   RefreshControl,
   Dimensions,
 } from 'react-native';
@@ -18,7 +17,7 @@ import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
 import { useNotifications } from '../../src/hooks/useNotifications';
 import { BehaviorScores } from '../../src/shared/types';
 import { calculateAssessmentAverageScore } from '../../src/shared/calculations';
-import { SCORE_DESCRIPTIONS } from '../../src/shared/validation/constants';
+import PremiumBehaviorForm from '../../src/components/behavior/PremiumBehaviorForm';
 import { useTheme, type ThemeColors, indigo, tints } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -26,34 +25,10 @@ import { ErrorState } from '@/components/ui/ErrorState';
 
 const screenWidth = Dimensions.get('window').width;
 
-const OBLIGATIONS = [
-  { key: 'diet', label: 'Diet', description: 'Eating healthy meals' },
-  { key: 'exercise', label: 'Exercise', description: 'Physical activity' },
-  { key: 'work', label: 'School Work', description: 'Completing assignments' },
-  { key: 'hygiene', label: 'Hygiene', description: 'Personal cleanliness' },
-  { key: 'respect', label: 'Respect', description: 'Showing respect to others' },
-] as const;
-
-const OPPORTUNITIES = [
-  { key: 'responsibilities', label: 'Responsibilities', description: 'Chores and duties' },
-  { key: 'attitude', label: 'Attitude', description: 'Positive mindset' },
-  { key: 'cooperation', label: 'Cooperation', description: 'Working with others' },
-  { key: 'courtesy', label: 'Courtesy', description: 'Being polite' },
-  { key: 'service', label: 'Service', description: 'Helping others' },
-] as const;
-
 const DEFAULT_SCORES: BehaviorScores = {
   diet: 0, exercise: 0, work: 0, hygiene: 0, respect: 0,
   responsibilities: 0, attitude: 0, cooperation: 0, courtesy: 0, service: 0,
 };
-
-const SCORE_COLORS: Record<number, string> = {
-  1: '#EF4444', 2: '#F97316', 3: '#F59E0B', 4: '#3B82F6', 5: '#10B981',
-};
-
-function getScoreStyle(score: number) {
-  return { backgroundColor: SCORE_COLORS[score] || '#6B7280' };
-}
 
 export default function BehaviorScreen() {
   const { user } = useAuth();
@@ -73,14 +48,61 @@ export default function BehaviorScreen() {
   const { sendLowBehaviorAlert, isEnabled: notificationsEnabled } = useNotifications();
 
   const [scores, setScores] = useState<BehaviorScores>(todayAssessment || DEFAULT_SCORES);
+  const [notes, setNotes] = useState(todayAssessment?.notes || '');
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'analytics'>('today');
+
+  // Sync scores when todayAssessment loads
+  const [syncedAssessmentId, setSyncedAssessmentId] = useState<string | null>(null);
+  if (todayAssessment && todayAssessment.id !== syncedAssessmentId) {
+    setScores({
+      diet: todayAssessment.diet,
+      exercise: todayAssessment.exercise,
+      work: todayAssessment.work,
+      hygiene: todayAssessment.hygiene,
+      respect: todayAssessment.respect,
+      responsibilities: todayAssessment.responsibilities,
+      attitude: todayAssessment.attitude,
+      cooperation: todayAssessment.cooperation,
+      courtesy: todayAssessment.courtesy,
+      service: todayAssessment.service,
+    });
+    setNotes(todayAssessment.notes || '');
+    setSyncedAssessmentId(todayAssessment.id);
+  }
 
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchBonus()]);
     setRefreshing(false);
   };
+
+  // Determine editability based on assessment status
+  const status = todayAssessment?.status;
+  const editable = !isParentView && (!status || status === 'draft' || status === 'needs_revision');
+
+  const handleSave = useCallback(async (saveStatus: 'draft' | 'submitted') => {
+    const allScoresValid = Object.values(scores).every((s) => s >= 1 && s <= 5);
+    if (!allScoresValid) {
+      if (saveStatus === 'submitted') {
+        Alert.alert('Error', 'Please rate all categories before submitting.');
+      }
+      return;
+    }
+    try {
+      await saveAssessment({ user_id: targetUserId!, date: new Date().toISOString().split('T')[0], scores, status: saveStatus });
+      const average = calculateAssessmentAverageScore(scores);
+      if (saveStatus === 'submitted' && average < 3.0 && notificationsEnabled) {
+        const studentName = isParentView ? selectedStudent?.name : undefined;
+        await sendLowBehaviorAlert(average, studentName);
+      }
+      if (saveStatus === 'submitted') {
+        Alert.alert('Submitted', 'Your assessment has been submitted for parent review.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to save assessment');
+    }
+  }, [scores, targetUserId, saveAssessment, notificationsEnabled, isParentView, selectedStudent, sendLowBehaviorAlert]);
 
   const getChartData = () => {
     const recentAssessments = assessments.slice(0, 14).reverse();
@@ -113,30 +135,6 @@ export default function BehaviorScreen() {
 
   const chartData = getChartData();
   const categoryData = getCategoryAverages();
-
-  const updateScore = (key: keyof BehaviorScores, value: number) => {
-    setScores((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleSave = async (status: 'draft' | 'submitted') => {
-    const hasScores = Object.values(scores).some((s) => s > 0);
-    if (!hasScores && status === 'submitted') {
-      Alert.alert('Error', 'Please rate at least one category before submitting');
-      return;
-    }
-    try {
-      await saveAssessment({ user_id: targetUserId!, date: new Date().toISOString().split('T')[0], scores, status });
-      const average = calculateAssessmentAverageScore(scores);
-      if (status === 'submitted' && average < 3.0 && notificationsEnabled) {
-        const studentName = isParentView ? selectedStudent?.name : undefined;
-        await sendLowBehaviorAlert(average, studentName);
-      }
-      Alert.alert('Success', status === 'submitted' ? 'Assessment submitted for review!' : 'Assessment saved as draft');
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save assessment');
-    }
-  };
-
   const currentAverage = calculateAssessmentAverageScore(scores);
 
   if (isLoading) {
@@ -274,73 +272,19 @@ export default function BehaviorScreen() {
               </View>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Obligations</Text>
-              <Text style={styles.sectionDescription}>Required daily behaviors</Text>
-              {OBLIGATIONS.map((item) => (
-                <ScoreRow key={item.key} label={item.label} description={item.description} value={scores[item.key]} onChange={(value) => updateScore(item.key, value)} colors={colors} />
-              ))}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Opportunities</Text>
-              <Text style={styles.sectionDescription}>Extra credit behaviors</Text>
-              {OPPORTUNITIES.map((item) => (
-                <ScoreRow key={item.key} label={item.label} description={item.description} value={scores[item.key]} onChange={(value) => updateScore(item.key, value)} colors={colors} />
-              ))}
-            </View>
-
-            <View style={styles.legend}>
-              <Text style={styles.legendTitle}>Score Guide</Text>
-              <View style={styles.legendRow}>
-                {[1, 2, 3, 4, 5].map((score) => (
-                  <View key={score} style={styles.legendItem}>
-                    <View style={[styles.legendBadge, getScoreStyle(score)]}>
-                      <Text style={styles.legendScore}>{score}</Text>
-                    </View>
-                    <Text style={styles.legendLabel}>
-                      {SCORE_DESCRIPTIONS[score as keyof typeof SCORE_DESCRIPTIONS]}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={{ height: 100 }} />
+            <PremiumBehaviorForm
+              scores={scores}
+              onScoresChange={setScores}
+              onSave={handleSave}
+              isSaving={isSaving}
+              existingAssessment={todayAssessment}
+              editable={editable}
+              notes={notes}
+              onNotesChange={setNotes}
+            />
           </>
         )}
       </ScrollView>
-
-      {activeTab === 'today' && (
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.saveButton} onPress={() => handleSave('draft')} disabled={isSaving}>
-            <Text style={styles.saveButtonText}>Save Draft</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.submitButton, isSaving && styles.buttonDisabled]} onPress={() => handleSave('submitted')} disabled={isSaving}>
-            {isSaving ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.submitButtonText}>Submit</Text>}
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function ScoreRow({ label, description, value, onChange, colors }: {
-  label: string; description: string; value: number; onChange: (value: number) => void; colors: ThemeColors;
-}) {
-  return (
-    <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 8 }}>
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>{label}</Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{description}</Text>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {[1, 2, 3, 4, 5].map((score) => (
-          <TouchableOpacity key={score} style={[{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 2, borderColor: colors.border, alignItems: 'center', minHeight: 44, justifyContent: 'center' }, value === score && getScoreStyle(score)]} onPress={() => onChange(score)}>
-            <Text style={[{ fontSize: 16, fontWeight: '600', color: colors.textSecondary }, value === score && { color: colors.textInverse }]}>{score}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
     </View>
   );
 }
@@ -356,22 +300,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 16 },
   statLabel: { fontSize: 12, color: colors.textSecondary, textTransform: 'uppercase' },
   statValue: { fontSize: 28, fontWeight: 'bold', color: colors.text, marginTop: 4 },
-  section: { padding: 16, paddingTop: 0 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  sectionDescription: { fontSize: 14, color: colors.textSecondary, marginBottom: 12 },
-  legend: { margin: 16, backgroundColor: colors.card, borderRadius: 12, padding: 16 },
-  legendTitle: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 12 },
-  legendRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  legendItem: { alignItems: 'center', flex: 1 },
-  legendBadge: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  legendScore: { fontSize: 14, fontWeight: 'bold', color: colors.textInverse },
-  legendLabel: { fontSize: 9, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
-  buttonRow: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
-  saveButton: { flex: 1, padding: 16, borderRadius: 12, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-  saveButtonText: { fontSize: 16, fontWeight: '600', color: colors.primary },
-  submitButton: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.7 },
-  submitButtonText: { fontSize: 16, fontWeight: '600', color: colors.textInverse },
   tabContainer: { flexDirection: 'row', margin: 16, backgroundColor: colors.border, borderRadius: 12, padding: 4 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10, minHeight: 44, justifyContent: 'center' },
   tabActive: { backgroundColor: colors.card, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
