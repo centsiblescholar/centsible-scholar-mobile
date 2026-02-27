@@ -15,16 +15,26 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
   const { user } = useAuth();
   const isConfigured = useRef(false);
 
-  // Configure SDK once on mount (skip in Expo Go)
+  // Configure SDK once on mount (skip in Expo Go or when using placeholder keys)
   useEffect(() => {
     if (isConfigured.current || isExpoGo) return;
 
-    if (__DEV__) {
-      Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+    const apiKey = getRevenueCatApiKey();
+    if (apiKey.includes('REPLACE_WITH_REAL_KEY')) {
+      console.warn('RevenueCat: Using placeholder API key, skipping SDK configuration');
+      return;
     }
 
-    Purchases.configure({ apiKey: getRevenueCatApiKey() });
-    isConfigured.current = true;
+    try {
+      if (__DEV__) {
+        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+      }
+
+      Purchases.configure({ apiKey });
+      isConfigured.current = true;
+    } catch (error) {
+      console.warn('RevenueCat: Failed to configure SDK:', error);
+    }
   }, []);
 
   // Identify user when auth state changes (skip in Expo Go)

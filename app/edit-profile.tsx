@@ -21,7 +21,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 
 const GRADE_LEVELS = [
   '7', '8', '9', '10', '11', '12',
-  '13', '14', '15', '16', '17', '18'
+  '13', '14', '15', '16',
 ];
 
 export default function EditProfileScreen() {
