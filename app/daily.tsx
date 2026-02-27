@@ -3,11 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
-import { useStudentProfile } from '../../src/hooks/useStudentProfile';
-import { useAuth } from '../../src/contexts/AuthContext';
-import QODStep from '../../src/components/daily/QODStep';
-import CompletionCelebration from '../../src/components/daily/CompletionCelebration';
+import { useQuestionOfTheDay } from '../src/hooks/useQuestionOfTheDay';
+import { useStudentProfile } from '../src/hooks/useStudentProfile';
+import { useAuth } from '../src/contexts/AuthContext';
+import QODStep from '../src/components/daily/QODStep';
+import CompletionCelebration from '../src/components/daily/CompletionCelebration';
 import { useTheme, type ThemeColors, tints, financial } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
 
