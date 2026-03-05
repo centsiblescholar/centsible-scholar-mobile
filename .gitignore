@@ -30,6 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Claude Code MCP config
+.mcp.json
+
 # local env files
 .env
 .env*.local
