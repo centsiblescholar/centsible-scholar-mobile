@@ -179,8 +179,8 @@ function StudentDashboardView() {
           {/* QOD Card */}
           <TouchableOpacity
             style={sStyles.taskCard}
-            onPress={() => router.push('/(tabs)/daily')}
-            disabled={qodAnsweredToday && !!todayAssessment}
+            onPress={() => router.push('/daily')}
+            disabled={qodAnsweredToday}
           >
             <View style={sStyles.taskStatusRow}>
               <View
@@ -199,8 +199,8 @@ function StudentDashboardView() {
           {/* Behavior Card */}
           <TouchableOpacity
             style={sStyles.taskCard}
-            onPress={() => router.push('/(tabs)/daily')}
-            disabled={qodAnsweredToday && !!todayAssessment}
+            onPress={() => router.push('/(tabs)/behavior')}
+            disabled={!!todayAssessment}
           >
             <View style={sStyles.taskStatusRow}>
               <View

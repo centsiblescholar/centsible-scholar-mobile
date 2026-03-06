@@ -1,176 +1,267 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
-  Modal,
-  TextInput,
   Alert,
-  Dimensions,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { format, addDays, addWeeks, parseISO } from 'date-fns';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useUserProfile } from '../src/hooks/useUserProfile';
-import { useFamilyMeetings, FamilyMeeting } from '../src/hooks/useFamilyMeetings';
-import { useNotifications } from '../src/hooks/useNotifications';
+import { useFamilyMeetings } from '../src/hooks/useFamilyMeetings';
+import { useParentStudents } from '../src/hooks/useParentStudents';
 import { useTheme, type ThemeColors } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
 import { ErrorState } from '@/components/ui/ErrorState';
-
-const screenWidth = Dimensions.get('window').width;
+import {
+  MEETING_STEPS,
+  TOTAL_STEPS,
+  StepNotes,
+  getMeetingStatus,
+  EvaluationInput,
+} from '../src/types/family-meeting';
+import { MeetingStepper } from '../src/components/meetings/MeetingStepper';
+import { MeetingStep1Breathing } from '../src/components/meetings/MeetingStep1Breathing';
+import { MeetingStep2Connection } from '../src/components/meetings/MeetingStep2Connection';
+import { MeetingStep3Review } from '../src/components/meetings/MeetingStep3Review';
+import { MeetingStep4Discussion } from '../src/components/meetings/MeetingStep4Discussion';
+import { MeetingStep5Planning } from '../src/components/meetings/MeetingStep5Planning';
+import { MeetingStep6Closing } from '../src/components/meetings/MeetingStep6Closing';
+import { MeetingCompletedCard } from '../src/components/meetings/MeetingCompletedCard';
+import { StudentMeetingView } from '../src/components/meetings/StudentMeetingView';
 
 export default function FamilyMeetingsScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { isParent } = useUserProfile();
+  const { students } = useParentStudents();
   const [refreshing, setRefreshing] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
-  const [selectedMeeting, setSelectedMeeting] = useState<FamilyMeeting | null>(null);
-  const [notes, setNotes] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 7));
-
-  // Assessment state
-  const [participation, setParticipation] = useState(4);
-  const [goalProgress, setGoalProgress] = useState(4);
-  const [communication, setCommunication] = useState(4);
-  const [assessmentNotes, setAssessmentNotes] = useState('');
 
   const {
-    nextMeeting,
-    upcomingMeetings,
-    completedMeetings,
-    stats,
+    meeting,
+    activeGoals,
+    pendingConflicts,
+    evaluations,
     isLoading,
-    error,
-    scheduleMeeting,
+    isInProgress,
+    isSubmittingEvaluation,
+    createOrGetMeeting,
+    startMeeting,
+    advanceStep,
     completeMeeting,
-    cancelMeeting,
-    addAssessment,
-    getAssessmentsForMeeting,
+    resetMeeting,
+    submitEvaluation,
+    createGoal,
+    updateGoalStatus,
+    addConflict,
+    resolveConflict,
+    markConflictDiscussed,
     refetch,
+    error,
   } = useFamilyMeetings(user?.id);
 
-  const { scheduleMeetingReminder, isEnabled: notificationsEnabled } = useNotifications();
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
-  };
+  }, [refetch]);
 
-  const handleScheduleMeeting = async () => {
-    try {
-      const meeting = await scheduleMeeting(selectedDate, notes || undefined);
+  // ─── Step Notes Management ──────────────────────────────────
+  const currentStepNotes = (meeting?.step_notes ?? {}) as StepNotes;
+  const currentStep = meeting?.current_step ?? 0;
 
-      // Schedule a reminder notification if enabled
-      if (notificationsEnabled && meeting) {
-        await scheduleMeetingReminder(meeting.id, selectedDate, 60); // 1 hour before
+  const updateStepNotes = useCallback(
+    (key: string, data: any) => {
+      return { ...currentStepNotes, [key]: data };
+    },
+    [currentStepNotes]
+  );
+
+  const goToNextStep = useCallback(
+    async (updatedNotes: StepNotes) => {
+      if (!meeting) return;
+      const nextStep = currentStep + 1;
+      if (nextStep >= TOTAL_STEPS) {
+        // Complete the meeting
+        await completeMeeting(meeting.id, updatedNotes, meeting.goals_reviewed);
+      } else {
+        await advanceStep(meeting.id, nextStep, updatedNotes);
       }
+    },
+    [meeting, currentStep, advanceStep, completeMeeting]
+  );
 
-      setShowScheduleModal(false);
-      setNotes('');
-      setSelectedDate(addDays(new Date(), 7));
+  const goToPrevStep = useCallback(async () => {
+    if (!meeting || currentStep <= 0) return;
+    await advanceStep(meeting.id, currentStep - 1, currentStepNotes);
+  }, [meeting, currentStep, currentStepNotes, advanceStep]);
 
-      const message = notificationsEnabled
-        ? 'Meeting scheduled! You\'ll receive a reminder 1 hour before.'
-        : 'Meeting scheduled successfully!';
-      Alert.alert('Success', message);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to schedule meeting');
+  // ─── Start Meeting ──────────────────────────────────────────
+  const handleStartMeeting = useCallback(async () => {
+    try {
+      const m = await createOrGetMeeting();
+      await startMeeting(m.id);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to start meeting');
     }
-  };
+  }, [createOrGetMeeting, startMeeting]);
 
-  const handleCompleteMeeting = async (meeting: FamilyMeeting) => {
+  const handleExitMeeting = useCallback(() => {
     Alert.alert(
-      'Complete Meeting',
-      'Mark this meeting as completed?',
+      'Exit Meeting',
+      'Your progress is saved. You can resume anytime.',
+      [
+        { text: 'Continue Meeting', style: 'cancel' },
+        { text: 'Exit', onPress: () => {} }, // just dismiss — state is already saved in DB
+      ]
+    );
+  }, []);
+
+  const handleResetMeeting = useCallback(async () => {
+    if (!meeting) return;
+    Alert.alert(
+      'Start New Meeting',
+      'This will reset the current meeting progress.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              await completeMeeting(meeting.id);
-              Alert.alert('Success', 'Meeting marked as completed!');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to complete meeting');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleCancelMeeting = async (meeting: FamilyMeeting) => {
-    Alert.alert(
-      'Cancel Meeting',
-      'Are you sure you want to cancel this meeting?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
             try {
-              await cancelMeeting(meeting.id);
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to cancel meeting');
+              await resetMeeting(meeting.id);
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to reset meeting');
             }
           },
         },
       ]
     );
-  };
+  }, [meeting, resetMeeting]);
 
-  const handleAddAssessment = async () => {
-    if (!selectedMeeting) return;
+  // ─── Step Handlers ──────────────────────────────────────────
 
-    try {
-      const overall = (participation + goalProgress + communication) / 3;
-      await addAssessment(
-        selectedMeeting.id,
-        user?.id || '',
-        'Self',
-        {
-          participation,
-          goalProgress,
-          communication,
-          overall,
-        },
-        assessmentNotes || undefined
-      );
-      setShowAssessmentModal(false);
-      resetAssessmentForm();
-      Alert.alert('Success', 'Assessment submitted!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to submit assessment');
-    }
-  };
+  const handleStep1Complete = useCallback(async () => {
+    const notes = updateStepNotes('breathing', { completed: true });
+    await goToNextStep(notes);
+  }, [updateStepNotes, goToNextStep]);
 
-  const resetAssessmentForm = () => {
-    setParticipation(4);
-    setGoalProgress(4);
-    setCommunication(4);
-    setAssessmentNotes('');
-    setSelectedMeeting(null);
-  };
+  const handleStep2Complete = useCallback(
+    async (topic: string) => {
+      const notes = updateStepNotes('connection', { topic });
+      await goToNextStep(notes);
+    },
+    [updateStepNotes, goToNextStep]
+  );
 
-  const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), 'MMM d, yyyy');
-  };
+  const handleStep3Complete = useCallback(
+    async (reviewNotes: string, reviewedGoalIds: string[]) => {
+      const notes = updateStepNotes('review', { notes: reviewNotes, goalsReviewed: reviewedGoalIds });
+      await goToNextStep(notes);
+    },
+    [updateStepNotes, goToNextStep]
+  );
 
-  const formatTime = (dateString: string) => {
-    return format(parseISO(dateString), 'h:mm a');
-  };
+  const handleStep4Complete = useCallback(
+    async (discussionNotes: string, discussedConflictIds: string[]) => {
+      const notes = updateStepNotes('discussion', { notes: discussionNotes, conflictsDiscussed: discussedConflictIds });
+      await goToNextStep(notes);
+    },
+    [updateStepNotes, goToNextStep]
+  );
+
+  const handleStep5Complete = useCallback(
+    async (planningNotes: string) => {
+      const notes = updateStepNotes('planning', { notes: planningNotes });
+      await goToNextStep(notes);
+    },
+    [updateStepNotes, goToNextStep]
+  );
+
+  const handleStep6Complete = useCallback(
+    async (closingNotes: string, gratitude: string) => {
+      const notes = updateStepNotes('closing', { notes: closingNotes, gratitude });
+      await goToNextStep(notes);
+    },
+    [updateStepNotes, goToNextStep]
+  );
+
+  const handleSubmitEvaluation = useCallback(
+    async (studentUserId: string, input: EvaluationInput) => {
+      if (!meeting) return;
+      try {
+        await submitEvaluation(meeting.id, studentUserId, input);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to submit evaluation');
+      }
+    },
+    [meeting, submitEvaluation]
+  );
+
+  const handleCreateGoal = useCallback(
+    async (goalText: string, studentUserId: string | null) => {
+      if (!meeting) return;
+      try {
+        await createGoal(meeting.id, goalText, studentUserId);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to create goal');
+      }
+    },
+    [meeting, createGoal]
+  );
+
+  const handleUpdateGoalStatus = useCallback(
+    async (goalId: string, status: 'completed' | 'dropped') => {
+      if (!meeting) return;
+      try {
+        await updateGoalStatus(goalId, status, meeting.id);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to update goal');
+      }
+    },
+    [meeting, updateGoalStatus]
+  );
+
+  const handleResolveConflict = useCallback(
+    async (conflictId: string) => {
+      if (!meeting) return;
+      try {
+        await resolveConflict(conflictId, meeting.id);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to resolve conflict');
+      }
+    },
+    [meeting, resolveConflict]
+  );
+
+  const handleMarkDiscussed = useCallback(
+    async (conflictId: string) => {
+      if (!meeting) return;
+      try {
+        await markConflictDiscussed(conflictId, meeting.id);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to mark discussed');
+      }
+    },
+    [meeting, markConflictDiscussed]
+  );
+
+  const handleAddConflict = useCallback(
+    async (description: string) => {
+      try {
+        await addConflict(user?.email || 'Parent', description);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to add conflict');
+      }
+    },
+    [addConflict, user]
+  );
+
+  // ─── Loading / Error States ─────────────────────────────────
 
   if (isLoading && !refreshing) {
     return (
@@ -188,377 +279,200 @@ export default function FamilyMeetingsScreen() {
     );
   }
 
+  // ─── Student View ───────────────────────────────────────────
+
+  if (!isParent) {
+    return (
+      <StudentMeetingView
+        meeting={meeting ?? null}
+        evaluations={evaluations}
+        isLoading={isLoading}
+        onSubmitEvaluation={submitEvaluation}
+        isSubmittingEvaluation={isSubmittingEvaluation}
+        onRefresh={refetch}
+      />
+    );
+  }
+
+  // ─── Meeting In Progress (Stepper View) ─────────────────────
+
+  if (isInProgress && meeting) {
+    const renderCurrentStep = () => {
+      switch (currentStep) {
+        case 0:
+          return (
+            <MeetingStep1Breathing
+              completed={!!currentStepNotes.breathing?.completed}
+              onComplete={handleStep1Complete}
+            />
+          );
+        case 1:
+          return (
+            <MeetingStep2Connection
+              initialTopic={currentStepNotes.connection?.topic}
+              onComplete={handleStep2Complete}
+            />
+          );
+        case 2:
+          return (
+            <MeetingStep3Review
+              activeGoals={activeGoals}
+              initialNotes={currentStepNotes.review?.notes}
+              initialReviewedGoals={currentStepNotes.review?.goalsReviewed}
+              onComplete={handleStep3Complete}
+              onUpdateGoalStatus={handleUpdateGoalStatus}
+            />
+          );
+        case 3:
+          return (
+            <MeetingStep4Discussion
+              pendingConflicts={pendingConflicts}
+              meetingId={meeting.id}
+              initialNotes={currentStepNotes.discussion?.notes}
+              onComplete={handleStep4Complete}
+              onResolveConflict={handleResolveConflict}
+              onMarkDiscussed={handleMarkDiscussed}
+              onAddConflict={handleAddConflict}
+            />
+          );
+        case 4:
+          return (
+            <MeetingStep5Planning
+              students={students}
+              meetingId={meeting.id}
+              initialNotes={currentStepNotes.planning?.notes}
+              onComplete={handleStep5Complete}
+              onCreateGoal={handleCreateGoal}
+            />
+          );
+        case 5:
+          return (
+            <MeetingStep6Closing
+              students={students}
+              meetingId={meeting.id}
+              evaluations={evaluations}
+              initialNotes={currentStepNotes.closing?.notes}
+              onComplete={handleStep6Complete}
+              onSubmitEvaluation={handleSubmitEvaluation}
+              isSubmittingEvaluation={isSubmittingEvaluation}
+            />
+          );
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <MeetingStepper
+        currentStep={currentStep}
+        onBack={currentStep > 0 ? goToPrevStep : null}
+        onExit={handleExitMeeting}
+      >
+        {renderCurrentStep()}
+      </MeetingStepper>
+    );
+  }
+
+  // ─── Meeting Completed ──────────────────────────────────────
+
+  const meetingStatus = meeting ? getMeetingStatus(meeting) : 'not_started';
+
+  if (meetingStatus === 'completed' && meeting) {
+    return (
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <MeetingCompletedCard
+          evaluations={evaluations}
+          onStartNew={handleResetMeeting}
+        />
+      </ScrollView>
+    );
+  }
+
+  // ─── Home / Start View ──────────────────────────────────────
+
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.content}>
-        {/* Stats Section */}
+        {/* Hero Section */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroIconContainer}>
+            <Ionicons name="people" size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.heroTitle}>Family Meeting</Text>
+          <Text style={styles.heroSubtitle}>
+            A structured 6-step process to connect, review goals, discuss
+            concerns, and plan together.
+          </Text>
+        </View>
+
+        {/* Steps Preview */}
+        <View style={styles.stepsPreview}>
+          <Text style={styles.sectionTitle}>Meeting Steps</Text>
+          {MEETING_STEPS.map((step, index) => (
+            <View key={step.key} style={styles.stepPreviewItem}>
+              <View style={styles.stepPreviewNumber}>
+                <Text style={styles.stepPreviewNumberText}>{index + 1}</Text>
+              </View>
+              <View style={styles.stepPreviewContent}>
+                <View style={styles.stepPreviewHeader}>
+                  <Ionicons name={step.icon} size={18} color={colors.primary} />
+                  <Text style={styles.stepPreviewLabel}>{step.label}</Text>
+                </View>
+                <Text style={styles.stepPreviewDescription}>{step.description}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Quick Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.completedCount}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Ionicons name="flag" size={20} color={colors.primary} />
+            <Text style={styles.statValue}>{activeGoals.length}</Text>
+            <Text style={styles.statLabel}>Active Goals</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.upcomingCount}</Text>
-            <Text style={styles.statLabel}>Upcoming</Text>
+            <Ionicons name="alert-circle" size={20} color={colors.warning} />
+            <Text style={styles.statValue}>{pendingConflicts.length}</Text>
+            <Text style={styles.statLabel}>Pending Topics</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {stats.averageAssessmentScore?.toFixed(1) || '-'}
-            </Text>
-            <Text style={styles.statLabel}>Avg Score</Text>
+            <Ionicons name="people" size={20} color={colors.success} />
+            <Text style={styles.statValue}>{students.length}</Text>
+            <Text style={styles.statLabel}>Children</Text>
           </View>
         </View>
 
-        {/* Next Meeting Card */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Next Meeting</Text>
-          {nextMeeting ? (
-            <View style={styles.nextMeetingCard}>
-              <View style={styles.nextMeetingHeader}>
-                <Ionicons name="calendar" size={32} color={colors.primary} />
-                <View style={styles.nextMeetingInfo}>
-                  <Text style={styles.nextMeetingDate}>
-                    {formatDate(nextMeeting.scheduledDate)}
-                  </Text>
-                  <Text style={styles.nextMeetingTime}>
-                    {formatTime(nextMeeting.scheduledDate)}
-                  </Text>
-                </View>
-              </View>
-              {nextMeeting.notes && (
-                <Text style={styles.meetingNotes}>{nextMeeting.notes}</Text>
-              )}
-              <View style={styles.nextMeetingActions}>
-                <TouchableOpacity
-                  style={styles.completeButton}
-                  onPress={() => handleCompleteMeeting(nextMeeting)}
-                >
-                  <Ionicons name="checkmark-circle" size={18} color={colors.textInverse} />
-                  <Text style={styles.completeButtonText}>Complete</Text>
-                </TouchableOpacity>
-                {!isParent && (
-                  <TouchableOpacity
-                    style={styles.assessButton}
-                    onPress={() => {
-                      setSelectedMeeting(nextMeeting);
-                      setShowAssessmentModal(true);
-                    }}
-                  >
-                    <Ionicons name="clipboard" size={18} color={colors.primary} />
-                    <Text style={styles.assessButtonText}>Self-Assess</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>No upcoming meetings</Text>
-              <TouchableOpacity
-                style={styles.scheduleButton}
-                onPress={() => setShowScheduleModal(true)}
-              >
-                <Text style={styles.scheduleButtonText}>Schedule Meeting</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        {/* Start Button */}
+        <TouchableOpacity style={styles.startButton} onPress={handleStartMeeting}>
+          <Ionicons name="play-circle" size={24} color={colors.textInverse} />
+          <Text style={styles.startButtonText}>Start Family Meeting</Text>
+        </TouchableOpacity>
 
-        {/* Schedule New Meeting Button */}
-        {nextMeeting && (
-          <TouchableOpacity
-            style={styles.addMeetingButton}
-            onPress={() => setShowScheduleModal(true)}
-          >
-            <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
-            <Text style={styles.addMeetingButtonText}>Schedule New Meeting</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Upcoming Meetings */}
-        {upcomingMeetings.length > 1 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Other Upcoming</Text>
-            <View style={styles.meetingsList}>
-              {upcomingMeetings.slice(1).map((meeting) => (
-                <MeetingItem
-                  key={meeting.id}
-                  meeting={meeting}
-                  onComplete={() => handleCompleteMeeting(meeting)}
-                  onCancel={() => handleCancelMeeting(meeting)}
-                  onAssess={() => {
-                    setSelectedMeeting(meeting);
-                    setShowAssessmentModal(true);
-                  }}
-                  isParent={isParent}
-                  colors={colors}
-                  styles={styles}
-                />
-              ))}
+        {/* Resume notice if meeting was in progress */}
+        {meeting && meeting.started_at && meeting.current_step > 0 && meeting.current_step < TOTAL_STEPS && (
+          <View style={styles.resumeCard}>
+            <Ionicons name="time" size={20} color={colors.warning} />
+            <View style={styles.resumeContent}>
+              <Text style={styles.resumeText}>You have a meeting in progress</Text>
+              <Text style={styles.resumeStep}>
+                Step {meeting.current_step + 1}: {MEETING_STEPS[meeting.current_step]?.label}
+              </Text>
             </View>
           </View>
         )}
-
-        {/* Meeting History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Meeting History</Text>
-          {completedMeetings.length > 0 ? (
-            <View style={styles.meetingsList}>
-              {completedMeetings.map((meeting) => (
-                <MeetingHistoryItem
-                  key={meeting.id}
-                  meeting={meeting}
-                  assessments={getAssessmentsForMeeting(meeting.id)}
-                  colors={colors}
-                  styles={styles}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="time-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>No meeting history yet</Text>
-            </View>
-          )}
-        </View>
 
         <View style={{ height: 40 }} />
       </View>
-
-      {/* Schedule Modal */}
-      <Modal
-        visible={showScheduleModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowScheduleModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Schedule Meeting</Text>
-
-            <Text style={styles.inputLabel}>Select Date</Text>
-            <View style={styles.datePresets}>
-              {[
-                { label: 'Tomorrow', days: 1 },
-                { label: 'In 3 days', days: 3 },
-                { label: 'Next week', days: 7 },
-                { label: 'In 2 weeks', days: 14 },
-              ].map((preset) => (
-                <TouchableOpacity
-                  key={preset.days}
-                  style={[
-                    styles.datePreset,
-                    Math.floor((selectedDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) === preset.days &&
-                      styles.datePresetActive,
-                  ]}
-                  onPress={() => setSelectedDate(addDays(new Date(), preset.days))}
-                >
-                  <Text
-                    style={[
-                      styles.datePresetText,
-                      Math.floor((selectedDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) === preset.days &&
-                        styles.datePresetTextActive,
-                    ]}
-                  >
-                    {preset.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.selectedDateText}>
-              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-            </Text>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Notes (optional)</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Add any notes or agenda items..."
-                placeholderTextColor={colors.textTertiary}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowScheduleModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={handleScheduleMeeting}
-              >
-                <Text style={styles.confirmButtonText}>Schedule</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Assessment Modal */}
-      <Modal
-        visible={showAssessmentModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowAssessmentModal(false);
-          resetAssessmentForm();
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Self-Assessment</Text>
-            <Text style={styles.modalSubtitle}>
-              Rate your meeting participation
-            </Text>
-
-            <RatingInput label="Participation" value={participation} onChange={setParticipation} colors={colors} styles={styles} />
-            <RatingInput label="Goal Progress" value={goalProgress} onChange={setGoalProgress} colors={colors} styles={styles} />
-            <RatingInput label="Communication" value={communication} onChange={setCommunication} colors={colors} styles={styles} />
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Notes (optional)</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={assessmentNotes}
-                onChangeText={setAssessmentNotes}
-                placeholder="How did the meeting go?"
-                placeholderTextColor={colors.textTertiary}
-                multiline
-                numberOfLines={2}
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowAssessmentModal(false);
-                  resetAssessmentForm();
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={handleAddAssessment}
-              >
-                <Text style={styles.confirmButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
-  );
-}
-
-// Rating Input Component
-function RatingInput({ label, value, onChange, colors, styles }: { label: string; value: number; onChange: (value: number) => void; colors: ThemeColors; styles: any }) {
-  return (
-    <View style={styles.ratingContainer}>
-      <Text style={styles.ratingLabel}>{label}</Text>
-      <View style={styles.ratingButtons}>
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <TouchableOpacity
-            key={rating}
-            style={[styles.ratingButton, value === rating && styles.ratingButtonActive]}
-            onPress={() => onChange(rating)}
-          >
-            <Text style={[styles.ratingButtonText, value === rating && styles.ratingButtonTextActive]}>
-              {rating}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// Meeting Item Component
-function MeetingItem({ meeting, onComplete, onCancel, onAssess, isParent, colors, styles }: { meeting: FamilyMeeting; onComplete: () => void; onCancel: () => void; onAssess: () => void; isParent: boolean; colors: ThemeColors; styles: any }) {
-  return (
-    <View style={styles.meetingItem}>
-      <View style={styles.meetingItemHeader}>
-        <View>
-          <Text style={styles.meetingItemDate}>{format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}</Text>
-          <Text style={styles.meetingItemTime}>{format(parseISO(meeting.scheduledDate), 'h:mm a')}</Text>
-        </View>
-        <View style={styles.meetingItemActions}>
-          <TouchableOpacity onPress={onComplete} style={styles.iconButton}>
-            <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
-          </TouchableOpacity>
-          {!isParent && (
-            <TouchableOpacity onPress={onAssess} style={styles.iconButton}>
-              <Ionicons name="clipboard-outline" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={onCancel} style={styles.iconButton}>
-            <Ionicons name="close-circle-outline" size={24} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      {meeting.notes && <Text style={styles.meetingItemNotes}>{meeting.notes}</Text>}
-    </View>
-  );
-}
-
-// Meeting History Item Component
-function MeetingHistoryItem({ meeting, assessments, colors, styles }: { meeting: FamilyMeeting; assessments: any[]; colors: ThemeColors; styles: any }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <TouchableOpacity style={styles.historyItem} onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
-      <View style={styles.historyItemHeader}>
-        <View style={styles.historyItemInfo}>
-          <View style={styles.completedBadge}>
-            <Ionicons name="checkmark" size={12} color={colors.success} />
-          </View>
-          <View>
-            <Text style={styles.historyItemDate}>{format(parseISO(meeting.scheduledDate), 'MMM d, yyyy')}</Text>
-            {meeting.attendees && meeting.attendees.length > 0 && (
-              <Text style={styles.attendeesText}>{meeting.attendees.length} attendee(s)</Text>
-            )}
-          </View>
-        </View>
-        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
-      </View>
-
-      {expanded && (
-        <View style={styles.historyDetails}>
-          {meeting.notes && (
-            <View style={styles.detailSection}>
-              <Text style={styles.detailLabel}>Notes</Text>
-              <Text style={styles.detailText}>{meeting.notes}</Text>
-            </View>
-          )}
-          {assessments.length > 0 && (
-            <View style={styles.detailSection}>
-              <Text style={styles.detailLabel}>Assessments</Text>
-              {assessments.map((assessment, index) => (
-                <View key={index} style={styles.assessmentItem}>
-                  <Text style={styles.assessmentName}>{assessment.studentName}</Text>
-                  <Text style={styles.assessmentScore}>Overall: {assessment.ratings.overall.toFixed(1)}/5</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-    </TouchableOpacity>
   );
 }
 
@@ -567,76 +481,68 @@ function createStyles(colors: ThemeColors) {
     container: { flex: 1, backgroundColor: colors.backgroundSecondary },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.backgroundSecondary, padding: 16 },
     content: { padding: 16 },
-    statsRow: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 16, padding: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+
+    // Hero
+    heroCard: {
+      alignItems: 'center', padding: 32,
+      backgroundColor: colors.card, borderRadius: 16,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
+      marginBottom: 24,
+    },
+    heroIconContainer: {
+      width: 80, height: 80, borderRadius: 40,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+    },
+    heroTitle: { fontSize: 24, fontWeight: '700', color: colors.text },
+    heroSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
+
+    // Steps Preview
+    stepsPreview: {
+      backgroundColor: colors.card, borderRadius: 16, padding: 20,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+      marginBottom: 24,
+    },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 16 },
+    stepPreviewItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+    stepPreviewNumber: {
+      width: 28, height: 28, borderRadius: 14,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 2,
+    },
+    stepPreviewNumberText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+    stepPreviewContent: { flex: 1 },
+    stepPreviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    stepPreviewLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+    stepPreviewDescription: { fontSize: 13, color: colors.textTertiary, lineHeight: 18 },
+
+    // Stats
+    statsRow: {
+      flexDirection: 'row', backgroundColor: colors.card, borderRadius: 16, padding: 20,
+      marginBottom: 24,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+    },
     statItem: { flex: 1, alignItems: 'center' },
     statDivider: { width: 1, backgroundColor: colors.border },
-    statValue: { fontSize: 24, fontWeight: '700', color: colors.text },
-    statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-    section: { marginBottom: 24 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 12 },
-    nextMeetingCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-    nextMeetingHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-    nextMeetingInfo: { marginLeft: 16 },
-    nextMeetingDate: { fontSize: 20, fontWeight: '700', color: colors.text },
-    nextMeetingTime: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
-    meetingNotes: { fontSize: 14, color: colors.textSecondary, marginBottom: 16, fontStyle: 'italic' },
-    nextMeetingActions: { flexDirection: 'row', gap: 12 },
-    completeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success, padding: 12, borderRadius: 10, gap: 8, minHeight: 44 },
-    completeButtonText: { color: colors.textInverse, fontSize: 14, fontWeight: '600' },
-    assessButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryLight, padding: 12, borderRadius: 10, gap: 8, minHeight: 44 },
-    assessButtonText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-    emptyCard: { backgroundColor: colors.card, borderRadius: 16, padding: 32, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-    emptyText: { fontSize: 16, color: colors.textSecondary, marginTop: 12, marginBottom: 16 },
-    scheduleButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, minHeight: 44, justifyContent: 'center' },
-    scheduleButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
-    addMeetingButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, padding: 16, borderRadius: 12, marginBottom: 24, gap: 8, minHeight: 48 },
-    addMeetingButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
-    meetingsList: { gap: 12 },
-    meetingItem: { backgroundColor: colors.card, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-    meetingItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    meetingItemDate: { fontSize: 16, fontWeight: '600', color: colors.text },
-    meetingItemTime: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-    meetingItemActions: { flexDirection: 'row', gap: 8 },
-    iconButton: { padding: 4, minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
-    meetingItemNotes: { fontSize: 14, color: colors.textSecondary, marginTop: 12, fontStyle: 'italic' },
-    historyItem: { backgroundColor: colors.card, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-    historyItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    historyItemInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    completedBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.success + '22', alignItems: 'center', justifyContent: 'center' },
-    historyItemDate: { fontSize: 16, fontWeight: '600', color: colors.text },
-    attendeesText: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-    historyDetails: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
-    detailSection: { marginBottom: 12 },
-    detailLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 4 },
-    detailText: { fontSize: 14, color: colors.text },
-    assessmentItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.backgroundSecondary },
-    assessmentName: { fontSize: 14, color: colors.text },
-    assessmentScore: { fontSize: 14, fontWeight: '600', color: colors.primary },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { backgroundColor: colors.card, borderRadius: 16, padding: 24, width: screenWidth - 48, maxWidth: 400, maxHeight: '80%' },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center' },
-    modalSubtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8, marginBottom: 24 },
-    inputContainer: { marginBottom: 16 },
-    inputLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 },
-    input: { backgroundColor: colors.input, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 12, padding: 14, fontSize: 16, color: colors.text },
-    textArea: { minHeight: 80, textAlignVertical: 'top' },
-    datePresets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-    datePreset: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.backgroundSecondary, minHeight: 44, justifyContent: 'center' },
-    datePresetActive: { backgroundColor: colors.primary },
-    datePresetText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-    datePresetTextActive: { color: colors.textInverse },
-    selectedDateText: { fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'center', marginBottom: 24 },
-    ratingContainer: { marginBottom: 20 },
-    ratingLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 },
-    ratingButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-    ratingButton: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.backgroundSecondary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-    ratingButtonActive: { backgroundColor: colors.primary },
-    ratingButtonText: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
-    ratingButtonTextActive: { color: colors.textInverse },
-    modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    cancelButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: colors.backgroundSecondary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-    cancelButtonText: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
-    confirmButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-    confirmButtonText: { fontSize: 16, fontWeight: '600', color: colors.textInverse },
+    statValue: { fontSize: 20, fontWeight: '700', color: colors.text, marginTop: 8 },
+    statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 4 },
+
+    // Start Button
+    startButton: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+      backgroundColor: colors.primary, padding: 18, borderRadius: 16,
+      shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+      minHeight: 56,
+    },
+    startButtonText: { fontSize: 18, fontWeight: '700', color: colors.textInverse },
+
+    // Resume
+    resumeCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: colors.warning + '15', borderRadius: 12, padding: 16, marginTop: 16,
+    },
+    resumeContent: { flex: 1 },
+    resumeText: { fontSize: 14, fontWeight: '600', color: colors.text },
+    resumeStep: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   });
 }

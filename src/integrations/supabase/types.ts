@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -984,35 +959,44 @@ export type Database = {
       }
       family_meetings: {
         Row: {
-          attendees: string[] | null
-          completed_at: string | null
           created_at: string
+          current_step: number | null
+          goals_reviewed: Json | null
           id: string
-          notes: string | null
-          scheduled_date: string
-          status: string
+          is_active: boolean
+          recurrence: string | null
+          scheduled_date: string | null
+          scheduled_time: string | null
+          started_at: string | null
+          step_notes: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          attendees?: string[] | null
-          completed_at?: string | null
           created_at?: string
+          current_step?: number | null
+          goals_reviewed?: Json | null
           id?: string
-          notes?: string | null
-          scheduled_date: string
-          status?: string
+          is_active?: boolean
+          recurrence?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          started_at?: string | null
+          step_notes?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          attendees?: string[] | null
-          completed_at?: string | null
           created_at?: string
+          current_step?: number | null
+          goals_reviewed?: Json | null
           id?: string
-          notes?: string | null
-          scheduled_date?: string
-          status?: string
+          is_active?: boolean
+          recurrence?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          started_at?: string | null
+          step_notes?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -1256,50 +1240,136 @@ export type Database = {
         }
         Relationships: []
       }
-      meeting_assessments: {
+      meeting_child_evaluations: {
         Row: {
-          communication_rating: number
           created_at: string
-          goal_progress_rating: number
+          express_complaints: number
+          id: string
+          liked_meeting: number
+          meeting_id: string
+          parents_asked_questions: number
+          parents_listened: number
+          student_user_id: string
+          total_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          express_complaints: number
+          id?: string
+          liked_meeting: number
+          meeting_id: string
+          parents_asked_questions: number
+          parents_listened: number
+          student_user_id: string
+          total_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          express_complaints?: number
+          id?: string
+          liked_meeting?: number
+          meeting_id?: string
+          parents_asked_questions?: number
+          parents_listened?: number
+          student_user_id?: string
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_child_evaluations_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "family_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_conflict_queue: {
+        Row: {
+          added_by: string
+          created_at: string
+          description: string
+          discussed_in_meeting_id: string | null
+          id: string
+          resolved_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          description: string
+          discussed_in_meeting_id?: string | null
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          description?: string
+          discussed_in_meeting_id?: string | null
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_conflict_queue_discussed_in_meeting_id_fkey"
+            columns: ["discussed_in_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "family_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_goals: {
+        Row: {
+          created_at: string
+          goal_text: string
           id: string
           meeting_id: string
-          notes: string | null
-          overall_rating: number
-          participation_rating: number
-          student_id: string
-          student_name: string
+          reviewed_in_meeting_id: string | null
+          specifics: Json | null
+          status: string
+          student_user_id: string | null
           updated_at: string
         }
         Insert: {
-          communication_rating: number
           created_at?: string
-          goal_progress_rating: number
+          goal_text: string
           id?: string
           meeting_id: string
-          notes?: string | null
-          overall_rating: number
-          participation_rating: number
-          student_id: string
-          student_name: string
+          reviewed_in_meeting_id?: string | null
+          specifics?: Json | null
+          status?: string
+          student_user_id?: string | null
           updated_at?: string
         }
         Update: {
-          communication_rating?: number
           created_at?: string
-          goal_progress_rating?: number
+          goal_text?: string
           id?: string
           meeting_id?: string
-          notes?: string | null
-          overall_rating?: number
-          participation_rating?: number
-          student_id?: string
-          student_name?: string
+          reviewed_in_meeting_id?: string | null
+          specifics?: Json | null
+          status?: string
+          student_user_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "meeting_assessments_meeting_id_fkey"
+            foreignKeyName: "meeting_goals_meeting_id_fkey"
             columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "family_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_goals_reviewed_in_meeting_id_fkey"
+            columns: ["reviewed_in_meeting_id"]
             isOneToOne: false
             referencedRelation: "family_meetings"
             referencedColumns: ["id"]
@@ -1457,6 +1527,8 @@ export type Database = {
       }
       parent_profiles: {
         Row: {
+          consent_given_at: string | null
+          consent_version: string | null
           created_at: string
           email: string | null
           first_name: string | null
@@ -1468,6 +1540,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          consent_given_at?: string | null
+          consent_version?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -1479,6 +1553,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          consent_given_at?: string | null
+          consent_version?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -2624,9 +2700,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       behavior_assessment_status: [

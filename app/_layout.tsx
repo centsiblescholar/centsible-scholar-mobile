@@ -36,6 +36,12 @@ function RootNavigator() {
       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
+        name="daily"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="edit-profile"
         options={{
           title: 'Edit Profile',

@@ -1,385 +1,513 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
-import { isAfter, parseISO } from 'date-fns';
+import {
+  FamilyMeeting,
+  StepNotes,
+  ChildEvaluation,
+  EvaluationInput,
+  MeetingGoal,
+  GoalSpecifics,
+  MeetingConflict,
+  calculateTotalScore,
+  TOTAL_STEPS,
+} from '../types/family-meeting';
 
-export interface FamilyMeeting {
-  id: string;
-  user_id: string;
-  scheduledDate: string;
-  status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
-  notes: string | null;
-  attendees: string[];
-  createdAt: string;
-  completedAt: string | null;
-}
-
-export interface MeetingAssessment {
-  id: string;
-  meetingId: string;
-  studentId: string;
-  studentName: string;
-  ratings: {
-    participation: number;
-    goalProgress: number;
-    communication: number;
-    overall: number;
-  };
-  notes: string | null;
-  createdAt: string;
-}
-
-// Database row types (snake_case from Supabase)
-interface FamilyMeetingRow {
-  id: string;
-  user_id: string;
-  scheduled_date: string;
-  status: string;
-  notes: string | null;
-  attendees: string[] | null;
-  created_at: string;
-  completed_at: string | null;
-  updated_at: string;
-}
-
-interface MeetingAssessmentRow {
-  id: string;
-  meeting_id: string;
-  student_id: string;
-  student_name: string;
-  participation_rating: number;
-  goal_progress_rating: number;
-  communication_rating: number;
-  overall_rating: number;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// Query key factory
+// ─── Query Keys ─────────────────────────────────────────────
 export const familyMeetingsKeys = {
   all: ['familyMeetings'] as const,
-  list: (userId: string) => [...familyMeetingsKeys.all, 'list', userId] as const,
-  assessments: (userId: string) => [...familyMeetingsKeys.all, 'assessments', userId] as const,
+  meeting: (userId: string) => [...familyMeetingsKeys.all, 'meeting', userId] as const,
+  evaluations: (meetingId: string) => [...familyMeetingsKeys.all, 'evaluations', meetingId] as const,
+  goals: (meetingId: string) => [...familyMeetingsKeys.all, 'goals', meetingId] as const,
+  activeGoals: (userId: string) => [...familyMeetingsKeys.all, 'activeGoals', userId] as const,
+  conflicts: (userId: string) => [...familyMeetingsKeys.all, 'conflicts', userId] as const,
 };
 
-// Transform database row to app type
-function transformMeeting(row: FamilyMeetingRow): FamilyMeeting {
+// ─── Transform helpers ──────────────────────────────────────
+function transformMeeting(row: any): FamilyMeeting {
   return {
     id: row.id,
     user_id: row.user_id,
-    scheduledDate: row.scheduled_date,
-    status: row.status as FamilyMeeting['status'],
-    notes: row.notes,
-    attendees: row.attendees || [],
-    createdAt: row.created_at,
-    completedAt: row.completed_at,
+    scheduled_date: row.scheduled_date,
+    scheduled_time: row.scheduled_time,
+    recurrence: row.recurrence,
+    is_active: row.is_active,
+    current_step: row.current_step ?? 0,
+    step_notes: (row.step_notes as StepNotes) ?? {},
+    goals_reviewed: (row.goals_reviewed as string[]) ?? [],
+    started_at: row.started_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
-function transformAssessment(row: MeetingAssessmentRow): MeetingAssessment {
-  return {
-    id: row.id,
-    meetingId: row.meeting_id,
-    studentId: row.student_id,
-    studentName: row.student_name,
-    ratings: {
-      participation: row.participation_rating,
-      goalProgress: row.goal_progress_rating,
-      communication: row.communication_rating,
-      overall: row.overall_rating,
-    },
-    notes: row.notes,
-    createdAt: row.created_at,
-  };
-}
+// ─── API Functions ──────────────────────────────────────────
 
-// Fetch all meetings for a user
-async function fetchMeetings(userId: string): Promise<FamilyMeeting[]> {
-  // First, try to update any missed meetings
-  try {
-    await supabase.rpc('update_missed_meetings');
-  } catch {
-    // Function may not exist yet, continue without it
-  }
-
+async function fetchMeeting(userId: string): Promise<FamilyMeeting | null> {
   const { data, error } = await supabase
     .from('family_meetings')
     .select('*')
     .eq('user_id', userId)
-    .order('scheduled_date', { ascending: false });
+    .maybeSingle();
 
-  if (error) {
-    console.error('Error fetching family meetings:', error);
-    throw error;
-  }
-
-  return (data || []).map(transformMeeting);
+  if (error) throw error;
+  return data ? transformMeeting(data) : null;
 }
 
-// Fetch all assessments for a user's meetings
-async function fetchAssessments(userId: string): Promise<MeetingAssessment[]> {
-  const { data, error } = await supabase
-    .from('meeting_assessments')
-    .select(`
-      *,
-      family_meetings!inner(user_id)
-    `)
-    .eq('family_meetings.user_id', userId)
-    .order('created_at', { ascending: false });
+async function createOrGetMeeting(userId: string): Promise<FamilyMeeting> {
+  const existing = await fetchMeeting(userId);
+  if (existing) return existing;
 
-  if (error) {
-    console.error('Error fetching meeting assessments:', error);
-    throw error;
-  }
-
-  return (data || []).map(transformAssessment);
-}
-
-// Schedule a new meeting
-async function createMeeting(
-  userId: string,
-  scheduledDate: Date,
-  notes?: string
-): Promise<FamilyMeeting> {
   const { data, error } = await supabase
     .from('family_meetings')
-    .insert({
-      user_id: userId,
-      scheduled_date: scheduledDate.toISOString(),
-      status: 'scheduled',
-      notes: notes || null,
-      attendees: [],
-    })
+    .insert({ user_id: userId })
     .select()
     .single();
 
-  if (error) {
-    console.error('Error creating meeting:', error);
-    throw error;
-  }
-
+  if (error) throw error;
   return transformMeeting(data);
 }
 
-// Complete a meeting
-async function completeMeetingFn(
+async function updateMeetingSchedule(
   meetingId: string,
-  attendees?: string[]
+  scheduledDate: string,
+  scheduledTime: string,
+  recurrence: string
 ): Promise<void> {
   const { error } = await supabase
     .from('family_meetings')
     .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      attendees: attendees || [],
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime,
+      recurrence,
+      is_active: true,
       updated_at: new Date().toISOString(),
     })
     .eq('id', meetingId);
 
-  if (error) {
-    console.error('Error completing meeting:', error);
-    throw error;
-  }
+  if (error) throw error;
 }
 
-// Cancel a meeting
-async function cancelMeetingFn(meetingId: string): Promise<void> {
+async function startMeetingFn(meetingId: string): Promise<void> {
   const { error } = await supabase
     .from('family_meetings')
     .update({
-      status: 'cancelled',
+      started_at: new Date().toISOString(),
+      current_step: 0,
+      step_notes: {},
+      goals_reviewed: [],
       updated_at: new Date().toISOString(),
     })
     .eq('id', meetingId);
 
-  if (error) {
-    console.error('Error cancelling meeting:', error);
-    throw error;
-  }
+  if (error) throw error;
 }
 
-// Add a meeting assessment
-async function createAssessment(
+async function advanceStepFn(
   meetingId: string,
-  studentId: string,
-  studentName: string,
-  ratings: MeetingAssessment['ratings'],
-  notes?: string
-): Promise<MeetingAssessment> {
+  newStep: number,
+  stepNotes: StepNotes
+): Promise<void> {
+  const { error } = await supabase
+    .from('family_meetings')
+    .update({
+      current_step: newStep,
+      step_notes: stepNotes as any,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', meetingId);
+
+  if (error) throw error;
+}
+
+async function completeMeetingFn(
+  meetingId: string,
+  stepNotes: StepNotes,
+  goalsReviewed: string[]
+): Promise<void> {
+  const { error } = await supabase
+    .from('family_meetings')
+    .update({
+      current_step: TOTAL_STEPS,
+      step_notes: stepNotes as any,
+      goals_reviewed: goalsReviewed as any,
+      started_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', meetingId);
+
+  if (error) throw error;
+}
+
+async function resetMeetingFn(meetingId: string): Promise<void> {
+  const { error } = await supabase
+    .from('family_meetings')
+    .update({
+      current_step: 0,
+      step_notes: {},
+      goals_reviewed: [],
+      started_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', meetingId);
+
+  if (error) throw error;
+}
+
+// ─── Evaluations ────────────────────────────────────────────
+
+async function fetchEvaluations(meetingId: string): Promise<ChildEvaluation[]> {
   const { data, error } = await supabase
-    .from('meeting_assessments')
+    .from('meeting_child_evaluations')
+    .select('*')
+    .eq('meeting_id', meetingId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function submitEvaluationFn(
+  meetingId: string,
+  studentUserId: string,
+  input: EvaluationInput
+): Promise<ChildEvaluation> {
+  const totalScore = calculateTotalScore(input);
+
+  const { data, error } = await supabase
+    .from('meeting_child_evaluations')
     .insert({
       meeting_id: meetingId,
-      student_id: studentId,
-      student_name: studentName,
-      participation_rating: ratings.participation,
-      goal_progress_rating: ratings.goalProgress,
-      communication_rating: ratings.communication,
-      overall_rating: ratings.overall,
-      notes: notes || null,
+      student_user_id: studentUserId,
+      express_complaints: input.express_complaints,
+      parents_listened: input.parents_listened,
+      parents_asked_questions: input.parents_asked_questions,
+      liked_meeting: input.liked_meeting,
+      total_score: totalScore,
     })
     .select()
     .single();
 
-  if (error) {
-    console.error('Error creating assessment:', error);
-    throw error;
-  }
-
-  return transformAssessment(data);
+  if (error) throw error;
+  return data;
 }
+
+// ─── Goals ──────────────────────────────────────────────────
+
+async function fetchActiveGoals(userId: string): Promise<MeetingGoal[]> {
+  const { data: meeting } = await supabase
+    .from('family_meetings')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!meeting) return [];
+
+  const { data, error } = await supabase
+    .from('meeting_goals')
+    .select('*')
+    .eq('meeting_id', meeting.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((g) => ({
+    ...g,
+    specifics: (g.specifics as GoalSpecifics) ?? {},
+    status: g.status as MeetingGoal['status'],
+  }));
+}
+
+async function createGoalFn(
+  meetingId: string,
+  goalText: string,
+  studentUserId: string | null,
+  specifics?: GoalSpecifics
+): Promise<MeetingGoal> {
+  const { data, error } = await supabase
+    .from('meeting_goals')
+    .insert({
+      meeting_id: meetingId,
+      student_user_id: studentUserId,
+      goal_text: goalText,
+      specifics: (specifics ?? {}) as any,
+      status: 'active',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return {
+    ...data,
+    specifics: (data.specifics as GoalSpecifics) ?? {},
+    status: data.status as MeetingGoal['status'],
+  };
+}
+
+async function updateGoalStatusFn(
+  goalId: string,
+  status: 'active' | 'completed' | 'dropped',
+  reviewedInMeetingId?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('meeting_goals')
+    .update({
+      status,
+      reviewed_in_meeting_id: reviewedInMeetingId ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', goalId);
+
+  if (error) throw error;
+}
+
+// ─── Conflicts ──────────────────────────────────────────────
+
+async function fetchConflicts(userId: string): Promise<MeetingConflict[]> {
+  const { data, error } = await supabase
+    .from('meeting_conflict_queue')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((c) => ({
+    ...c,
+    status: c.status as MeetingConflict['status'],
+  }));
+}
+
+async function addConflictFn(
+  userId: string,
+  addedBy: string,
+  description: string
+): Promise<MeetingConflict> {
+  const { data, error } = await supabase
+    .from('meeting_conflict_queue')
+    .insert({
+      user_id: userId,
+      added_by: addedBy,
+      description,
+      status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { ...data, status: data.status as MeetingConflict['status'] };
+}
+
+async function resolveConflictFn(
+  conflictId: string,
+  meetingId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('meeting_conflict_queue')
+    .update({
+      status: 'resolved',
+      discussed_in_meeting_id: meetingId,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq('id', conflictId);
+
+  if (error) throw error;
+}
+
+async function markConflictDiscussedFn(
+  conflictId: string,
+  meetingId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('meeting_conflict_queue')
+    .update({
+      status: 'discussed',
+      discussed_in_meeting_id: meetingId,
+    })
+    .eq('id', conflictId);
+
+  if (error) throw error;
+}
+
+// ─── Main Hook ──────────────────────────────────────────────
 
 export function useFamilyMeetings(userId: string | undefined) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const targetUserId = userId || user?.id || '';
 
-  // Fetch meetings
   const {
-    data: meetings = [],
-    isLoading: meetingsLoading,
-    error: meetingsError,
-    refetch: refetchMeetings,
+    data: meeting,
+    isLoading: meetingLoading,
+    error: meetingError,
+    refetch: refetchMeeting,
   } = useQuery({
-    queryKey: familyMeetingsKeys.list(targetUserId),
-    queryFn: () => fetchMeetings(targetUserId),
+    queryKey: familyMeetingsKeys.meeting(targetUserId),
+    queryFn: () => fetchMeeting(targetUserId),
     enabled: !!targetUserId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Fetch assessments
   const {
-    data: assessments = [],
-    isLoading: assessmentsLoading,
-    refetch: refetchAssessments,
+    data: activeGoals = [],
+    isLoading: goalsLoading,
+    refetch: refetchGoals,
   } = useQuery({
-    queryKey: familyMeetingsKeys.assessments(targetUserId),
-    queryFn: () => fetchAssessments(targetUserId),
+    queryKey: familyMeetingsKeys.activeGoals(targetUserId),
+    queryFn: () => fetchActiveGoals(targetUserId),
     enabled: !!targetUserId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Create meeting mutation
-  const createMeetingMutation = useMutation({
-    mutationFn: ({ scheduledDate, notes }: { scheduledDate: Date; notes?: string }) =>
-      createMeeting(targetUserId, scheduledDate, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: familyMeetingsKeys.list(targetUserId) });
-    },
+  const {
+    data: conflicts = [],
+    isLoading: conflictsLoading,
+    refetch: refetchConflicts,
+  } = useQuery({
+    queryKey: familyMeetingsKeys.conflicts(targetUserId),
+    queryFn: () => fetchConflicts(targetUserId),
+    enabled: !!targetUserId,
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Complete meeting mutation
-  const completeMeetingMutation = useMutation({
-    mutationFn: ({ meetingId, attendees }: { meetingId: string; attendees?: string[] }) =>
-      completeMeetingFn(meetingId, attendees),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: familyMeetingsKeys.list(targetUserId) });
-    },
+  const {
+    data: evaluations = [],
+    refetch: refetchEvaluations,
+  } = useQuery({
+    queryKey: familyMeetingsKeys.evaluations(meeting?.id ?? ''),
+    queryFn: () => fetchEvaluations(meeting!.id),
+    enabled: !!meeting?.id,
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Cancel meeting mutation
-  const cancelMeetingMutation = useMutation({
-    mutationFn: cancelMeetingFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: familyMeetingsKeys.list(targetUserId) });
-    },
-  });
-
-  // Add assessment mutation
-  const addAssessmentMutation = useMutation({
-    mutationFn: ({
-      meetingId,
-      studentId,
-      studentName,
-      ratings,
-      notes,
-    }: {
-      meetingId: string;
-      studentId: string;
-      studentName: string;
-      ratings: MeetingAssessment['ratings'];
-      notes?: string;
-    }) => createAssessment(meetingId, studentId, studentName, ratings, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: familyMeetingsKeys.assessments(targetUserId) });
-    },
-  });
-
-  // Get assessments for a specific meeting
-  const getAssessmentsForMeeting = (meetingId: string) =>
-    assessments.filter((a) => a.meetingId === meetingId);
-
-  // Get the next scheduled meeting
-  const nextMeeting = meetings
-    .filter((m) => m.status === 'scheduled' && isAfter(parseISO(m.scheduledDate), new Date()))
-    .sort((a, b) => parseISO(a.scheduledDate).getTime() - parseISO(b.scheduledDate).getTime())[0];
-
-  // Get completed meetings (most recent first)
-  const completedMeetings = meetings
-    .filter((m) => m.status === 'completed')
-    .sort((a, b) =>
-      parseISO(b.completedAt || b.scheduledDate).getTime() -
-      parseISO(a.completedAt || a.scheduledDate).getTime()
-    );
-
-  // Get upcoming meetings
-  const upcomingMeetings = meetings
-    .filter((m) => m.status === 'scheduled')
-    .sort((a, b) => parseISO(a.scheduledDate).getTime() - parseISO(b.scheduledDate).getTime());
-
-  // Calculate meeting stats
-  const stats = {
-    totalMeetings: meetings.length,
-    completedCount: meetings.filter((m) => m.status === 'completed').length,
-    missedCount: meetings.filter((m) => m.status === 'missed').length,
-    upcomingCount: upcomingMeetings.length,
-    averageAssessmentScore:
-      assessments.length > 0
-        ? assessments.reduce((sum, a) => sum + a.ratings.overall, 0) / assessments.length
-        : null,
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: familyMeetingsKeys.all });
   };
 
-  // Refetch all data
+  // ─── Mutations ──────────────────────────────────────────
+
+  const createOrGetMeetingMutation = useMutation({
+    mutationFn: () => createOrGetMeeting(targetUserId),
+    onSuccess: invalidateAll,
+  });
+
+  const updateScheduleMutation = useMutation({
+    mutationFn: (args: { meetingId: string; scheduledDate: string; scheduledTime: string; recurrence: string }) =>
+      updateMeetingSchedule(args.meetingId, args.scheduledDate, args.scheduledTime, args.recurrence),
+    onSuccess: invalidateAll,
+  });
+
+  const startMeetingMutation = useMutation({
+    mutationFn: (meetingId: string) => startMeetingFn(meetingId),
+    onSuccess: invalidateAll,
+  });
+
+  const advanceStepMutation = useMutation({
+    mutationFn: (args: { meetingId: string; newStep: number; stepNotes: StepNotes }) =>
+      advanceStepFn(args.meetingId, args.newStep, args.stepNotes),
+    onSuccess: invalidateAll,
+  });
+
+  const completeMeetingMutation = useMutation({
+    mutationFn: (args: { meetingId: string; stepNotes: StepNotes; goalsReviewed: string[] }) =>
+      completeMeetingFn(args.meetingId, args.stepNotes, args.goalsReviewed),
+    onSuccess: invalidateAll,
+  });
+
+  const resetMeetingMutation = useMutation({
+    mutationFn: (meetingId: string) => resetMeetingFn(meetingId),
+    onSuccess: invalidateAll,
+  });
+
+  const submitEvaluationMutation = useMutation({
+    mutationFn: (args: { meetingId: string; studentUserId: string; input: EvaluationInput }) =>
+      submitEvaluationFn(args.meetingId, args.studentUserId, args.input),
+    onSuccess: invalidateAll,
+  });
+
+  const createGoalMutation = useMutation({
+    mutationFn: (args: { meetingId: string; goalText: string; studentUserId: string | null; specifics?: GoalSpecifics }) =>
+      createGoalFn(args.meetingId, args.goalText, args.studentUserId, args.specifics),
+    onSuccess: invalidateAll,
+  });
+
+  const updateGoalStatusMutation = useMutation({
+    mutationFn: (args: { goalId: string; status: 'active' | 'completed' | 'dropped'; reviewedInMeetingId?: string }) =>
+      updateGoalStatusFn(args.goalId, args.status, args.reviewedInMeetingId),
+    onSuccess: invalidateAll,
+  });
+
+  const addConflictMutation = useMutation({
+    mutationFn: (args: { addedBy: string; description: string }) =>
+      addConflictFn(targetUserId, args.addedBy, args.description),
+    onSuccess: invalidateAll,
+  });
+
+  const resolveConflictMutation = useMutation({
+    mutationFn: (args: { conflictId: string; meetingId: string }) =>
+      resolveConflictFn(args.conflictId, args.meetingId),
+    onSuccess: invalidateAll,
+  });
+
+  const markConflictDiscussedMutation = useMutation({
+    mutationFn: (args: { conflictId: string; meetingId: string }) =>
+      markConflictDiscussedFn(args.conflictId, args.meetingId),
+    onSuccess: invalidateAll,
+  });
+
+  const pendingConflicts = conflicts.filter((c) => c.status === 'pending');
+  const isInProgress = !!meeting?.started_at && (meeting.current_step ?? 0) < TOTAL_STEPS;
+
   const refetch = async () => {
-    await Promise.all([refetchMeetings(), refetchAssessments()]);
+    await Promise.all([
+      refetchMeeting(),
+      refetchGoals(),
+      refetchConflicts(),
+      refetchEvaluations(),
+    ]);
   };
 
   return {
-    // Data
-    meetings,
-    assessments,
-    isLoading: meetingsLoading || assessmentsLoading,
-    nextMeeting,
-    upcomingMeetings,
-    completedMeetings,
-    stats,
+    meeting,
+    activeGoals,
+    conflicts,
+    pendingConflicts,
+    evaluations,
+    isLoading: meetingLoading || goalsLoading || conflictsLoading,
+    isInProgress,
 
-    // Actions
-    scheduleMeeting: (scheduledDate: Date, notes?: string) =>
-      createMeetingMutation.mutateAsync({ scheduledDate, notes }),
-    completeMeeting: (meetingId: string, attendees?: string[]) =>
-      completeMeetingMutation.mutateAsync({ meetingId, attendees }),
-    cancelMeeting: cancelMeetingMutation.mutateAsync,
-    addAssessment: (
-      meetingId: string,
-      studentId: string,
-      studentName: string,
-      ratings: MeetingAssessment['ratings'],
-      notes?: string
-    ) => addAssessmentMutation.mutateAsync({ meetingId, studentId, studentName, ratings, notes }),
+    createOrGetMeeting: () => createOrGetMeetingMutation.mutateAsync(),
+    updateSchedule: (meetingId: string, scheduledDate: string, scheduledTime: string, recurrence: string) =>
+      updateScheduleMutation.mutateAsync({ meetingId, scheduledDate, scheduledTime, recurrence }),
+    startMeeting: (meetingId: string) => startMeetingMutation.mutateAsync(meetingId),
+    advanceStep: (meetingId: string, newStep: number, stepNotes: StepNotes) =>
+      advanceStepMutation.mutateAsync({ meetingId, newStep, stepNotes }),
+    completeMeeting: (meetingId: string, stepNotes: StepNotes, goalsReviewed: string[]) =>
+      completeMeetingMutation.mutateAsync({ meetingId, stepNotes, goalsReviewed }),
+    resetMeeting: (meetingId: string) => resetMeetingMutation.mutateAsync(meetingId),
 
-    // Helpers
-    getAssessmentsForMeeting,
+    submitEvaluation: (meetingId: string, studentUserId: string, input: EvaluationInput) =>
+      submitEvaluationMutation.mutateAsync({ meetingId, studentUserId, input }),
+
+    createGoal: (meetingId: string, goalText: string, studentUserId: string | null, specifics?: GoalSpecifics) =>
+      createGoalMutation.mutateAsync({ meetingId, goalText, studentUserId, specifics }),
+    updateGoalStatus: (goalId: string, status: 'active' | 'completed' | 'dropped', reviewedInMeetingId?: string) =>
+      updateGoalStatusMutation.mutateAsync({ goalId, status, reviewedInMeetingId }),
+
+    addConflict: (addedBy: string, description: string) =>
+      addConflictMutation.mutateAsync({ addedBy, description }),
+    resolveConflict: (conflictId: string, meetingId: string) =>
+      resolveConflictMutation.mutateAsync({ conflictId, meetingId }),
+    markConflictDiscussed: (conflictId: string, meetingId: string) =>
+      markConflictDiscussedMutation.mutateAsync({ conflictId, meetingId }),
+
     refetch,
 
-    // Mutation states
-    isScheduling: createMeetingMutation.isPending,
+    isStarting: startMeetingMutation.isPending,
+    isAdvancing: advanceStepMutation.isPending,
     isCompleting: completeMeetingMutation.isPending,
-    isCancelling: cancelMeetingMutation.isPending,
-    isAddingAssessment: addAssessmentMutation.isPending,
+    isSubmittingEvaluation: submitEvaluationMutation.isPending,
+    isCreatingGoal: createGoalMutation.isPending,
 
-    // Errors
-    error: meetingsError,
+    error: meetingError,
   };
 }
