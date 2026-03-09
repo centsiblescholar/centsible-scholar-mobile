@@ -28,12 +28,13 @@ export default function EarningsScreen() {
 
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
 
-  const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
-
   const { gradeEntries, totalReward, isLoading: gradesLoading, error: gradesError, refetch: refetchGrades } = useStudentGrades(targetUserId);
   const { assessments, isLoading: behaviorLoading, refetch: refetchBehavior } = useBehaviorAssessments(targetUserId);
-  const { bonusAmount: educationBonusAmount, accuracyPercentage, isLoading: educationLoading, refetch: refetchEducation } = useEducationBonus(targetUserId, baseRewardAmount);
-  const { bonusAmount: behaviorBonusAmount, averageScore, isLoading: behaviorBonusLoading, refetch: refetchBehaviorBonus } = useBehaviorBonus(targetUserId, baseRewardAmount);
+
+  // Bonuses are calculated as a percentage of total grade rewards (not the profile's base_reward_amount).
+  // e.g., 7 grades totaling $250 in rewards → 20% behavior bonus = $50
+  const { bonusAmount: educationBonusAmount, accuracyPercentage, isLoading: educationLoading, refetch: refetchEducation } = useEducationBonus(targetUserId, totalReward);
+  const { bonusAmount: behaviorBonusAmount, averageScore, isLoading: behaviorBonusLoading, refetch: refetchBehaviorBonus } = useBehaviorBonus(targetUserId, totalReward);
   const { goals, addGoal, addToGoal, deleteGoal, totalSaved, totalTarget, isLoading: goalsLoading, refetch: refetchGoals } = useSavingsGoals(targetUserId);
 
   const [goalModalVisible, setGoalModalVisible] = useState(false);

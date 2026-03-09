@@ -72,9 +72,13 @@ async function fetchBehaviorAssessments(
   return data || [];
 }
 
+/**
+ * @param studentUserId - The student's auth user ID
+ * @param totalGradeReward - Total approved grade rewards (bonuses are a % of this)
+ */
 export function useBehaviorBonus(
   studentUserId: string | undefined,
-  baseRewardAmount: number = 0
+  totalGradeReward: number = 0
 ) {
   const { data: assessments, isLoading, error, refetch } = useQuery({
     queryKey: ['behaviorBonus', studentUserId],
@@ -89,7 +93,7 @@ export function useBehaviorBonus(
     : 0;
   const qualifiesForBonus = averageScore >= BEHAVIOR_THRESHOLDS.MINIMUM_QUALIFICATION;
   const bonusPercentage = getBonusPercentage(averageScore);
-  const bonusAmount = calculateBehaviorBonus(averageScore, baseRewardAmount);
+  const bonusAmount = calculateBehaviorBonus(averageScore, totalGradeReward);
   const currentTier = getTierLabel(averageScore);
 
   return {

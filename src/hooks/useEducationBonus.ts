@@ -74,9 +74,13 @@ async function fetchEducationBonusData(
   return { totalQuestions, correctAnswers };
 }
 
+/**
+ * @param studentUserId - The student's auth user ID
+ * @param totalGradeReward - Total approved grade rewards (bonuses are a % of this)
+ */
 export function useEducationBonus(
   studentUserId: string | undefined,
-  baseRewardAmount: number = 0
+  totalGradeReward: number = 0
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['educationBonus', studentUserId],
@@ -91,7 +95,7 @@ export function useEducationBonus(
     ? Math.round((correctAnswers / totalQuestions) * 100)
     : 0;
   const bonusPercentage = calculateEducationBonusPercentage(accuracyPercentage);
-  const bonusAmount = baseRewardAmount * bonusPercentage;
+  const bonusAmount = totalGradeReward * bonusPercentage;
   const currentTier = getTierLabel(accuracyPercentage);
 
   return {
