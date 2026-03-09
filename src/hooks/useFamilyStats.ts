@@ -41,10 +41,12 @@ async function fetchFamilyStats(
     const studentUserId = student.user_id;
 
     // 1. Grades
+    // Only approved grades count toward rewards and GPA
     const { data: grades } = await supabase
       .from('student_grades')
       .select('grade, base_amount')
-      .eq('student_user_id', studentUserId);
+      .eq('student_user_id', studentUserId)
+      .eq('status', 'approved');
 
     let gpa = 0;
     let studentRewards = 0;

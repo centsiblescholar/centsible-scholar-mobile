@@ -11,6 +11,7 @@ export interface StudentGrade {
   grade: string;
   base_amount: number;
   status: string;
+  originated_by: string | null;
   submitted_at: string;
   reviewed_at?: string | null;
   reviewed_by?: string | null;
@@ -28,9 +29,7 @@ export const studentGradesKeys = {
  *
  * @param studentUserId - The student's auth user_id (from student_profiles.user_id)
  *
- * Note: dashboard_grades is a legacy table with no parent RLS policy.
- * All grade data should go through student_grades which has proper
- * parent access via parent_student_relationships.
+ * Returns ALL grades (for display purposes — the hook filters approved-only for calculations).
  */
 async function fetchStudentGrades(
   studentUserId: string
@@ -49,16 +48,46 @@ async function fetchStudentGrades(
   return data || [];
 }
 
-async function submitGrade(grade: {
+/**
+ * Submit a grade. Behavior differs based on who is submitting:
+ * - Student submits: status='pending', originated_by='student' (needs parent approval)
+ * - Parent submits: status='approved', originated_by='parent' (auto-approved)
+ */
+async function submitGradeEntry(params: {
   student_user_id: string;
   subject: string;
   grade: string;
   base_amount: number;
+  isParent: boolean;
+  parent_user_id?: string;
 }): Promise<void> {
+  const { isParent, parent_user_id, ...gradeData } = params;
+
+  const now = new Date().toISOString();
+
+  if (isParent) {
+    // Parent-entered grades are auto-approved
+    const { error } = await supabase.from('student_grades').insert({
+      ...gradeData,
+      submitted_at: now,
+      status: 'approved',
+      originated_by: 'parent',
+      reviewed_at: now,
+      reviewed_by: parent_user_id ?? null,
+    });
+    if (error) {
+      console.error('Error submitting grade:', error);
+      throw error;
+    }
+    return;
+  }
+
+  // Student-submitted grades need parent approval
   const { error } = await supabase.from('student_grades').insert({
-    ...grade,
-    status: 'submitted',
-    submitted_at: new Date().toISOString(),
+    ...gradeData,
+    submitted_at: now,
+    status: 'pending',
+    originated_by: 'student',
   });
 
   if (error) {
@@ -68,8 +97,10 @@ async function submitGrade(grade: {
 }
 
 export function useStudentGrades(studentUserId?: string) {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
+
+  const isParent = userRole === 'parent';
 
   // Use provided studentUserId or fall back to logged-in user's ID
   // When called from a parent view, studentUserId should be selectedStudent.user_id
@@ -83,14 +114,29 @@ export function useStudentGrades(studentUserId?: string) {
   });
 
   const submitMutation = useMutation({
-    mutationFn: submitGrade,
+    mutationFn: (grade: {
+      student_user_id: string;
+      subject: string;
+      grade: string;
+      base_amount: number;
+    }) =>
+      submitGradeEntry({
+        ...grade,
+        isParent,
+        parent_user_id: isParent ? user?.id : undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(targetUserId) });
+      // Also invalidate grade approval queries so parent sees updated list
+      queryClient.invalidateQueries({ queryKey: ['gradeApproval'] });
     },
   });
 
-  // Convert to GradeEntry format for calculations
-  const gradeEntries: GradeEntry[] = grades.map((g) => ({
+  // Only APPROVED grades count toward rewards and GPA
+  const approvedGrades = grades.filter((g) => g.status === 'approved');
+
+  // Convert approved grades to GradeEntry format for calculations
+  const gradeEntries: GradeEntry[] = approvedGrades.map((g) => ({
     id: g.id,
     className: g.subject,
     grade: g.grade as Grade,
@@ -104,15 +150,15 @@ export function useStudentGrades(studentUserId?: string) {
     }),
   }));
 
-  // Calculate totals
+  // Calculate totals from approved grades only
   const totalReward = gradeEntries.reduce((sum, g) => sum + g.rewardAmount, 0);
   const gpa = calculateGPA(gradeEntries);
 
   return {
-    grades,
-    gradeEntries,
-    totalReward,
-    gpa,
+    grades,          // All grades (for display — includes pending/rejected)
+    gradeEntries,    // Approved grades as GradeEntry (for calculations)
+    totalReward,     // Sum of approved grade rewards only
+    gpa,             // GPA from approved grades only
     isLoading,
     error,
     refetch,

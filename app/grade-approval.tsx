@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { format, parseISO } from 'date-fns';
-import { useGradeApproval, PendingGrade } from '../src/hooks/useGradeApproval';
+import { useGradeApproval, PendingGrade, ReviewedGrade } from '../src/hooks/useGradeApproval';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import {
   spacing,
@@ -54,9 +54,11 @@ export default function GradeApprovalScreen() {
     reviewedError,
     approveGrade,
     rejectGrade,
+    requestRevision,
     bulkApproveGrades,
     isApproving,
     isRejecting,
+    isRequestingRevision,
     isBulkApproving,
     refetch,
   } = useGradeApproval();
@@ -468,7 +470,7 @@ function HistoryCard({
   colors,
   styles,
 }: {
-  grade: PendingGrade;
+  grade: ReviewedGrade;
   formatDate: (date: string) => string;
   formatCurrency: (amount: number) => string;
   getGradeColor: (grade: string) => string;
@@ -476,9 +478,40 @@ function HistoryCard({
   styles: any;
 }) {
   const isApproved = grade.status === 'approved';
+  const isNeedsRevision = grade.status === 'needs_revision';
+
+  const getStatusStyle = () => {
+    if (isApproved) return styles.approvedBadge;
+    if (isNeedsRevision) return styles.revisionBadge;
+    return styles.rejectedBadge;
+  };
+
+  const getStatusTextStyle = () => {
+    if (isApproved) return styles.approvedText;
+    if (isNeedsRevision) return styles.revisionText;
+    return styles.rejectedText;
+  };
+
+  const getStatusIcon = (): 'checkmark' | 'refresh' | 'close' => {
+    if (isApproved) return 'checkmark';
+    if (isNeedsRevision) return 'refresh';
+    return 'close';
+  };
+
+  const getStatusColor = () => {
+    if (isApproved) return colors.success;
+    if (isNeedsRevision) return colors.warning;
+    return colors.error;
+  };
+
+  const getStatusLabel = () => {
+    if (isApproved) return 'Approved';
+    if (isNeedsRevision) return 'Needs Revision';
+    return 'Rejected';
+  };
 
   return (
-    <View style={[styles.historyCard, !isApproved && styles.rejectedCard]}>
+    <View style={[styles.historyCard, !isApproved && !isNeedsRevision && styles.rejectedCard, isNeedsRevision && styles.revisionCard]}>
       <View style={styles.historyHeader}>
         <View style={styles.historyInfo}>
           <Text style={styles.historyStudent}>{grade.student_name}</Text>
@@ -493,21 +526,21 @@ function HistoryCard({
           <View
             style={[
               styles.statusBadge,
-              isApproved ? styles.approvedBadge : styles.rejectedBadge,
+              getStatusStyle(),
             ]}
           >
             <Ionicons
-              name={isApproved ? 'checkmark' : 'close'}
+              name={getStatusIcon()}
               size={12}
-              color={isApproved ? colors.success : colors.error}
+              color={getStatusColor()}
             />
             <Text
               style={[
                 styles.statusBadgeText,
-                isApproved ? styles.approvedText : styles.rejectedText,
+                getStatusTextStyle(),
               ]}
             >
-              {isApproved ? 'Approved' : 'Rejected'}
+              {getStatusLabel()}
             </Text>
           </View>
         </View>
@@ -789,6 +822,9 @@ function createStyles(colors: ThemeColors) {
     rejectedCard: {
       borderLeftColor: colors.error,
     },
+    revisionCard: {
+      borderLeftColor: colors.warning,
+    },
     historyHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -824,6 +860,9 @@ function createStyles(colors: ThemeColors) {
     rejectedBadge: {
       backgroundColor: tints.red,
     },
+    revisionBadge: {
+      backgroundColor: tints.amber,
+    },
     statusBadgeText: {
       ...textStyles.caption,
       fontWeight: '600',
@@ -833,6 +872,9 @@ function createStyles(colors: ThemeColors) {
     },
     rejectedText: {
       color: colors.error,
+    },
+    revisionText: {
+      color: colors.warning,
     },
     notesSection: {
       marginTop: spacing[3],

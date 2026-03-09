@@ -314,20 +314,48 @@ export default function GradesScreen() {
                 />
               ) : (
                 <View style={styles.gradesList}>
-                  {gradeEntries.map((grade) => (
-                    <View key={grade.id} style={styles.gradeCard}>
-                      <View style={styles.gradeInfo}>
-                        <Text style={styles.gradeSubject}>{grade.className}</Text>
-                        <Text style={styles.gradeBase}>Base: {formatCurrency(grade.baseAmount)}</Text>
-                      </View>
-                      <View style={styles.gradeRight}>
-                        <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(grade.grade) }]}>
-                          <Text style={styles.gradeLetter}>{grade.grade}</Text>
+                  {grades.map((g) => {
+                    const reward = g.status === 'approved'
+                      ? (gradeEntries.find((e) => e.id === g.id)?.rewardAmount ?? 0)
+                      : 0;
+                    const isPending = g.status === 'pending' || g.status === 'needs_revision';
+                    const isRejected = g.status === 'rejected';
+                    return (
+                      <View key={g.id} style={[styles.gradeCard, isPending && styles.gradeCardPending, isRejected && styles.gradeCardRejected]}>
+                        <View style={styles.gradeInfo}>
+                          <Text style={styles.gradeSubject}>{g.subject}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <Text style={styles.gradeBase}>Base: {formatCurrency(g.base_amount)}</Text>
+                            {isPending && (
+                              <View style={styles.statusBadgePending}>
+                                <Text style={styles.statusBadgePendingText}>
+                                  {g.status === 'needs_revision' ? 'Needs Revision' : 'Pending'}
+                                </Text>
+                              </View>
+                            )}
+                            {isRejected && (
+                              <View style={styles.statusBadgeRejected}>
+                                <Text style={styles.statusBadgeRejectedText}>Rejected</Text>
+                              </View>
+                            )}
+                            {g.status === 'approved' && (
+                              <View style={styles.statusBadgeApproved}>
+                                <Text style={styles.statusBadgeApprovedText}>Approved</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
-                        <Text style={styles.gradeReward}>{formatCurrency(grade.rewardAmount)}</Text>
+                        <View style={styles.gradeRight}>
+                          <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(g.grade) }]}>
+                            <Text style={styles.gradeLetter}>{g.grade}</Text>
+                          </View>
+                          <Text style={[styles.gradeReward, isPending && { color: colors.textTertiary }]}>
+                            {isPending ? 'Pending' : formatCurrency(reward)}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -499,6 +527,49 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 44,
+  },
+  gradeCardPending: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#f59e0b',
+    opacity: 0.85,
+  },
+  gradeCardRejected: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error,
+    opacity: 0.7,
+  },
+  statusBadgePending: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusBadgePendingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  statusBadgeRejected: {
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusBadgeRejectedText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#991b1b',
+  },
+  statusBadgeApproved: {
+    backgroundColor: '#d1fae5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusBadgeApprovedText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#065f46',
   },
   gradeInfo: {
     flex: 1,
