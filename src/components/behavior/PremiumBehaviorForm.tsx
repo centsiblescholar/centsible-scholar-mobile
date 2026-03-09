@@ -338,6 +338,16 @@ function CategoryCard({
           );
         })}
       </View>
+
+      {/* Show score description when a score is selected */}
+      {score > 0 && (
+        <View style={[styles.scoreHint, { backgroundColor: SCORE_BG_COLORS[score] }]}>
+          <View style={[styles.scoreHintDot, { backgroundColor: SCORE_COLORS[score] }]} />
+          <Text style={[styles.scoreHintText, { color: SCORE_COLORS[score] }]}>
+            {SCORE_DESCRIPTIONS[score]}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -623,5 +633,24 @@ const createCategoryStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scoreButtonTextSelected: {
     color: '#FFFFFF',
+  },
+  scoreHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  scoreHintDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  scoreHintText: {
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
 });
