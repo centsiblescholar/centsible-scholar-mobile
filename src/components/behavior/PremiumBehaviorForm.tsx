@@ -39,11 +39,11 @@ const OPPORTUNITIES: CategoryConfig[] = [
 // --- Score Descriptions (matching premium exactly) ---
 
 const SCORE_DESCRIPTIONS: Record<number, string> = {
-  5: 'More than two extraordinary',
-  4: 'One or two extraordinary',
-  3: 'No shortcomings, no extraordinary',
-  2: 'One or two infractions',
-  1: 'Multiple shortcomings',
+  5: 'More than two instances of extraordinary behavior',
+  4: 'One or two instances of extraordinary behavior',
+  3: 'No shortcomings or infractions, but no extraordinary behavior',
+  2: 'One or two shortcomings or infractions',
+  1: 'Multiple shortcomings or infractions',
 };
 
 const SCORE_COLORS: Record<number, string> = {
