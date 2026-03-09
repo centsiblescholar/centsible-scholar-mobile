@@ -132,28 +132,19 @@ export const updateStreakData = async (
 };
 
 /**
- * Award XP to a student and record the transaction.
+ * Award XP to a student by updating total_xp on student_profiles.
  * Queries by user_id (auth user ID).
+ *
+ * Note: xp_transactions table does not exist in the current schema.
+ * XP is tracked as a running total on student_profiles.total_xp.
  */
 export const awardXP = async (
-  userId: string,
+  _userId: string,
   studentId: string,
   award: XPAward
 ): Promise<void> => {
   try {
-    // Insert XP transaction (cast as any -- xp_transactions table not in generated types until migration)
-    const { error: insertError } = await (supabase as any)
-      .from('xp_transactions')
-      .insert({
-        user_id: userId,
-        student_id: studentId,
-        amount: award.amount,
-        reason: award.reason,
-      });
-
-    if (insertError) throw insertError;
-
-    // Update total XP on student profile
+    // Fetch current total XP
     const { data: currentData, error: fetchError } = await supabase
       .from('student_profiles')
       .select('total_xp')
@@ -171,6 +162,7 @@ export const awardXP = async (
 
     if (updateError) throw updateError;
   } catch (error) {
+    console.error('Error updating streak/XP:', error);
     throw error;
   }
 };
