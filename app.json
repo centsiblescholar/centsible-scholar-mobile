@@ -24,7 +24,9 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:centsiblescholar.com"]
+      "associatedDomains": [
+        "applinks:centsiblescholar.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -60,6 +62,9 @@
       "eas": {
         "projectId": "4cef17e0-0133-41ca-952d-78ecc20791a3"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4cef17e0-0133-41ca-952d-78ecc20791a3"
     }
   }
 }
