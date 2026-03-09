@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { StudentInfo } from './useParentStudents';
-import { calculateGPA } from '../shared/calculations';
-import { calculateOverallAverageScore } from '../shared/calculations';
+import { GRADE_MULTIPLIERS } from '../shared/calculations/constants';
 
 interface StudentSummary {
   gpa: number;
@@ -50,13 +49,9 @@ async function fetchFamilyStats(
     let gpa = 0;
     let studentRewards = 0;
     if (grades && grades.length > 0) {
-      // GPA calculation
+      // GPA calculation (straight letter grades only)
       const gradePoints: Record<string, number> = {
-        'A+': 4.0, 'A': 4.0, 'A-': 3.7,
-        'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-        'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-        'D+': 1.3, 'D': 1.0, 'D-': 0.7,
-        'F': 0.0,
+        A: 4.0, B: 3.0, C: 2.0, D: 1.0, F: 0.0,
       };
       const validGrades = grades.filter(g => gradePoints[g.grade] !== undefined);
       if (validGrades.length > 0) {
@@ -64,16 +59,9 @@ async function fetchFamilyStats(
         totalGPASum += gpa;
         totalGPACount++;
       }
-      // Reward multipliers
-      const rewardMultipliers: Record<string, number> = {
-        'A+': 1.1, 'A': 1.0, 'A-': 0.95,
-        'B+': 0.85, 'B': 0.8, 'B-': 0.75,
-        'C+': 0.6, 'C': 0.5, 'C-': 0.4,
-        'D+': 0.2, 'D': 0.1, 'D-': 0.05,
-        'F': 0.0,
-      };
+      // Reward calculation using shared GRADE_MULTIPLIERS (single source of truth)
       studentRewards = grades.reduce((sum, g) => {
-        const mult = rewardMultipliers[g.grade] ?? 0;
+        const mult = GRADE_MULTIPLIERS[g.grade as keyof typeof GRADE_MULTIPLIERS] ?? 0;
         return sum + ((g.base_amount || 0) * mult);
       }, 0);
       totalRewards += studentRewards;

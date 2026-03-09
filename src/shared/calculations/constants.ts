@@ -7,11 +7,11 @@
  * Grade multipliers for reward calculations
  */
 export const GRADE_MULTIPLIERS = {
-  A: 1.0,
-  B: 0.5,
-  C: 0.20,
-  D: 0.125,
-  F: 0.0
+  A: 1.0,     // 100%
+  B: 0.5,     // 50%
+  C: 0.25,    // 25%
+  D: 0.125,   // 12.5%
+  F: 0.0      // 0%
 } as const;
 
 /**
