@@ -111,6 +111,7 @@ export default function SettingsScreen() {
               <>
                 <TouchableOpacity style={[styles.editProfileButton, { marginTop: 8 }]} onPress={() => router.push('/student-management' as any)}><Text style={styles.editProfileButtonText}>Manage Students</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.editProfileButton, { marginTop: 8 }]} onPress={() => router.push('/grade-approval' as any)}><Text style={styles.editProfileButtonText}>Grade Approval</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.editProfileButton, { marginTop: 8 }]} onPress={() => router.push('/behavior-approval' as any)}><Text style={styles.editProfileButtonText}>Behavior Approval</Text></TouchableOpacity>
               </>
             )}
           </View>

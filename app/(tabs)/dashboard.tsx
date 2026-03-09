@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useStudentGrades } from '../../src/hooks/useStudentGrades';
@@ -19,11 +20,13 @@ import { useEducationBonus } from '../../src/hooks/useEducationBonus';
 import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
 import { useStudentProfile } from '../../src/hooks/useStudentProfile';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
+import { useFamilyStats } from '../../src/hooks/useFamilyStats';
 import { calculateAllocation } from '../../src/shared/calculations';
 import { useTheme, type ThemeColors, grades as gradeColors, indigo, financial, tints } from '@/theme';
 import { DashboardSkeleton } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import PendingReviewsWidget from '../../src/components/dashboard/PendingReviewsWidget';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const METRIC_CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -341,77 +344,38 @@ export default function DashboardScreen() {
 function ParentDashboardView() {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const pStyles = useMemo(() => createParentStyles(colors), [colors]);
 
   const {
     selectedStudent,
     setSelectedStudent,
     students,
     isLoading: studentsLoading,
-    isParentView,
   } = useStudent();
 
-  // Use selected student's user_id for data queries (not profile id)
-  // For parents viewing student data: use selectedStudent.user_id
-  // For students viewing own data: use their auth user.id
-  const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
-
+  // Family-level aggregated stats
   const {
-    gradeEntries,
-    totalReward,
-    gpa,
-    isLoading: gradesLoading,
-    refetch: refetchGrades,
-  } = useStudentGrades(targetUserId);
-
-  const {
-    overallAverage,
-    assessments,
-    isLoading: behaviorLoading,
-    refetch: refetchBehavior,
-  } = useBehaviorAssessments(targetUserId);
-
-  // Get base reward amount for bonus calculations
-  const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
-
-  // Education bonus hook
-  const {
-    accuracyPercentage,
-    bonusAmount: educationBonusAmount,
-    currentTier: educationTier,
-    totalQuestions: qodTotal,
-    correctAnswers: qodCorrect,
-    isLoading: educationLoading,
-    refetch: refetchEducation,
-  } = useEducationBonus(targetUserId, baseRewardAmount);
-
-  // Behavior bonus hook
-  const {
-    bonusAmount: behaviorBonusAmount,
-    currentTier: behaviorTier,
-    qualifiesForBonus,
-    isLoading: behaviorBonusLoading,
-    refetch: refetchBehaviorBonus,
-  } = useBehaviorBonus(targetUserId, baseRewardAmount);
+    familyGPA,
+    totalRewards,
+    averageBehaviorScore,
+    qodAccuracy,
+    studentSummaries,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useFamilyStats(students);
 
   const [refreshing, setRefreshing] = useState(false);
   const [studentPickerVisible, setStudentPickerVisible] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      refetchGrades(),
-      refetchBehavior(),
-      refetchEducation(),
-      refetchBehaviorBonus(),
-    ]);
+    await refetchStats();
     setRefreshing(false);
-  }, [refetchGrades, refetchBehavior, refetchEducation, refetchBehaviorBonus]);
+  }, [refetchStats]);
 
-  const isLoading = studentsLoading || gradesLoading || behaviorLoading || educationLoading || behaviorBonusLoading;
-
-  // Calculate allocation breakdown
-  const allocation = calculateAllocation(totalReward);
+  const isLoading = studentsLoading || statsLoading;
 
   if (isLoading && !refreshing) {
     return (
@@ -421,7 +385,7 @@ function ParentDashboardView() {
     );
   }
 
-  if (!selectedStudent && !studentsLoading) {
+  if (!students.length && !studentsLoading) {
     return (
       <EmptyState
         icon="home-outline"
@@ -431,6 +395,15 @@ function ParentDashboardView() {
     );
   }
 
+  // Stat cards data (matches web's 5-card hero row)
+  const statCards: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; color: string; bg: string }[] = [
+    { icon: 'people', label: 'Students', value: String(students.length), color: '#8B5CF6', bg: tints.purple },
+    { icon: 'school', label: students.length === 1 ? 'Student GPA' : 'Family GPA', value: familyGPA > 0 ? familyGPA.toFixed(2) : '--', color: '#EC4899', bg: '#FDF2F8' },
+    { icon: 'cash', label: 'Total Rewards', value: `$${totalRewards.toFixed(0)}`, color: '#F97316', bg: '#FFF7ED' },
+    { icon: 'fitness', label: 'Behavior', value: averageBehaviorScore > 0 ? averageBehaviorScore.toFixed(1) : '--', color: '#4F46E5', bg: tints.indigo },
+    { icon: 'help-circle', label: 'QOD Accuracy', value: qodAccuracy > 0 ? `${qodAccuracy}%` : '--', color: '#06B6D4', bg: tints.cyan },
+  ];
+
   return (
     <ScrollView
       style={styles.container}
@@ -438,222 +411,130 @@ function ParentDashboardView() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
       }
     >
+      {/* ── Header ── */}
       <View style={styles.header}>
-        {isParentView && students.length > 1 ? (
+        <Text style={styles.greeting}>Family Dashboard</Text>
+        <Text style={styles.email}>Monitor your family's progress</Text>
+        <View style={styles.parentBadge}>
+          <Text style={styles.parentBadgeText}>Parent Command Center</Text>
+        </View>
+      </View>
+
+      {/* ── Family Stat Cards (scrollable row) ── */}
+      <FlatList
+        data={statCards}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={pStyles.statCardsContainer}
+        keyExtractor={(item) => item.label}
+        renderItem={({ item }) => (
+          <View style={[pStyles.statCard, { backgroundColor: item.bg }]}>
+            <View style={[pStyles.statIconBox, { backgroundColor: item.color }]}>
+              <Ionicons name={item.icon} size={16} color="#fff" />
+            </View>
+            <Text style={[pStyles.statValue, { color: item.color }]}>{item.value}</Text>
+            <Text style={pStyles.statLabel}>{item.label}</Text>
+          </View>
+        )}
+      />
+
+      {/* ── Pending Reviews Widget ── */}
+      <View style={pStyles.widgetSection}>
+        <PendingReviewsWidget />
+      </View>
+
+      {/* ── Your Students ── */}
+      <View style={styles.section}>
+        <View style={pStyles.studentsSectionHeader}>
+          <Text style={styles.sectionTitle}>Your Students</Text>
           <TouchableOpacity
-            style={styles.studentSelector}
-            onPress={() => setStudentPickerVisible(true)}
+            style={pStyles.addStudentBtn}
+            onPress={() => router.push('/student-management' as never)}
           >
-            <Text style={styles.greeting}>
-              {selectedStudent?.name || 'Select Student'}
-            </Text>
-            <Text style={styles.selectorChevron}>▼</Text>
+            <Ionicons name="add" size={16} color={colors.primary} />
+            <Text style={pStyles.addStudentText}>Add</Text>
           </TouchableOpacity>
-        ) : (
-          <Text style={styles.greeting}>
-            Welcome{selectedStudent?.name ? `, ${selectedStudent.name.split(' ')[0]}` : ''}!
-          </Text>
-        )}
-        <Text style={styles.email}>{user?.email}</Text>
-        {selectedStudent?.grade_level && (
-          <Text style={styles.gradeLevel}>Grade {selectedStudent.grade_level}</Text>
-        )}
-        {isParentView && (
-          <View style={styles.parentBadge}>
-            <Text style={styles.parentBadgeText}>Parent View</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardsContainer}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Total Rewards</Text>
-          <Text style={styles.cardValue}>{formatCurrency(totalReward)}</Text>
-          <Text style={styles.cardSubtitle}>
-            {gradeEntries.length} grade{gradeEntries.length !== 1 ? 's' : ''} entered
-          </Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Current GPA</Text>
-          <Text style={styles.cardValue}>
-            {gradeEntries.length > 0 ? gpa.toFixed(2) : '--'}
-          </Text>
-          <Text style={styles.cardSubtitle}>
-            {gradeEntries.length > 0 ? 'Based on grades' : 'No grades yet'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.cardsContainer}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Behavior Score</Text>
-          <Text style={styles.cardValue}>
-            {assessments.length > 0 ? overallAverage.toFixed(1) : '--'}
-          </Text>
-          <Text style={styles.cardSubtitle}>
-            {assessments.length} assessment{assessments.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Base Amount</Text>
-          <Text style={styles.cardValue}>
-            {selectedStudent?.base_reward_amount
-              ? formatCurrency(selectedStudent.base_reward_amount)
-              : '--'}
-          </Text>
-          <Text style={styles.cardSubtitle}>Per grade</Text>
-        </View>
-      </View>
-
-      {/* Bonus Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Bonuses</Text>
-        <View style={styles.bonusCardsContainer}>
-          {/* Education Bonus Card */}
-          <View style={[styles.bonusCard, educationBonusAmount > 0 && styles.bonusCardActive]}>
-            <View style={styles.bonusHeader}>
-              <Text style={styles.bonusIcon}>📚</Text>
-              <Text style={styles.bonusTitle}>Education</Text>
-            </View>
-            <Text style={[styles.bonusValueText, educationBonusAmount > 0 && styles.bonusValueActive]}>
-              {educationBonusAmount > 0 ? formatCurrency(educationBonusAmount) : '--'}
-            </Text>
-            {qodTotal > 0 ? (
-              <>
-                <Text style={styles.bonusAccuracy}>{accuracyPercentage}% accuracy</Text>
-                <Text style={styles.bonusDetail}>
-                  {qodCorrect}/{qodTotal} correct
-                </Text>
-                {educationTier && (
-                  <View style={[styles.tierBadge, styles.tierBadgeEducation]}>
-                    <Text style={styles.tierBadgeText}>{educationTier}</Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <Text style={styles.bonusDetail}>Answer QOD to earn</Text>
-            )}
-          </View>
-
-          {/* Behavior Bonus Card */}
-          <View style={[styles.bonusCard, behaviorBonusAmount > 0 && styles.bonusCardActive]}>
-            <View style={styles.bonusHeader}>
-              <Text style={styles.bonusIcon}>⭐</Text>
-              <Text style={styles.bonusTitle}>Behavior</Text>
-            </View>
-            <Text style={[styles.bonusValueText, behaviorBonusAmount > 0 && styles.bonusValueActive]}>
-              {behaviorBonusAmount > 0 ? formatCurrency(behaviorBonusAmount) : '--'}
-            </Text>
-            {assessments.length > 0 ? (
-              <>
-                <Text style={styles.bonusAccuracy}>{overallAverage.toFixed(2)} avg score</Text>
-                <Text style={styles.bonusDetail}>
-                  {qualifiesForBonus ? 'Qualified' : 'Need 3.0+ to qualify'}
-                </Text>
-                {behaviorTier && (
-                  <View style={[styles.tierBadge, styles.tierBadgeBehavior]}>
-                    <Text style={styles.tierBadgeText}>{behaviorTier}</Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <Text style={styles.bonusDetail}>Complete assessments</Text>
-            )}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Allocation Breakdown</Text>
-        <View style={styles.allocationCard}>
-          <View style={styles.allocationRow}>
-            <Text style={styles.allocationLabel}>Taxes (15%)</Text>
-            <Text style={styles.allocationValue}>{formatCurrency(allocation.taxQualified.taxes)}</Text>
-          </View>
-          <View style={styles.allocationRow}>
-            <Text style={styles.allocationLabel}>Retirement (10%)</Text>
-            <Text style={styles.allocationValue}>{formatCurrency(allocation.taxQualified.retirement)}</Text>
-          </View>
-          <View style={styles.allocationRow}>
-            <Text style={styles.allocationLabel}>Savings (25%)</Text>
-            <Text style={styles.allocationValue}>{formatCurrency(allocation.savings)}</Text>
-          </View>
-          <View style={[styles.allocationRow, styles.allocationRowLast]}>
-            <Text style={styles.allocationLabel}>Discretionary (50%)</Text>
-            <Text style={styles.allocationValue}>{formatCurrency(allocation.discretionary)}</Text>
-          </View>
-          <View style={styles.allocationTotal}>
-            <Text style={styles.allocationTotalLabel}>Total</Text>
-            <Text style={styles.allocationTotalValue}>{formatCurrency(allocation.total)}</Text>
-          </View>
-        </View>
-      </View>
-
-      {gradeEntries.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Grades</Text>
-          <View style={styles.gradesCard}>
-            {gradeEntries.slice(0, 5).map((grade) => (
-              <View key={grade.id} style={styles.gradeRow}>
-                <View>
-                  <Text style={styles.gradeSubject}>{grade.className}</Text>
-                  <Text style={styles.gradeBase}>Base: {formatCurrency(grade.baseAmount)}</Text>
+        {students.map((student) => {
+          const summary = studentSummaries[student.user_id];
+          return (
+            <TouchableOpacity
+              key={student.id}
+              style={pStyles.studentCard}
+              activeOpacity={0.7}
+              onPress={() => {
+                setSelectedStudent(student);
+                // Navigate to a detail view or just select them
+              }}
+            >
+              <View style={pStyles.studentCardTop}>
+                <View style={pStyles.studentAvatarBox}>
+                  <Text style={pStyles.studentAvatarText}>
+                    {student.name?.[0]?.toUpperCase() || 'S'}
+                  </Text>
                 </View>
-                <View style={styles.gradeRight}>
-                  <Text style={[styles.gradeLetter, { color: gradeColors[grade.grade as keyof typeof gradeColors] || colors.textSecondary }]}>{grade.grade}</Text>
-                  <Text style={styles.gradeReward}>{formatCurrency(grade.rewardAmount)}</Text>
+                <View style={pStyles.studentCardInfo}>
+                  <Text style={pStyles.studentCardName} numberOfLines={1}>{student.name}</Text>
+                  <Text style={pStyles.studentCardGrade}>Grade {student.grade_level}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
+
+              {/* Mini stat row */}
+              <View style={pStyles.miniStatRow}>
+                <View style={pStyles.miniStat}>
+                  <Ionicons name="school-outline" size={13} color="#8B5CF6" />
+                  <Text style={pStyles.miniStatValue}>{summary?.gpa ? summary.gpa.toFixed(2) : '--'}</Text>
+                  <Text style={pStyles.miniStatLabel}>GPA</Text>
+                </View>
+                <View style={pStyles.miniStat}>
+                  <Ionicons name="cash-outline" size={13} color="#F97316" />
+                  <Text style={pStyles.miniStatValue}>${summary?.totalRewards?.toFixed(0) || '0'}</Text>
+                  <Text style={pStyles.miniStatLabel}>Rewards</Text>
+                </View>
+                <View style={pStyles.miniStat}>
+                  <Ionicons name="fitness-outline" size={13} color="#3B82F6" />
+                  <Text style={pStyles.miniStatValue}>{summary?.behaviorScore ? summary.behaviorScore.toFixed(1) : '--'}</Text>
+                  <Text style={pStyles.miniStatLabel}>Behavior</Text>
+                </View>
+                <View style={pStyles.miniStat}>
+                  <Ionicons name="help-circle-outline" size={13} color="#06B6D4" />
+                  <Text style={pStyles.miniStatValue}>{summary?.qodAccuracy ? `${summary.qodAccuracy}%` : '--'}</Text>
+                  <Text style={pStyles.miniStatLabel}>QOD</Text>
                 </View>
               </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Student Picker Modal */}
-      <Modal
-        visible={studentPickerVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setStudentPickerVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Student</Text>
-            <FlatList
-              data={students}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.studentOption,
-                    selectedStudent?.id === item.id && styles.studentOptionSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedStudent(item);
-                    setStudentPickerVisible(false);
-                  }}
-                >
-                  <View>
-                    <Text style={styles.studentName}>{item.name}</Text>
-                    <Text style={styles.studentGrade}>Grade {item.grade_level}</Text>
-                  </View>
-                  {selectedStudent?.id === item.id && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setStudentPickerVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
+          );
+        })}
+      </View>
+
+      {/* ── Quick Actions ── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={pStyles.quickActionsGrid}>
+          {[
+            { icon: 'bar-chart-outline' as const, label: 'Grades', color: '#F97316', route: '/(tabs)/grades' },
+            { icon: 'fitness-outline' as const, label: 'Behavior', color: '#8B5CF6', route: '/(tabs)/behavior' },
+            { icon: 'cash-outline' as const, label: 'Earnings', color: '#10B981', route: '/(tabs)/earnings' },
+            { icon: 'people-outline' as const, label: 'Students', color: '#3B82F6', route: '/student-management' },
+            { icon: 'checkmark-circle-outline' as const, label: 'Grade Approval', color: '#EC4899', route: '/grade-approval' },
+            { icon: 'settings-outline' as const, label: 'Settings', color: '#6B7280', route: '/(tabs)/settings' },
+          ].map((action) => (
+            <TouchableOpacity
+              key={action.label}
+              style={pStyles.quickActionBtn}
+              onPress={() => router.push(action.route as never)}
+            >
+              <Ionicons name={action.icon} size={22} color={action.color} />
+              <Text style={pStyles.quickActionLabel}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </Modal>
+      </View>
+
+      {/* Bottom spacer */}
+      <View style={{ height: 24 }} />
     </ScrollView>
   );
 }
@@ -1156,5 +1037,169 @@ const createStudentStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Parent-specific styles factory
+// ---------------------------------------------------------------------------
+const createParentStyles = (colors: ThemeColors) => StyleSheet.create({
+  // Stat cards row
+  statCardsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+    gap: 10,
+  },
+  statCard: {
+    width: 110,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+  },
+  statIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+
+  // Widget section
+  widgetSection: {
+    padding: 16,
+    paddingBottom: 0,
+  },
+
+  // Students section
+  studentsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addStudentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addStudentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+
+  // Student card
+  studentCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  studentCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  studentAvatarBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  studentAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  studentCardInfo: {
+    flex: 1,
+  },
+  studentCardName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  studentCardGrade: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+
+  // Mini stat row
+  miniStatRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  miniStat: {
+    flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+    gap: 2,
+  },
+  miniStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  miniStatLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+  },
+
+  // Quick actions
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickActionBtn: {
+    width: '31%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    minHeight: 44,
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
   },
 });
