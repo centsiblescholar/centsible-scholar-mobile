@@ -465,7 +465,7 @@ function ParentDashboardView() {
               activeOpacity={0.7}
               onPress={() => {
                 setSelectedStudent(student);
-                // Navigate to a detail view or just select them
+                router.push('/(tabs)/grades');
               }}
             >
               <View style={pStyles.studentCardTop}>
