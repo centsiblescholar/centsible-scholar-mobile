@@ -1,10 +1,37 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { LogBox } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { RevenueCatProvider } from '../src/providers/RevenueCatProvider';
 import { StudentProvider } from '../src/contexts/StudentContext';
 import { ThemeProvider, useTheme } from '../src/theme';
+
+// Suppress known simulator-only errors that crash the app in dev builds
+// These occur because the simulator lacks required entitlements for push notifications
+LogBox.ignoreLogs([
+  'getRegistrationInfoAsync',
+  'Keychain access failed',
+  'A required entitlement',
+]);
+
+// Prevent uncaught native promise rejections from crashing the app in dev
+// This specifically handles expo-notifications keychain errors in simulators
+if (__DEV__) {
+  const originalHandler = (globalThis as any).ErrorUtils?.getGlobalHandler?.();
+  (globalThis as any).ErrorUtils?.setGlobalHandler?.((error: any, isFatal: boolean) => {
+    // Suppress the keychain entitlement error from expo-notifications
+    if (error?.message?.includes?.('getRegistrationInfoAsync') ||
+        error?.message?.includes?.('Keychain access failed')) {
+      console.warn('Suppressed simulator notification error:', error.message);
+      return;
+    }
+    // Forward all other errors to the original handler
+    if (originalHandler) {
+      originalHandler(error, isFatal);
+    }
+  });
+}
 
 // Create a client
 const queryClient = new QueryClient({

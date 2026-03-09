@@ -85,7 +85,8 @@ export function useNotifications(): UseNotificationsReturn {
         const scheduled = await getScheduledNotifications();
         setScheduledNotifications(scheduled);
       } catch (error) {
-        console.error('Error initializing notifications:', error);
+        // Gracefully handle notification init failures (e.g., missing entitlements in simulator)
+        console.warn('Notifications init skipped (may be expected in simulator):', error);
       } finally {
         setIsLoading(false);
       }
@@ -93,22 +94,30 @@ export function useNotifications(): UseNotificationsReturn {
 
     initialize();
 
-    // Set up notification listeners
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('Notification received:', notification);
-    });
+    // Set up notification listeners (wrapped for simulator safety)
+    try {
+      notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+        console.log('Notification received:', notification);
+      });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification response:', response);
-      handleNotificationResponse(response);
-    });
+      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log('Notification response:', response);
+        handleNotificationResponse(response);
+      });
+    } catch (error) {
+      console.warn('Notification listeners not available:', error);
+    }
 
     return () => {
-      if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
-        notificationListener.current.remove();
-      }
-      if (responseListener.current && typeof responseListener.current.remove === 'function') {
-        responseListener.current.remove();
+      try {
+        if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
+          notificationListener.current.remove();
+        }
+        if (responseListener.current && typeof responseListener.current.remove === 'function') {
+          responseListener.current.remove();
+        }
+      } catch {
+        // Cleanup errors are safe to ignore
       }
     };
   }, [user?.id]);
