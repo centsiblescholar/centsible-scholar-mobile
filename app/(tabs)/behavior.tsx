@@ -90,7 +90,7 @@ export default function BehaviorScreen() {
       return;
     }
     try {
-      await saveAssessment({ user_id: targetUserId!, date: new Date().toISOString().split('T')[0], scores, status: saveStatus });
+      await saveAssessment({ date: new Date().toISOString().split('T')[0], scores, status: saveStatus });
       const average = calculateAssessmentAverageScore(scores);
       if (saveStatus === 'submitted' && average < 3.0 && notificationsEnabled) {
         const studentName = isParentView ? selectedStudent?.name : undefined;

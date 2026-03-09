@@ -355,7 +355,6 @@ function ParentDashboardView() {
   // For parents viewing student data: use selectedStudent.user_id
   // For students viewing own data: use their auth user.id
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
-  const profileId = isParentView ? selectedStudent?.id : undefined;
 
   const {
     gradeEntries,
@@ -363,7 +362,7 @@ function ParentDashboardView() {
     gpa,
     isLoading: gradesLoading,
     refetch: refetchGrades,
-  } = useStudentGrades(targetUserId, profileId);
+  } = useStudentGrades(targetUserId);
 
   const {
     overallAverage,

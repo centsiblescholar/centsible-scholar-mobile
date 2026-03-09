@@ -33,9 +33,8 @@ export default function GradesScreen() {
   const { selectedStudent, isParentView } = useStudent();
 
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
-  const profileId = isParentView ? selectedStudent?.id : undefined;
 
-  const { grades, gradeEntries, totalReward, gpa, isLoading, error, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId, profileId);
+  const { grades, gradeEntries, totalReward, gpa, isLoading, error, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');

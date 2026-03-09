@@ -48,28 +48,33 @@ async function fetchBehaviorAssessments(
 }
 
 async function saveAssessment(assessment: {
-  user_id: string;
+  studentUserId: string;
+  parentUserId?: string;
   date: string;
   scores: BehaviorScores;
   status: 'draft' | 'submitted';
 }): Promise<void> {
-  const { user_id, date, scores, status } = assessment;
+  const { studentUserId, parentUserId, date, scores, status } = assessment;
+  const isParentCreated = !!parentUserId && parentUserId !== studentUserId;
 
   // Check if assessment exists for this date and student
   const { data: existing } = await supabase
     .from('behavior_assessments')
     .select('id')
-    .eq('student_user_id', user_id)
+    .eq('student_user_id', studentUserId)
     .eq('date', date)
     .maybeSingle();
 
-  // Always set student_user_id for consistent querying
+  // user_id = student's auth ID (satisfies RLS policy for parent access via relationship)
+  // student_user_id = student's auth ID (used for all queries)
+  // originated_by = 'parent' when parent creates (enables student review workflow)
   const assessmentData = {
-    user_id,
-    student_user_id: user_id,
+    user_id: studentUserId,
+    student_user_id: studentUserId,
     date,
     ...scores,
     status,
+    ...(isParentCreated ? { originated_by: 'parent' } : {}),
     ...(status === 'submitted' ? {
       submitted_at: new Date().toISOString(),
     } : {}),
@@ -98,6 +103,8 @@ export function useBehaviorAssessments(studentUserId?: string) {
   // Use provided studentUserId or fall back to logged-in user's ID
   // When called from a parent view, studentUserId should be selectedStudent.user_id
   const targetUserId = studentUserId || user?.id || '';
+  // Logged-in user's ID (parent when in parent view, student when in student view)
+  const authUserId = user?.id || '';
 
   const { data: assessments = [], isLoading, error, refetch } = useQuery({
     queryKey: behaviorAssessmentKeys.list(targetUserId),
@@ -122,6 +129,14 @@ export function useBehaviorAssessments(studentUserId?: string) {
   const today = new Date().toISOString().split('T')[0];
   const todayAssessment = assessments.find(a => a.date === today);
 
+  // Wrap saveAssessment to auto-inject studentUserId and parentUserId
+  const save = (args: { date: string; scores: BehaviorScores; status: 'draft' | 'submitted' }) =>
+    saveMutation.mutateAsync({
+      studentUserId: targetUserId,
+      parentUserId: authUserId !== targetUserId ? authUserId : undefined,
+      ...args,
+    });
+
   return {
     assessments,
     overallAverage,
@@ -129,7 +144,7 @@ export function useBehaviorAssessments(studentUserId?: string) {
     isLoading,
     error,
     refetch,
-    saveAssessment: saveMutation.mutateAsync,
+    saveAssessment: save,
     isSaving: saveMutation.isPending,
   };
 }

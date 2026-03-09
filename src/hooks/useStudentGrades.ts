@@ -24,18 +24,18 @@ export const studentGradesKeys = {
 };
 
 /**
- * Fetches grades for a student.
+ * Fetches grades for a student from the student_grades table.
  *
- * @param studentUserId - The student's user_id from student_profiles.user_id
- * @param profileId - The student's profile record ID (student_profiles.id)
- *                    Used as fallback for dashboard_grades table which uses student_id
+ * @param studentUserId - The student's auth user_id (from student_profiles.user_id)
+ *
+ * Note: dashboard_grades is a legacy table with no parent RLS policy.
+ * All grade data should go through student_grades which has proper
+ * parent access via parent_student_relationships.
  */
 async function fetchStudentGrades(
-  studentUserId: string,
-  profileId?: string
+  studentUserId: string
 ): Promise<StudentGrade[]> {
-  // Try student_grades table first (uses student_user_id)
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('student_grades')
     .select('*')
     .eq('student_user_id', studentUserId)
@@ -44,28 +44,6 @@ async function fetchStudentGrades(
   if (error) {
     console.error('Error fetching student grades:', error);
     throw error;
-  }
-
-  // If no results and we have a profileId, try dashboard_grades (uses student_id which is profile ID)
-  if ((!data || data.length === 0) && profileId) {
-    const { data: dashboardData, error: dashError } = await supabase
-      .from('dashboard_grades')
-      .select('*')
-      .eq('student_id', profileId)
-      .order('created_at', { ascending: false });
-
-    if (!dashError && dashboardData) {
-      // Map dashboard_grades to StudentGrade format
-      return dashboardData.map((g) => ({
-        id: g.id,
-        student_user_id: studentUserId,
-        subject: g.class_name,
-        grade: g.grade,
-        base_amount: g.base_amount,
-        status: 'approved',
-        submitted_at: g.created_at,
-      }));
-    }
   }
 
   return data || [];
@@ -89,18 +67,17 @@ async function submitGrade(grade: {
   }
 }
 
-export function useStudentGrades(studentUserId?: string, profileId?: string) {
+export function useStudentGrades(studentUserId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Use provided studentUserId or fall back to logged-in user's ID
   // When called from a parent view, studentUserId should be selectedStudent.user_id
-  // and profileId should be selectedStudent.id
   const targetUserId = studentUserId || user?.id || '';
 
   const { data: grades = [], isLoading, error, refetch } = useQuery({
     queryKey: studentGradesKeys.list(targetUserId),
-    queryFn: () => fetchStudentGrades(targetUserId, profileId),
+    queryFn: () => fetchStudentGrades(targetUserId),
     enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

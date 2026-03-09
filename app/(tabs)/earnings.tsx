@@ -27,10 +27,10 @@ export default function EarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
-  const profileId = isParentView ? selectedStudent?.id : undefined;
+
   const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
 
-  const { gradeEntries, totalReward, isLoading: gradesLoading, error: gradesError, refetch: refetchGrades } = useStudentGrades(targetUserId, profileId);
+  const { gradeEntries, totalReward, isLoading: gradesLoading, error: gradesError, refetch: refetchGrades } = useStudentGrades(targetUserId);
   const { assessments, isLoading: behaviorLoading, refetch: refetchBehavior } = useBehaviorAssessments(targetUserId);
   const { bonusAmount: educationBonusAmount, accuracyPercentage, isLoading: educationLoading, refetch: refetchEducation } = useEducationBonus(targetUserId, baseRewardAmount);
   const { bonusAmount: behaviorBonusAmount, averageScore, isLoading: behaviorBonusLoading, refetch: refetchBehaviorBonus } = useBehaviorBonus(targetUserId, baseRewardAmount);

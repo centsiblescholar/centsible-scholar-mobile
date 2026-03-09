@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../integrations/supabase/client';
 
 export interface SavingsGoal {
   id: string;
@@ -10,8 +10,6 @@ export interface SavingsGoal {
   color: string;
 }
 
-const STORAGE_KEY = 'savings_goals';
-
 const GOAL_COLORS = [
   '#4F46E5', // Indigo
   '#10B981', // Emerald
@@ -21,101 +19,157 @@ const GOAL_COLORS = [
   '#06B6D4', // Cyan
 ];
 
-export function useSavingsGoals(userId: string | undefined) {
-  const [goals, setGoals] = useState<SavingsGoal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const storageKey = `${STORAGE_KEY}_${userId}`;
-
-  // Load goals from storage
-  const loadGoals = useCallback(async () => {
-    if (!userId) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const stored = await AsyncStorage.getItem(storageKey);
-      if (stored) {
-        setGoals(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error('Error loading savings goals:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [storageKey, userId]);
-
-  useEffect(() => {
-    loadGoals();
-  }, [loadGoals]);
-
-  // Save goals to storage
-  const saveGoals = async (updatedGoals: SavingsGoal[]) => {
-    if (!userId) return;
-
-    try {
-      await AsyncStorage.setItem(storageKey, JSON.stringify(updatedGoals));
-      setGoals(updatedGoals);
-    } catch (error) {
-      console.error('Error saving goals:', error);
-      throw error;
-    }
+/** Map a Supabase row to the client SavingsGoal interface */
+function mapRow(row: Record<string, unknown>, index: number): SavingsGoal {
+  return {
+    id: row.id as string,
+    name: row.goal_name as string,
+    targetAmount: Number(row.target_amount),
+    currentAmount: Number(row.current_amount),
+    createdAt: row.created_at as string,
+    color: GOAL_COLORS[index % GOAL_COLORS.length],
   };
+}
 
-  // Add a new goal
+/**
+ * Fetch active savings goals for a student from Supabase.
+ *
+ * @param studentUserId - The student's auth user ID.
+ *   RLS allows both the student themselves (auth.uid() = user_id)
+ *   and linked parents (via parent_student_relationships) to read.
+ */
+async function fetchSavingsGoals(studentUserId: string): Promise<SavingsGoal[]> {
+  const { data, error } = await supabase
+    .from('savings_goals')
+    .select('*')
+    .eq('user_id', studentUserId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching savings goals:', error);
+    throw error;
+  }
+
+  return (data || []).map(mapRow);
+}
+
+async function insertGoal(studentUserId: string, name: string, targetAmount: number) {
+  const { data, error } = await supabase
+    .from('savings_goals')
+    .insert({
+      user_id: studentUserId,
+      goal_name: name,
+      target_amount: targetAmount,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating savings goal:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+async function updateGoalAmount(goalId: string, newAmount: number) {
+  const { error } = await supabase
+    .from('savings_goals')
+    .update({
+      current_amount: newAmount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', goalId);
+
+  if (error) {
+    console.error('Error updating savings goal:', error);
+    throw error;
+  }
+}
+
+async function softDeleteGoal(goalId: string) {
+  const { error } = await supabase
+    .from('savings_goals')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('id', goalId);
+
+  if (error) {
+    console.error('Error deleting savings goal:', error);
+    throw error;
+  }
+}
+
+export function useSavingsGoals(studentUserId: string | undefined) {
+  const queryClient = useQueryClient();
+  const queryKey = ['savingsGoals', studentUserId];
+
+  const {
+    data: goals = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey,
+    queryFn: () => fetchSavingsGoals(studentUserId!),
+    enabled: !!studentUserId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: ({ name, targetAmount }: { name: string; targetAmount: number }) =>
+      insertGoal(studentUserId!, name, targetAmount),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ goalId, amount }: { goalId: string; amount: number }) =>
+      updateGoalAmount(goalId, amount),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (goalId: string) => softDeleteGoal(goalId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  // Public API — matches the previous interface so callers don't break
+
   const addGoal = async (name: string, targetAmount: number) => {
-    const newGoal: SavingsGoal = {
-      id: Date.now().toString(),
-      name,
-      targetAmount,
-      currentAmount: 0,
-      createdAt: new Date().toISOString(),
-      color: GOAL_COLORS[goals.length % GOAL_COLORS.length],
-    };
-
-    await saveGoals([...goals, newGoal]);
-    return newGoal;
+    await addMutation.mutateAsync({ name, targetAmount });
   };
 
-  // Update goal progress
   const updateGoalProgress = async (goalId: string, amount: number) => {
-    const updatedGoals = goals.map((goal) =>
-      goal.id === goalId
-        ? { ...goal, currentAmount: Math.min(amount, goal.targetAmount) }
-        : goal
-    );
-    await saveGoals(updatedGoals);
+    const goal = goals.find((g) => g.id === goalId);
+    if (!goal) return;
+    const clamped = Math.min(amount, goal.targetAmount);
+    await updateMutation.mutateAsync({ goalId, amount: clamped });
   };
 
-  // Add to goal
   const addToGoal = async (goalId: string, amount: number) => {
     const goal = goals.find((g) => g.id === goalId);
     if (!goal) return;
-
     const newAmount = Math.min(goal.currentAmount + amount, goal.targetAmount);
-    await updateGoalProgress(goalId, newAmount);
+    await updateMutation.mutateAsync({ goalId, amount: newAmount });
   };
 
-  // Delete a goal
   const deleteGoal = async (goalId: string) => {
-    const updatedGoals = goals.filter((goal) => goal.id !== goalId);
-    await saveGoals(updatedGoals);
+    await deleteMutation.mutateAsync(goalId);
   };
 
-  // Calculate totals
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
 
   return {
     goals,
     isLoading,
+    error,
     addGoal,
     updateGoalProgress,
     addToGoal,
     deleteGoal,
     totalSaved,
     totalTarget,
-    refetch: loadGoals,
+    refetch,
   };
 }
