@@ -105,8 +105,9 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
       console.warn('AsyncStorage access failed:', error);
     }
 
-    // Use date as seed for consistent daily question
-    const dateNum = new Date().getDate() + new Date().getMonth() * 31;
+    // Use date as seed for consistent daily question (include year to avoid annual repeats)
+    const now = new Date();
+    const dateNum = now.getFullYear() * 366 + now.getMonth() * 31 + now.getDate();
     const questionIndex = dateNum % questions.length;
     const question = questions[questionIndex];
 
