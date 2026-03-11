@@ -52,6 +52,13 @@
           "color": "#4F46E5",
           "sounds": []
         }
+      ],
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.505700171676-vcdjgol1ubhlvk5psbgdcm7r5pu5tk8e"
+        }
       ]
     ],
     "experiments": {

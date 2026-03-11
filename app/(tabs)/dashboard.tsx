@@ -21,12 +21,15 @@ import { useBehaviorBonus } from '../../src/hooks/useBehaviorBonus';
 import { useStudentProfile } from '../../src/hooks/useStudentProfile';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
 import { useFamilyStats } from '../../src/hooks/useFamilyStats';
+import { useParentQODStats } from '../../src/hooks/useParentQODStats';
+import { calculateLevelInfo } from '../../src/utils/levelSystem';
 import { calculateAllocation } from '../../src/shared/calculations';
 import { useTheme, type ThemeColors, grades as gradeColors, indigo, financial, tints } from '@/theme';
 import { DashboardSkeleton } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import PendingReviewsWidget from '../../src/components/dashboard/PendingReviewsWidget';
+import PendingGradesWidget from '../../src/components/dashboard/PendingGradesWidget';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const METRIC_CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -366,14 +369,17 @@ function ParentDashboardView() {
     refetch: refetchStats,
   } = useFamilyStats(students);
 
+  // QOD stats for per-student XP/Level display
+  const { studentStats, refetch: refetchQODStats } = useParentQODStats();
+
   const [refreshing, setRefreshing] = useState(false);
   const [studentPickerVisible, setStudentPickerVisible] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetchStats();
+    await Promise.all([refetchStats(), refetchQODStats()]);
     setRefreshing(false);
-  }, [refetchStats]);
+  }, [refetchStats, refetchQODStats]);
 
   const isLoading = studentsLoading || statsLoading;
 
@@ -428,7 +434,7 @@ function ParentDashboardView() {
         contentContainerStyle={pStyles.statCardsContainer}
         keyExtractor={(item) => item.label}
         renderItem={({ item }) => (
-          <View style={[pStyles.statCard, { backgroundColor: item.bg }]}>
+          <View style={[pStyles.statCard, { backgroundColor: item.bg, borderLeftWidth: 4, borderLeftColor: item.color }]}>
             <View style={[pStyles.statIconBox, { backgroundColor: item.color }]}>
               <Ionicons name={item.icon} size={16} color="#fff" />
             </View>
@@ -438,22 +444,33 @@ function ParentDashboardView() {
         )}
       />
 
-      {/* ── Pending Reviews Widget ── */}
+      {/* ── Pending Reviews & Grades Widgets ── */}
       <View style={pStyles.widgetSection}>
         <PendingReviewsWidget />
+      </View>
+      <View style={pStyles.widgetSection}>
+        <PendingGradesWidget />
       </View>
 
       {/* ── Your Students ── */}
       <View style={styles.section}>
         <View style={pStyles.studentsSectionHeader}>
           <Text style={styles.sectionTitle}>Your Students</Text>
-          <TouchableOpacity
-            style={pStyles.addStudentBtn}
-            onPress={() => router.push('/student-management' as never)}
-          >
-            <Ionicons name="add" size={16} color={colors.primary} />
-            <Text style={pStyles.addStudentText}>Add</Text>
-          </TouchableOpacity>
+          <View style={pStyles.studentsSectionActions}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/student-management' as never)}
+            >
+              <Text style={pStyles.viewAllLink}>View All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={pStyles.addStudentBtn}
+              onPress={() => router.push('/student-management' as never)}
+            >
+              <Ionicons name="add" size={16} color={colors.primary} />
+              <Text style={pStyles.addStudentText}>Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {students.map((student) => {
@@ -504,6 +521,23 @@ function ParentDashboardView() {
                   <Text style={pStyles.miniStatLabel}>QOD</Text>
                 </View>
               </View>
+
+              {/* Level / XP Progress */}
+              {(() => {
+                const stats = studentStats?.find(s => s.studentUserId === student.user_id);
+                const xp = stats?.totalXP ?? 0;
+                const info = calculateLevelInfo(xp);
+                return (
+                  <View style={pStyles.levelRow}>
+                    <Ionicons name="trophy" size={14} color="#8B5CF6" />
+                    <Text style={pStyles.levelTitle} numberOfLines={1}>{info.title}</Text>
+                    <View style={pStyles.levelProgressBg}>
+                      <View style={[pStyles.levelProgressFill, { width: `${info.progressPercent}%` }]} />
+                    </View>
+                    <Text style={pStyles.levelPercent}>{info.progressPercent}%</Text>
+                  </View>
+                );
+              })()}
             </TouchableOpacity>
           );
         })}
@@ -514,12 +548,9 @@ function ParentDashboardView() {
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={pStyles.quickActionsGrid}>
           {[
-            { icon: 'bar-chart-outline' as const, label: 'Grades', color: '#F97316', route: '/(tabs)/grades' },
-            { icon: 'fitness-outline' as const, label: 'Behavior', color: '#8B5CF6', route: '/(tabs)/behavior' },
-            { icon: 'cash-outline' as const, label: 'Earnings', color: '#10B981', route: '/(tabs)/earnings' },
             { icon: 'people-outline' as const, label: 'Students', color: '#3B82F6', route: '/student-management' },
             { icon: 'checkmark-circle-outline' as const, label: 'Grade Approval', color: '#EC4899', route: '/grade-approval' },
-            { icon: 'settings-outline' as const, label: 'Settings', color: '#6B7280', route: '/(tabs)/settings' },
+            { icon: 'chatbubbles-outline' as const, label: 'Family Meeting', color: '#10B981', route: '/family-meetings' },
           ].map((action) => (
             <TouchableOpacity
               key={action.label}
@@ -1174,6 +1205,53 @@ const createParentStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.textTertiary,
     textTransform: 'uppercase',
+  },
+
+  // Level / XP row inside student cards
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  levelTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    maxWidth: 100,
+  },
+  levelProgressBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  levelProgressFill: {
+    height: 4,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 2,
+  },
+  levelPercent: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    minWidth: 28,
+    textAlign: 'right',
+  },
+
+  // Students section actions row
+  studentsSectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  // View All link
+  viewAllLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
 
   // Quick actions

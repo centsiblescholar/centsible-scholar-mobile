@@ -12,7 +12,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { signUpWithEmail, ensureParentProfile } from '../../src/integrations/supabase/client';
+import { Ionicons } from '@expo/vector-icons';
+import { signUpWithEmail, ensureParentProfile, signInWithApple, signInWithGoogle } from '../../src/integrations/supabase/client';
 import { useTheme, type ThemeColors } from '@/theme';
 
 export default function SignupScreen() {
@@ -26,6 +27,7 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
 
   const handleSignup = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -87,6 +89,34 @@ export default function SignupScreen() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setSocialLoading('apple');
+    try {
+      await signInWithApple();
+      router.replace('/(tabs)/dashboard');
+    } catch (error: any) {
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign In Failed', error.message || 'An error occurred');
+      }
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setSocialLoading('google');
+    try {
+      await signInWithGoogle();
+      router.replace('/(tabs)/dashboard');
+    } catch (error: any) {
+      if (error.message !== 'Google sign-in was cancelled') {
+        Alert.alert('Google Sign In Failed', error.message || 'An error occurred');
+      }
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -100,6 +130,47 @@ export default function SignupScreen() {
           <View style={styles.header}>
             <Text style={styles.title}>Centsible Scholar</Text>
             <Text style={styles.subtitle}>Create your account</Text>
+          </View>
+
+          {/* Social Sign-Up */}
+          <View style={styles.socialContainer}>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.socialButton, styles.appleButton, socialLoading !== null && styles.buttonDisabled]}
+                onPress={handleAppleSignIn}
+                disabled={loading || socialLoading !== null}
+              >
+                {socialLoading === 'apple' ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={20} color="#fff" style={styles.socialIcon} />
+                    <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.googleButton, socialLoading !== null && styles.buttonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={loading || socialLoading !== null}
+            >
+              {socialLoading === 'google' ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={18} color="#4285F4" style={styles.socialIcon} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
 
           <View style={styles.form}>
@@ -184,7 +255,7 @@ export default function SignupScreen() {
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSignup}
-              disabled={loading}
+              disabled={loading || socialLoading !== null}
             >
               {loading ? (
                 <ActivityIndicator color={colors.textInverse} />
@@ -223,7 +294,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     header: {
-      marginBottom: 32,
+      marginBottom: 24,
       alignItems: 'center',
     },
     title: {
@@ -234,6 +305,54 @@ function createStyles(colors: ThemeColors) {
     },
     subtitle: {
       fontSize: 16,
+      color: colors.textSecondary,
+    },
+    socialContainer: {
+      gap: 12,
+      marginBottom: 8,
+    },
+    socialButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 14,
+      borderRadius: 8,
+      minHeight: 48,
+    },
+    socialIcon: {
+      marginRight: 10,
+    },
+    appleButton: {
+      backgroundColor: '#000',
+    },
+    appleButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    googleButton: {
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    googleButtonText: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 16,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.inputBorder,
+    },
+    dividerText: {
+      paddingHorizontal: 16,
+      fontSize: 14,
       color: colors.textSecondary,
     },
     form: {

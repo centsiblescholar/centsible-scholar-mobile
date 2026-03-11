@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { RevenueCatProvider } from '../src/providers/RevenueCatProvider';
@@ -134,17 +135,19 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RevenueCatProvider>
-          <ThemeProvider>
-            <StudentProvider>
-              <StatusBar style="auto" />
-              <RootNavigator />
-            </StudentProvider>
-          </ThemeProvider>
-        </RevenueCatProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RevenueCatProvider>
+            <ThemeProvider>
+              <StudentProvider>
+                <StatusBar style="auto" />
+                <RootNavigator />
+              </StudentProvider>
+            </ThemeProvider>
+          </RevenueCatProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

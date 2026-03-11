@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
+  UIManager,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme, type ThemeColors, tints } from '@/theme';
+import { useTheme, type ThemeColors, tints, shadows } from '@/theme';
 import { usePendingReviews } from '../../hooks/usePendingReviews';
 import { BehaviorAssessment } from '../../shared/types';
 import BehaviorReviewModal from '../behavior/BehaviorReviewModal';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function PendingReviewsWidget() {
   const { colors } = useTheme();
@@ -29,6 +37,18 @@ export default function PendingReviewsWidget() {
 
   const [currentReview, setCurrentReview] = useState<BehaviorAssessment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Auto-expand when items arrive, auto-collapse when cleared
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsCollapsed(pendingReviews.length === 0);
+  }, [pendingReviews.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleCollapse = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsCollapsed((prev) => !prev);
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -98,135 +118,153 @@ export default function PendingReviewsWidget() {
     );
   }
 
-  // ── Empty state ──
-  if (pendingReviews.length === 0) {
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={[styles.headerIconBox, { backgroundColor: '#10B981' }]}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Pending Reviews</Text>
-            <Text style={styles.cardSubtitle}>Items need your attention</Text>
-          </View>
-          <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-            <Ionicons
-              name="refresh"
-              size={18}
-              color={colors.textTertiary}
-              style={isRefreshing ? { opacity: 0.4 } : undefined}
-            />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.emptyBody}>
-          <Ionicons name="checkmark-circle" size={40} color="#10B981" />
-          <Text style={styles.emptyTitle}>All caught up!</Text>
-          <Text style={styles.emptyText}>No behavior assessments pending review.</Text>
-        </View>
-      </View>
-    );
-  }
+  const isEmpty = pendingReviews.length === 0;
 
-  // ── With reviews ──
+  // ── Card (empty or with items, both collapsible) ──
   return (
     <>
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.headerIconBox}>
-            <Ionicons name="eye-outline" size={18} color="#fff" />
+      <View style={[styles.card, isEmpty && styles.cardEmpty]}>
+        {/* Tappable header */}
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={toggleCollapse}
+          activeOpacity={0.7}
+        >
+          <View
+            style={[
+              styles.headerIconBox,
+              isEmpty && { backgroundColor: '#10B981' },
+            ]}
+          >
+            <Ionicons
+              name={isEmpty ? 'checkmark-circle-outline' : 'eye-outline'}
+              size={18}
+              color="#fff"
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Pending Reviews</Text>
-            <Text style={styles.cardSubtitle}>Items need your attention</Text>
+            <Text style={styles.cardSubtitle}>
+              {isEmpty
+                ? 'All caught up!'
+                : `${pendingReviews.length} assessment${pendingReviews.length !== 1 ? 's' : ''} need attention`}
+            </Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{pendingReviews.length}</Text>
-            </View>
-            <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+            {!isEmpty && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{pendingReviews.length}</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={handleRefresh}
+              disabled={isRefreshing}
+              hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+            >
               {isRefreshing ? (
                 <ActivityIndicator size="small" color={colors.textTertiary} />
               ) : (
                 <Ionicons name="refresh" size={18} color={colors.textTertiary} />
               )}
             </TouchableOpacity>
+            <Ionicons
+              name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+              size={16}
+              color={colors.textTertiary}
+            />
           </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* Review items */}
-        {pendingReviews.map((review) => {
-          const studentName = review.user
-            ? `${review.user.first_name} ${review.user.last_name}`.trim()
-            : 'Student';
-          const initials = review.user
-            ? `${review.user.first_name?.[0] || ''}${review.user.last_name?.[0] || ''}`
-            : 'S';
-          const disputeCount =
-            review.score_disputes ? Object.keys(review.score_disputes).length : 0;
+        {/* Collapsible body */}
+        {!isCollapsed && (
+          <>
+            {isEmpty ? (
+              <View style={styles.emptyBody}>
+                <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+                <Text style={styles.emptyTitle}>All caught up!</Text>
+                <Text style={styles.emptyText}>
+                  No behavior assessments pending review.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* Review items */}
+                {pendingReviews.map((review) => {
+                  const studentName = review.user
+                    ? `${review.user.first_name} ${review.user.last_name}`.trim()
+                    : 'Student';
+                  const initials = review.user
+                    ? `${review.user.first_name?.[0] || ''}${review.user.last_name?.[0] || ''}`
+                    : 'S';
+                  const disputeCount =
+                    review.score_disputes ? Object.keys(review.score_disputes).length : 0;
 
-          return (
-            <TouchableOpacity
-              key={review.id}
-              style={styles.reviewRow}
-              onPress={() => handleReview(review)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.reviewRowLeft}>
-                <View style={styles.reviewAvatar}>
-                  <Text style={styles.reviewAvatarText}>{initials}</Text>
-                </View>
-                <View style={styles.reviewInfo}>
-                  <View style={styles.reviewNameRow}>
-                    <Text style={styles.reviewName} numberOfLines={1}>
-                      {studentName}
-                    </Text>
-                    {review.originated_by === 'parent' && (
-                      <View style={styles.originBadge}>
-                        <Text style={styles.originBadgeText}>Parent</Text>
+                  return (
+                    <TouchableOpacity
+                      key={review.id}
+                      style={styles.reviewRow}
+                      onPress={() => handleReview(review)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.reviewRowLeft}>
+                        <View style={styles.reviewAvatar}>
+                          <Text style={styles.reviewAvatarText}>{initials}</Text>
+                        </View>
+                        <View style={styles.reviewInfo}>
+                          <View style={styles.reviewNameRow}>
+                            <Text style={styles.reviewName} numberOfLines={1}>
+                              {studentName}
+                            </Text>
+                            {review.originated_by === 'parent' && (
+                              <View style={styles.originBadge}>
+                                <Text style={styles.originBadgeText}>Parent</Text>
+                              </View>
+                            )}
+                            {disputeCount > 0 && (
+                              <View style={styles.disputeCountBadge}>
+                                <Text style={styles.disputeCountText}>{disputeCount} Disputed</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.reviewDate}>
+                            {formatDate(review.submitted_at || review.date)}
+                          </Text>
+                        </View>
                       </View>
-                    )}
-                    {disputeCount > 0 && (
-                      <View style={styles.disputeCountBadge}>
-                        <Text style={styles.disputeCountText}>{disputeCount} Disputed</Text>
+
+                      <View style={styles.reviewActions}>
+                        <TouchableOpacity
+                          style={styles.deleteBtn}
+                          onPress={() => handleDelete(review.id, studentName)}
+                          disabled={deletingId === review.id}
+                          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                        >
+                          {deletingId === review.id ? (
+                            <ActivityIndicator size="small" color="#EF4444" />
+                          ) : (
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          )}
+                        </TouchableOpacity>
+                        <View style={styles.reviewBtnBox}>
+                          <Text style={styles.reviewBtnText}>Review</Text>
+                          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                        </View>
                       </View>
-                    )}
-                  </View>
-                  <Text style={styles.reviewDate}>
-                    {formatDate(review.submitted_at || review.date)}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Footer */}
+                <View style={styles.footerBar}>
+                  <Ionicons name="alert-circle-outline" size={14} color="#D97706" />
+                  <Text style={styles.footerText}>
+                    {pendingReviews.length} assessment{pendingReviews.length !== 1 ? 's' : ''} waiting
                   </Text>
                 </View>
-              </View>
-
-              <View style={styles.reviewActions}>
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(review.id, studentName)}
-                  disabled={deletingId === review.id}
-                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                >
-                  {deletingId === review.id ? (
-                    <ActivityIndicator size="small" color="#EF4444" />
-                  ) : (
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.reviewBtnBox}>
-                  <Text style={styles.reviewBtnText}>Review</Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Footer */}
-        <View style={styles.footerBar}>
-          <Ionicons name="alert-circle-outline" size={14} color="#D97706" />
-          <Text style={styles.footerText}>
-            {pendingReviews.length} assessment{pendingReviews.length !== 1 ? 's' : ''} waiting
-          </Text>
-        </View>
+              </>
+            )}
+          </>
+        )}
       </View>
 
       {/* Review Modal */}
@@ -253,12 +291,11 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 14,
       borderWidth: 1,
       borderColor: '#FDE68A',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      elevation: 2,
+      ...shadows.md,
       overflow: 'hidden',
+    },
+    cardEmpty: {
+      borderColor: colors.backgroundSecondary,
     },
 
     // Header
