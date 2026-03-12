@@ -104,8 +104,11 @@ export function usePendingReviews() {
         }
       }
 
-      // Refresh
+      // Refresh pending list and all dependent queries
       queryClient.invalidateQueries({ queryKey: pendingReviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['behaviorAssessments'] });
+      queryClient.invalidateQueries({ queryKey: ['familyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['behaviorBonus'] });
     } catch (err) {
       console.error('Error in reviewAssessment:', err);
       Alert.alert('Error', 'An unexpected error occurred.');
@@ -140,6 +143,9 @@ export function usePendingReviews() {
       }
 
       queryClient.invalidateQueries({ queryKey: pendingReviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['behaviorAssessments'] });
+      queryClient.invalidateQueries({ queryKey: ['familyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['behaviorBonus'] });
     } catch (err) {
       console.error('Error in deleteAssessment:', err);
       Alert.alert('Error', 'An unexpected error occurred.');
