@@ -120,8 +120,8 @@ export default function GradesScreen() {
       setSubject('');
       setSelectedGrade('');
       setBaseAmount('');
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to submit grade');
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit grade');
     }
   };
 

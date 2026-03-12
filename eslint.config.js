@@ -4,6 +4,8 @@
  * Rules:
  * - react-native/no-color-literals: warns on hardcoded color values in StyleSheet
  * - react-native/no-inline-styles: warns on inline style objects
+ * - no-console: warns on console.log/warn (error/info allowed for debugging)
+ * - no-unused-vars: errors on unused variables (ignores _ prefixed)
  *
  * Set to 'warn' during migration. Change to 'error' after Phase 6 migration complete.
  */
@@ -20,6 +22,8 @@ module.exports = [
     rules: {
       'react-native/no-color-literals': 'warn',
       'react-native/no-inline-styles': 'warn',
+      'no-console': ['warn', { allow: ['error', 'info'] }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 ];
