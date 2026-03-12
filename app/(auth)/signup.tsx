@@ -70,8 +70,8 @@ export default function SignupScreen() {
       }
 
       router.replace('/(tabs)/dashboard');
-    } catch (error: any) {
-      const message = error.message || 'An error occurred during signup';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred during signup';
       if (message.toLowerCase().includes('already registered')) {
         Alert.alert(
           'Account Exists',
@@ -94,9 +94,10 @@ export default function SignupScreen() {
     try {
       await signInWithApple();
       router.replace('/(tabs)/dashboard');
-    } catch (error: any) {
-      if (error.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple Sign In Failed', error.message || 'An error occurred');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : null;
+      if (err?.message !== 'ERR_REQUEST_CANCELED' && (err as any)?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign In Failed', err?.message || 'An error occurred');
       }
     } finally {
       setSocialLoading(null);
@@ -108,9 +109,10 @@ export default function SignupScreen() {
     try {
       await signInWithGoogle();
       router.replace('/(tabs)/dashboard');
-    } catch (error: any) {
-      if (error.message !== 'Google sign-in was cancelled') {
-        Alert.alert('Google Sign In Failed', error.message || 'An error occurred');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg !== 'Google sign-in was cancelled') {
+        Alert.alert('Google Sign In Failed', msg || 'An error occurred');
       }
     } finally {
       setSocialLoading(null);

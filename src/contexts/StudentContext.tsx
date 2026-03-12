@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useParentStudents, StudentInfo } from '../hooks/useParentStudents';
 
@@ -23,7 +23,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     if (students.length > 0 && !selectedStudent) {
       setSelectedStudent(students[0]);
     }
-  }, [students, selectedStudent]);
+  }, [students]);
 
   // Clear selected student when user logs out
   useEffect(() => {
@@ -36,17 +36,17 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   // Parents have students associated with their user_id
   const isParentView = hasStudents;
 
+  const value = useMemo(() => ({
+    selectedStudent,
+    setSelectedStudent,
+    students,
+    isLoading,
+    hasStudents,
+    isParentView,
+  }), [selectedStudent, students, isLoading, hasStudents, isParentView]);
+
   return (
-    <StudentContext.Provider
-      value={{
-        selectedStudent,
-        setSelectedStudent,
-        students,
-        isLoading,
-        hasStudents,
-        isParentView,
-      }}
-    >
+    <StudentContext.Provider value={value}>
       {children}
     </StudentContext.Provider>
   );

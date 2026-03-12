@@ -32,7 +32,7 @@ export default function CelebrationScreen() {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error updating onboarding status:', error);
+        if (__DEV__) console.error('Error updating onboarding status:', error);
         // Also try matching by email in case user_id doesn't match
         if (user.email) {
           const { error: emailError } = await supabase
@@ -41,7 +41,7 @@ export default function CelebrationScreen() {
             .eq('email', user.email);
 
           if (emailError) {
-            console.error('Error updating onboarding status by email:', emailError);
+            if (__DEV__) console.error('Error updating onboarding status by email:', emailError);
             Alert.alert(
               'Heads up',
               'We had trouble saving your progress, but don\'t worry -- you can keep using the app!',
@@ -53,7 +53,7 @@ export default function CelebrationScreen() {
       // Invalidate cache so useStudentProfile picks up the change
       await queryClient.invalidateQueries({ queryKey: studentProfileKeys.all });
     } catch (err) {
-      console.error('Unexpected error completing onboarding:', err);
+      if (__DEV__) console.error('Unexpected error completing onboarding:', err);
       // Don't trap student -- still navigate to dashboard
     } finally {
       setCompleting(false);

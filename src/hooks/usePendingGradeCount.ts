@@ -18,8 +18,7 @@ export function usePendingGradeCount() {
         .eq('status', 'pending');
 
       if (error) {
-        console.error('Error fetching pending grade count:', error);
-        return 0;
+        throw error;
       }
 
       return count ?? 0;
