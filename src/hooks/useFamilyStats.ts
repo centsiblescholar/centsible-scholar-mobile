@@ -135,7 +135,7 @@ export function useFamilyStats(students: StudentInfo[]) {
   const parentUserId = user?.id || '';
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['familyStats', parentUserId, students.map(s => s.user_id).join(',')],
+    queryKey: ['familyStats', parentUserId, [...students.map(s => s.user_id)].sort().join(',')],
     queryFn: () => fetchFamilyStats(students, parentUserId),
     enabled: !!parentUserId && students.length > 0,
     staleTime: 2 * 60 * 1000, // 2 min

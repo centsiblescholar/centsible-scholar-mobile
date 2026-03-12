@@ -18,10 +18,19 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   const { students, isLoading, hasStudents } = useParentStudents();
   const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
 
-  // Auto-select the first student when students are loaded
+  // Auto-select the first student when students are loaded,
+  // or reset if the selected student was removed/deactivated
   useEffect(() => {
     if (students.length > 0 && !selectedStudent) {
       setSelectedStudent(students[0]);
+    } else if (selectedStudent && students.length > 0) {
+      // Check if selectedStudent still exists in the active students list
+      const stillExists = students.some(s => s.id === selectedStudent.id);
+      if (!stillExists) {
+        setSelectedStudent(students[0]);
+      }
+    } else if (students.length === 0 && selectedStudent) {
+      setSelectedStudent(null);
     }
   }, [students]);
 

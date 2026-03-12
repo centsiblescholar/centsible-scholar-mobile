@@ -11,6 +11,9 @@ import {
   Modal,
   RefreshControl,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -390,8 +393,9 @@ export default function GradesScreen() {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Add New Grade</Text>
 
             <View style={styles.inputGroup}>
@@ -463,8 +467,9 @@ export default function GradesScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

@@ -9,6 +9,7 @@ import {
   FlatList,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -168,15 +169,17 @@ function StudentDashboardView() {
       }
     >
       {/* A. Header */}
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hey, {firstName}!</Text>
-        <Text style={sStyles.streakText}>
-          {streakCount > 0 ? `${streakCount} day streak` : 'Start your streak!'}
-        </Text>
-        <View style={sStyles.studentBadge}>
-          <Text style={styles.parentBadgeText}>Student</Text>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Hey, {firstName}!</Text>
+          <Text style={sStyles.streakText}>
+            {streakCount > 0 ? `${streakCount} day streak` : 'Start your streak!'}
+          </Text>
+          <View style={sStyles.studentBadge}>
+            <Text style={styles.parentBadgeText}>Student</Text>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
 
       {/* B. Today's Tasks */}
       <View style={sStyles.tasksSection}>
@@ -418,13 +421,15 @@ function ParentDashboardView() {
       }
     >
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Family Dashboard</Text>
-        <Text style={styles.email}>Monitor your family's progress</Text>
-        <View style={styles.parentBadge}>
-          <Text style={styles.parentBadgeText}>Parent Command Center</Text>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Family Dashboard</Text>
+          <Text style={styles.email}>Monitor your family's progress</Text>
+          <View style={styles.parentBadge}>
+            <Text style={styles.parentBadgeText}>Parent Command Center</Text>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
 
       {/* ── Family Stat Cards (scrollable row) ── */}
       <FlatList
