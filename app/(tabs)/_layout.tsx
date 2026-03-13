@@ -1,11 +1,15 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useStudent } from '../../src/contexts/StudentContext';
 import { useTheme } from '@/theme';
 
 export default function TabLayout() {
   const { userRole } = useAuth();
   const { colors } = useTheme();
+  const { selectedStudent } = useStudent();
+  const studentFirstName = selectedStudent?.name?.split(' ')[0];
+  const isParent = userRole === 'parent';
 
   return (
     <Tabs
@@ -41,6 +45,7 @@ export default function TabLayout() {
         name="grades"
         options={{
           title: 'Grades',
+          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Grades` : 'Grades',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="school-outline" size={size} color={color} />
           ),
@@ -50,6 +55,7 @@ export default function TabLayout() {
         name="behavior"
         options={{
           title: 'Behavior',
+          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Behavior` : 'Behavior',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="checkmark-circle-outline" size={size} color={color} />
           ),
@@ -59,6 +65,7 @@ export default function TabLayout() {
         name="learn"
         options={{
           title: 'Learn',
+          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Learning` : 'Learn',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bulb-outline" size={size} color={color} />
           ),
@@ -68,6 +75,7 @@ export default function TabLayout() {
         name="earnings"
         options={{
           title: 'Earnings',
+          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Earnings` : 'Earnings',
           href: userRole === 'student' ? null : '/(tabs)/earnings',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />

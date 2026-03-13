@@ -160,7 +160,7 @@ export default function BehaviorScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Behavior</Text>
+          <Text style={styles.headerTitle}>{isParentView && selectedStudent?.name ? `${selectedStudent.name.split(' ')[0]}'s Behavior` : 'Behavior'}</Text>
           <Text style={styles.headerDate}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
