@@ -12,9 +12,22 @@ export function usePendingGradeCount() {
   const { data: count = 0 } = useQuery({
     queryKey: ['gradeApproval', 'pendingCount', user?.id],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('parent_pending_grades')
+      if (!user?.id) return 0;
+
+      // Get parent's linked students
+      const { data: relationships, error: relError } = await supabase
+        .from('parent_student_relationships')
+        .select('student_user_id')
+        .eq('parent_user_id', user.id);
+
+      if (relError || !relationships?.length) return 0;
+
+      const studentUserIds = relationships.map((r) => r.student_user_id);
+
+      const { count: gradeCount, error } = await supabase
+        .from('student_grades')
         .select('*', { count: 'exact', head: true })
+        .in('student_user_id', studentUserIds)
         .eq('status', 'pending');
 
       if (error) {
@@ -22,11 +35,11 @@ export function usePendingGradeCount() {
         return 0;
       }
 
-      return count ?? 0;
+      return gradeCount ?? 0;
     },
     enabled: !!user && userRole === 'parent',
-    staleTime: 60 * 1000, // 1 minute
-    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   return count;

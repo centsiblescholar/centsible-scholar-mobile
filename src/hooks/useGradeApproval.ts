@@ -38,13 +38,36 @@ export const gradeApprovalKeys = {
 };
 
 /**
- * Fetch pending grades from the parent_pending_grades table.
- * This denormalized table is auto-populated by a trigger when students submit grades.
+ * Fetch pending grades directly from student_grades, scoped to the parent's students.
  */
 async function fetchPendingGrades(parentId: string): Promise<PendingGrade[]> {
+  // Get parent's linked students
+  const { data: relationships, error: relError } = await supabase
+    .from('parent_student_relationships')
+    .select('student_user_id')
+    .eq('parent_user_id', parentId);
+
+  if (relError) throw relError;
+  if (!relationships || relationships.length === 0) return [];
+
+  const studentUserIds = relationships.map((r) => r.student_user_id);
+
+  // Get student names
+  const { data: students, error: studentsError } = await supabase
+    .from('student_profiles')
+    .select('user_id, name')
+    .in('user_id', studentUserIds);
+
+  if (studentsError) throw studentsError;
+
+  const studentMap = new Map((students || []).map((s) => [s.user_id, s.name]));
+
+  // Fetch pending grades from student_grades
   const { data, error } = await supabase
-    .from('parent_pending_grades')
+    .from('student_grades')
     .select('*')
+    .in('student_user_id', studentUserIds)
+    .eq('status', 'pending')
     .order('submitted_at', { ascending: false });
 
   if (error) {
@@ -55,7 +78,7 @@ async function fetchPendingGrades(parentId: string): Promise<PendingGrade[]> {
   return (data || []).map((g) => ({
     id: g.id,
     student_user_id: g.student_user_id,
-    student_display_name: g.student_display_name || 'Unknown',
+    student_display_name: studentMap.get(g.student_user_id) || 'Unknown',
     subject: g.subject,
     grade: g.grade,
     base_amount: g.base_amount ?? 0,
@@ -118,7 +141,6 @@ async function fetchReviewedGrades(parentId: string): Promise<ReviewedGrade[]> {
 
 /**
  * Approve a grade using the approve_student_grade RPC.
- * This handles updating student_grades status and cleaning up parent_pending_grades.
  */
 async function approveGrade(
   gradeId: string,
@@ -159,7 +181,6 @@ async function rejectGrade(
 
 /**
  * Request revision of a grade using the request_grade_revision RPC.
- * The grade stays in parent_pending_grades with status='needs_revision'.
  */
 async function requestRevision(
   gradeId: string,
@@ -201,7 +222,7 @@ export function useGradeApproval() {
   const queryClient = useQueryClient();
   const parentId = user?.id || '';
 
-  // Fetch pending grades from parent_pending_grades table
+  // Fetch pending grades from student_grades
   const {
     data: pendingGrades = [],
     isLoading: pendingLoading,
