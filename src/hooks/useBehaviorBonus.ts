@@ -65,8 +65,7 @@ async function fetchBehaviorAssessments(
     .order('date', { ascending: false });
 
   if (error) {
-    console.error('Error fetching behavior assessments:', error);
-    return [];
+    throw error;
   }
 
   return data || [];

@@ -66,7 +66,7 @@ export default function SettingsScreen() {
         if (!granted) { Alert.alert('Permission Required', 'Please enable notifications in your device settings to receive reminders.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: () => Linking.openSettings() }]); return; }
       }
       await toggleNotifications(enabled);
-    } catch (error) { console.error('Error toggling notifications:', error); } finally { setTogglingNotifications(false); }
+    } catch (error) { if (__DEV__) console.error('Error toggling notifications:', error); } finally { setTogglingNotifications(false); }
   };
 
   const isLoading = profileLoading || subscriptionLoading;

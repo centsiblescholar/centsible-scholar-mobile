@@ -104,8 +104,11 @@ export function usePendingReviews() {
         }
       }
 
-      // Refresh
+      // Refresh pending list and all dependent queries
       queryClient.invalidateQueries({ queryKey: pendingReviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['behaviorAssessments'] });
+      queryClient.invalidateQueries({ queryKey: ['familyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['behaviorBonus'] });
     } catch (err) {
       console.error('Error in reviewAssessment:', err);
       Alert.alert('Error', 'An unexpected error occurred.');
@@ -118,17 +121,9 @@ export function usePendingReviews() {
     try {
       setDeletingId(assessmentId);
 
-      // Delete from parent_pending_assessments first, then behavior_assessments
-      const { error: pendingError } = await supabase
-        .from('parent_pending_assessments')
-        .delete()
-        .eq('id', assessmentId);
-
-      if (pendingError) {
-        Alert.alert('Error', 'Failed to delete: ' + pendingError.message);
-        return;
-      }
-
+      // Delete from behavior_assessments first (source of truth).
+      // parent_pending_assessments is a view/derived table — deleting the
+      // source record should cascade or the pending view will auto-exclude it.
       const { error } = await supabase
         .from('behavior_assessments')
         .delete()
@@ -139,7 +134,21 @@ export function usePendingReviews() {
         return;
       }
 
+      // Also clean up from pending table if it's a real table (not a view)
+      const { error: pendingError } = await supabase
+        .from('parent_pending_assessments')
+        .delete()
+        .eq('id', assessmentId);
+
+      // Non-fatal: if pending cleanup fails, the source record is already gone
+      if (pendingError && __DEV__) {
+        console.error('Failed to clean up pending record (non-fatal):', pendingError.message);
+      }
+
       queryClient.invalidateQueries({ queryKey: pendingReviewKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['behaviorAssessments'] });
+      queryClient.invalidateQueries({ queryKey: ['familyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['behaviorBonus'] });
     } catch (err) {
       console.error('Error in deleteAssessment:', err);
       Alert.alert('Error', 'An unexpected error occurred.');

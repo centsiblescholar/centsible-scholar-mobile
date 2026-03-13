@@ -36,7 +36,7 @@ async function fetchFamilyStats(
   let totalQodCorrect = 0;
   let totalQodTotal = 0;
 
-  // Fetch data for each student in parallel
+  // Fetch data for each student in parallel — use allSettled so one failure doesn't break all
   const studentPromises = students.map(async (student) => {
     const studentUserId = student.user_id;
 
@@ -113,7 +113,13 @@ async function fetchFamilyStats(
     };
   });
 
-  await Promise.all(studentPromises);
+  const results = await Promise.allSettled(studentPromises);
+  // Log any per-student failures without crashing the entire query
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.warn(`Failed to fetch stats for student ${students[i]?.user_id}:`, result.reason);
+    }
+  });
 
   return {
     familyGPA: totalGPACount > 0 ? totalGPASum / totalGPACount : 0,
@@ -129,7 +135,7 @@ export function useFamilyStats(students: StudentInfo[]) {
   const parentUserId = user?.id || '';
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['familyStats', parentUserId, students.map(s => s.user_id).join(',')],
+    queryKey: ['familyStats', parentUserId, [...students.map(s => s.user_id)].sort().join(',')],
     queryFn: () => fetchFamilyStats(students, parentUserId),
     enabled: !!parentUserId && students.length > 0,
     staleTime: 2 * 60 * 1000, // 2 min

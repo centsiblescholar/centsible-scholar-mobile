@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { questionBank, Question } from '../data/questionBank';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,37 +17,53 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
   const [xpEarned, setXpEarned] = useState<number>(0);
   const [totalXP, setTotalXP] = useState<number>(0);
 
+  // Track mount status to prevent state updates after unmount
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const today = new Date().toISOString().split('T')[0];
 
   // Get user ID and check existing answer on component mount
   useEffect(() => {
+    let cancelled = false;
+
     const initializeUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+
         if (user) {
           setUserId(user.id);
 
           // Fetch streak/XP data using shared utility
           try {
             const streakData = await getStreakData(user.id);
-            if (streakData) {
+            if (!cancelled && streakData) {
               setStreakCount(streakData.streak_count || 0);
               setTotalXP(streakData.total_xp || 0);
             }
           } catch (profileError) {
-            console.log('Streak/XP data not available');
+            // Streak/XP data not available — non-critical
           }
 
-          await checkExistingAnswer(user.id);
+          if (!cancelled) {
+            await checkExistingAnswer(user.id);
+          }
         }
       } catch (error) {
         console.error('Error initializing user:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     initializeUser();
+
+    return () => { cancelled = true; };
   }, []);
 
   // Check if user has already answered today's question
@@ -122,8 +138,12 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadQuestion = async () => {
       const question = await getQuestionOfTheDay();
+      if (cancelled) return;
+
       setCurrentQuestion(question);
 
       // Only reset state if user hasn't answered today
@@ -134,6 +154,8 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
     };
 
     loadQuestion();
+
+    return () => { cancelled = true; };
   }, [gradeLevel, hasAnsweredToday]);
 
   const handleAnswerSelect = (answerIndex: number) => {
@@ -212,20 +234,24 @@ export function useQuestionOfTheDay(gradeLevel: string | undefined) {
               totalXpEarned += award.amount;
             }
 
-            setStreakCount(newStreakCount);
-            setXpEarned(totalXpEarned);
-            setTotalXP((streakData.total_xp || 0) + totalXpEarned);
+            if (mountedRef.current) {
+              setStreakCount(newStreakCount);
+              setXpEarned(totalXpEarned);
+              setTotalXP((streakData.total_xp || 0) + totalXpEarned);
+            }
           }
         } catch (streakError) {
           console.error('Error updating streak/XP:', streakError);
           // Non-blocking: don't fail QOD submission
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error saving question result:', error);
       }
     }
 
-    setSaving(false);
+    if (mountedRef.current) {
+      setSaving(false);
+    }
   };
 
   return {

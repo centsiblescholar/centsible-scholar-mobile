@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
@@ -99,8 +100,8 @@ export default function BehaviorScreen() {
       if (saveStatus === 'submitted') {
         Alert.alert('Submitted', 'Your assessment has been submitted for parent review.');
       }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save assessment');
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save assessment');
     }
   }, [scores, targetUserId, saveAssessment, notificationsEnabled, isParentView, selectedStudent, sendLowBehaviorAlert]);
 
@@ -159,12 +160,14 @@ export default function BehaviorScreen() {
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{isParentView && selectedStudent?.name ? `${selectedStudent.name.split(' ')[0]}'s Behavior` : 'Behavior'}</Text>
-          <Text style={styles.headerDate}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </Text>
-        </View>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{isParentView && selectedStudent?.name ? `${selectedStudent.name.split(' ')[0]}'s Behavior` : 'Behavior'}</Text>
+            <Text style={styles.headerDate}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Text>
+          </View>
+        </SafeAreaView>
 
         <View style={styles.tabContainer}>
           <TouchableOpacity style={[styles.tab, activeTab === 'today' && styles.tabActive]} onPress={() => setActiveTab('today')}>

@@ -64,8 +64,7 @@ async function fetchEducationBonusData(
     .eq('user_id', studentUserId);
 
   if (error) {
-    console.error('Error fetching QOD results:', error);
-    return { totalQuestions: 0, correctAnswers: 0 };
+    throw error;
   }
 
   const totalQuestions = data?.length || 0;

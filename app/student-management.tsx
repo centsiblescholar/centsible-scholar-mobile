@@ -152,8 +152,8 @@ export default function StudentManagementScreen() {
       setShowAddModal(false);
       resetForm();
       Alert.alert('Success', 'Student added successfully!\n\nSave their login credentials:\nEmail: ' + email.trim() + '\nPassword: ' + password);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add student');
+    } catch (error: unknown) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to add student');
     }
   };
 
@@ -182,8 +182,8 @@ export default function StudentManagementScreen() {
       setSelectedStudent(null);
       resetForm();
       Alert.alert('Success', 'Student updated successfully!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update student');
+    } catch (error: unknown) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update student');
     }
   };
 
@@ -200,8 +200,8 @@ export default function StudentManagementScreen() {
             try {
               await deactivateStudent(student.id);
               Alert.alert('Success', `${student.name} has been deactivated`);
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to deactivate student');
+            } catch (error: unknown) {
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to deactivate student');
             }
           },
         },
@@ -213,8 +213,8 @@ export default function StudentManagementScreen() {
     try {
       await reactivateStudent(student.id);
       Alert.alert('Success', `${student.name} has been reactivated`);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reactivate student');
+    } catch (error: unknown) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to reactivate student');
     }
   };
 

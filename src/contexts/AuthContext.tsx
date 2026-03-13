@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
@@ -90,11 +90,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     Alert.alert('Account Error', message);
   }, []);
 
+  // Version counter to prevent stale async callbacks from setting state
+  const authVersionRef = useRef(0);
+
   useEffect(() => {
+    // Increment version on each effect run; stale async callbacks will be ignored
+    const version = ++authVersionRef.current;
+
     // Get initial session
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+
+        if (authVersionRef.current !== version) return; // stale
+
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
@@ -103,6 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Fallback: detect role from profile tables if metadata is missing
         if (initialSession?.user && !role) {
           role = await detectRoleFromProfiles(initialSession.user.id);
+          if (authVersionRef.current !== version) return; // stale
         }
 
         setUserRole(role);
@@ -116,7 +126,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
-        setLoading(false);
+        if (authVersionRef.current === version) {
+          setLoading(false);
+        }
       }
     };
 
@@ -125,7 +137,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth state changed:', event);
+        // Capture a new sub-version for this particular auth event
+        const eventVersion = ++authVersionRef.current;
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -140,6 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Fallback: detect role from profile tables if metadata is missing
         if (event === 'SIGNED_IN' && newSession?.user && !role) {
           role = await detectRoleFromProfiles(newSession.user.id);
+          if (authVersionRef.current !== eventVersion) return; // superseded by newer event
         }
 
         setUserRole(role);

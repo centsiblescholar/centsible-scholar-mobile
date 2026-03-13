@@ -172,8 +172,8 @@ export async function signInWithGoogle() {
   const { GoogleSignin, isSuccessResponse } = await getGoogleSignin();
 
   GoogleSignin.configure({
-    webClientId: '505700171676-uuq82mojil9kkuprcj7dvbf8b758kbhh.apps.googleusercontent.com',
-    iosClientId: '505700171676-vcdjgol1ubhlvk5psbgdcm7r5pu5tk8e.apps.googleusercontent.com',
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID!,
   });
 
   await GoogleSignin.hasPlayServices();

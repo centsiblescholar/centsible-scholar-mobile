@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions,
-  TouchableOpacity, Modal, TextInput, Alert,
+  TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
+  Pressable, ActivityIndicator,
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -43,6 +44,8 @@ export default function EarningsScreen() {
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalAmount, setNewGoalAmount] = useState('');
   const [addFundsAmount, setAddFundsAmount] = useState('');
+  const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const [isAddingFunds, setIsAddingFunds] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -56,14 +59,16 @@ export default function EarningsScreen() {
     if (!newGoalName.trim()) { Alert.alert('Error', 'Please enter a goal name'); return; }
     const amount = parseFloat(newGoalAmount);
     if (isNaN(amount) || amount <= 0) { Alert.alert('Error', 'Please enter a valid target amount'); return; }
-    try { await addGoal(newGoalName.trim(), amount); setGoalModalVisible(false); setNewGoalName(''); setNewGoalAmount(''); } catch { Alert.alert('Error', 'Failed to create goal'); }
+    setIsAddingGoal(true);
+    try { await addGoal(newGoalName.trim(), amount); setGoalModalVisible(false); setNewGoalName(''); setNewGoalAmount(''); } catch { Alert.alert('Error', 'Failed to create goal'); } finally { setIsAddingGoal(false); }
   };
 
   const handleAddFunds = async () => {
     if (!selectedGoalId) return;
     const amount = parseFloat(addFundsAmount);
     if (isNaN(amount) || amount <= 0) { Alert.alert('Error', 'Please enter a valid amount'); return; }
-    try { await addToGoal(selectedGoalId, amount); setAddFundsModalVisible(false); setAddFundsAmount(''); setSelectedGoalId(null); } catch { Alert.alert('Error', 'Failed to add funds'); }
+    setIsAddingFunds(true);
+    try { await addToGoal(selectedGoalId, amount); setAddFundsModalVisible(false); setAddFundsAmount(''); setSelectedGoalId(null); } catch { Alert.alert('Error', 'Failed to add funds'); } finally { setIsAddingFunds(false); }
   };
 
   const handleDeleteGoal = (goalId: string, goalName: string) => {
@@ -206,26 +211,30 @@ export default function EarningsScreen() {
       <View style={{ height: 40 }} />
 
       <Modal visible={goalModalVisible} transparent animationType="slide" onRequestClose={() => setGoalModalVisible(false)}>
-        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={styles.modalOverlay} onPress={() => setGoalModalVisible(false)}><Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.modalTitle}>New Savings Goal</Text>
           <View style={styles.inputGroup}><Text style={styles.inputLabel}>Goal Name</Text><TextInput style={styles.input} placeholder="e.g., New Video Game, Bike" placeholderTextColor={colors.textTertiary} value={newGoalName} onChangeText={setNewGoalName} /></View>
           <View style={styles.inputGroup}><Text style={styles.inputLabel}>Target Amount</Text><View style={styles.currencyInputContainer}><Text style={styles.currencySymbol}>$</Text><TextInput style={styles.currencyInput} placeholder="0.00" placeholderTextColor={colors.textTertiary} value={newGoalAmount} onChangeText={setNewGoalAmount} keyboardType="decimal-pad" /></View></View>
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => { setGoalModalVisible(false); setNewGoalName(''); setNewGoalAmount(''); }}><Text style={styles.modalCancelText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.modalSubmitButton} onPress={handleAddGoal}><Text style={styles.modalSubmitText}>Create Goal</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.modalSubmitButton, isAddingGoal && { opacity: 0.7 }]} onPress={handleAddGoal} disabled={isAddingGoal}>{isAddingGoal ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.modalSubmitText}>Create Goal</Text>}</TouchableOpacity>
           </View>
-        </View></View>
+        </Pressable></Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={addFundsModalVisible} transparent animationType="slide" onRequestClose={() => setAddFundsModalVisible(false)}>
-        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={styles.modalOverlay} onPress={() => setAddFundsModalVisible(false)}><Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.modalTitle}>Add Funds to Goal</Text>
           <View style={styles.inputGroup}><Text style={styles.inputLabel}>Amount to Add</Text><View style={styles.currencyInputContainer}><Text style={styles.currencySymbol}>$</Text><TextInput style={styles.currencyInput} placeholder="0.00" placeholderTextColor={colors.textTertiary} value={addFundsAmount} onChangeText={setAddFundsAmount} keyboardType="decimal-pad" /></View></View>
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => { setAddFundsModalVisible(false); setAddFundsAmount(''); setSelectedGoalId(null); }}><Text style={styles.modalCancelText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.modalSubmitButton} onPress={handleAddFunds}><Text style={styles.modalSubmitText}>Add Funds</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.modalSubmitButton, isAddingFunds && { opacity: 0.7 }]} onPress={handleAddFunds} disabled={isAddingFunds}>{isAddingFunds ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.modalSubmitText}>Add Funds</Text>}</TouchableOpacity>
           </View>
-        </View></View>
+        </Pressable></Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );

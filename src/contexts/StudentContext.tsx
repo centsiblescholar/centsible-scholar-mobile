@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useParentStudents, StudentInfo } from '../hooks/useParentStudents';
 
@@ -18,12 +18,21 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   const { students, isLoading, hasStudents } = useParentStudents();
   const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
 
-  // Auto-select the first student when students are loaded
+  // Auto-select the first student when students are loaded,
+  // or reset if the selected student was removed/deactivated
   useEffect(() => {
     if (students.length > 0 && !selectedStudent) {
       setSelectedStudent(students[0]);
+    } else if (selectedStudent && students.length > 0) {
+      // Check if selectedStudent still exists in the active students list
+      const stillExists = students.some(s => s.id === selectedStudent.id);
+      if (!stillExists) {
+        setSelectedStudent(students[0]);
+      }
+    } else if (students.length === 0 && selectedStudent) {
+      setSelectedStudent(null);
     }
-  }, [students, selectedStudent]);
+  }, [students]);
 
   // Clear selected student when user logs out
   useEffect(() => {
@@ -36,17 +45,17 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   // Parents have students associated with their user_id
   const isParentView = hasStudents;
 
+  const value = useMemo(() => ({
+    selectedStudent,
+    setSelectedStudent,
+    students,
+    isLoading,
+    hasStudents,
+    isParentView,
+  }), [selectedStudent, students, isLoading, hasStudents, isParentView]);
+
   return (
-    <StudentContext.Provider
-      value={{
-        selectedStudent,
-        setSelectedStudent,
-        students,
-        isLoading,
-        hasStudents,
-        isParentView,
-      }}
-    >
+    <StudentContext.Provider value={value}>
       {children}
     </StudentContext.Provider>
   );

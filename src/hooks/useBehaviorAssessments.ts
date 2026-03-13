@@ -117,6 +117,10 @@ export function useBehaviorAssessments(studentUserId?: string) {
     mutationFn: saveAssessment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: behaviorAssessmentKeys.list(targetUserId) });
+      // Also invalidate dependent queries that aggregate behavior data
+      queryClient.invalidateQueries({ queryKey: ['familyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['behaviorBonus'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingReviews'] });
     },
   });
 
