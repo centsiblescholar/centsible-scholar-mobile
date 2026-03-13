@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 export const REVENUECAT_CONFIG = {
   apiKeys: {
-    ios: 'appl_REPLACE_WITH_REAL_KEY',
+    ios: 'appl_LOEXrGPYLSqfaEtcPQLwcNdsxiY',
     android: 'goog_REPLACE_WITH_REAL_KEY',
   },
   entitlementId: 'premium',
