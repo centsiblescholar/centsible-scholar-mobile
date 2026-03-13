@@ -140,6 +140,64 @@ async function createTermConfig(config: {
   return data;
 }
 
+interface SaveSnapshotParams {
+  user_id: string;
+  term_number: number;
+  term_start: string;
+  term_end: string;
+  gpa: number | null;
+  grade_earnings: number;
+  behavior_earnings: number;
+  education_earnings?: number;
+  total_earnings: number;
+  allocation_breakdown: Record<string, number> | null;
+  grades_data: any;
+}
+
+async function saveTermSnapshot(params: SaveSnapshotParams): Promise<void> {
+  // Duplicate guard: check if snapshot already exists for same term dates
+  const { data: existing, error: checkError } = await supabase
+    .from('term_snapshots')
+    .select('id')
+    .eq('user_id', params.user_id)
+    .eq('term_start', params.term_start)
+    .eq('term_end', params.term_end)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('Error checking for existing snapshot:', checkError);
+    throw checkError;
+  }
+
+  if (existing) {
+    throw new Error('A snapshot already exists for this term period.');
+  }
+
+  const now = new Date().toISOString();
+
+  const { error } = await supabase.from('term_snapshots').insert({
+    user_id: params.user_id,
+    term_number: params.term_number,
+    term_start: params.term_start,
+    term_end: params.term_end,
+    gpa: params.gpa,
+    grade_earnings: params.grade_earnings,
+    behavior_earnings: params.behavior_earnings,
+    education_earnings: params.education_earnings ?? 0,
+    total_earnings: params.total_earnings,
+    allocation_breakdown: params.allocation_breakdown,
+    grades_data: params.grades_data,
+    status: 'completed',
+    created_at: now,
+    updated_at: now,
+  });
+
+  if (error) {
+    console.error('Error saving term snapshot:', error);
+    throw error;
+  }
+}
+
 async function updateTermConfig(
   id: string,
   updates: Partial<Omit<TermConfig, 'id' | 'user_id' | 'created_at'>>
@@ -207,6 +265,26 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: termTrackingKeys.config(targetUserId) });
     },
   });
+
+  // Save term snapshot mutation
+  const snapshotMutation = useMutation({
+    mutationFn: (params: Omit<SaveSnapshotParams, 'user_id'>) =>
+      resolveStudentUserId(targetUserId, parentUserId).then((resolvedId) =>
+        saveTermSnapshot({ ...params, user_id: resolvedId })
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.snapshots(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.currentSnapshot(targetUserId) });
+    },
+  });
+
+  // Check if current term already has a snapshot
+  const currentTermHasSnapshot =
+    termConfig && termSnapshots.some(
+      (s) =>
+        s.term_start === termConfig.current_term_start.split('T')[0] &&
+        s.term_end === termConfig.current_term_end.split('T')[0]
+    );
 
   // Calculate term progress
   const getTermProgress = () => {
@@ -326,6 +404,9 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     // Mutations
     setupNewTerm,
     isSettingUpTerm: createConfigMutation.isPending || updateConfigMutation.isPending,
+    saveTermSnapshot: snapshotMutation.mutateAsync,
+    isSavingSnapshot: snapshotMutation.isPending,
+    currentTermHasSnapshot,
 
     // Refetch
     refetch,

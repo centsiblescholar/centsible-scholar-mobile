@@ -18,6 +18,10 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useStudent } from '../src/contexts/StudentContext';
 import { useTermTracking, TermSnapshot } from '../src/hooks/useTermTracking';
 import { useUserProfile } from '../src/hooks/useUserProfile';
+import { useStudentGrades } from '../src/hooks/useStudentGrades';
+import { useBehaviorBonus } from '../src/hooks/useBehaviorBonus';
+import { usePendingGradeCount } from '../src/hooks/usePendingGradeCount';
+import { calculateTotalAllocation } from '../src/shared/calculations/allocationCalculations';
 import { LineChart } from 'react-native-chart-kit';
 import { useTheme, type ThemeColors } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
@@ -33,10 +37,14 @@ export default function TermTrackingScreen() {
   const { selectedStudent } = useStudent();
   const [refreshing, setRefreshing] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [termLength, setTermLength] = useState('9');
 
   // Use selected student's ID if parent, otherwise use logged-in user's ID
+  // targetUserId uses profile ID for parents (resolveStudentUserId handles conversion)
   const targetUserId = isParent ? selectedStudent?.id : user?.id;
+  // resolvedStudentUserId is the student's auth user_id (needed for grade/behavior hooks)
+  const resolvedStudentUserId = isParent ? selectedStudent?.user_id : user?.id;
 
   const {
     termConfig,
@@ -49,8 +57,23 @@ export default function TermTrackingScreen() {
     snapshotsError,
     setupNewTerm,
     isSettingUpTerm,
+    saveTermSnapshot,
+    isSavingSnapshot,
+    currentTermHasSnapshot,
     refetch,
   } = useTermTracking(targetUserId);
+
+  // Grade and behavior data for term completion
+  const { gradeEntries, totalReward, gpa } = useStudentGrades(resolvedStudentUserId);
+  const { bonusAmount: behaviorEarnings } = useBehaviorBonus(resolvedStudentUserId, totalReward);
+  const pendingGradeCount = usePendingGradeCount();
+
+  // Calculate allocation for the confirmation modal
+  const totalEarnings = totalReward + behaviorEarnings;
+  const allocation = useMemo(() => {
+    if (totalEarnings <= 0) return null;
+    return calculateTotalAllocation(gradeEntries);
+  }, [gradeEntries, totalEarnings]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -71,6 +94,45 @@ export default function TermTrackingScreen() {
       Alert.alert('Success', 'Term has been set up successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to set up term');
+    }
+  };
+
+  const handleCompleteTerm = async () => {
+    if (!termConfig) return;
+
+    try {
+      await saveTermSnapshot({
+        term_number: currentTermNumber,
+        term_start: termConfig.current_term_start.split('T')[0],
+        term_end: termConfig.current_term_end.split('T')[0],
+        gpa: gpa || null,
+        grade_earnings: totalReward,
+        behavior_earnings: behaviorEarnings,
+        education_earnings: 0,
+        total_earnings: totalEarnings,
+        allocation_breakdown: allocation
+          ? {
+              tax: allocation.taxQualified.taxes,
+              retirement: allocation.taxQualified.retirement,
+              savings: allocation.savings,
+              discretionary: allocation.discretionary,
+            }
+          : null,
+        grades_data: gradeEntries.map((g) => ({
+          subject: g.className,
+          grade: g.grade,
+          baseAmount: g.baseAmount,
+          reward: g.rewardAmount,
+        })),
+      });
+
+      setShowCompleteModal(false);
+      Alert.alert(
+        'Term Completed',
+        `Term #${currentTermNumber} is complete!\n\nTotal Earnings: $${totalEarnings.toFixed(2)}\n\nThe student's earnings are ready for payment.`
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to complete term');
     }
   };
 
@@ -171,7 +233,39 @@ export default function TermTrackingScreen() {
                 </View>
               </View>
 
-              {termProgress.hasEnded && (
+              {/* Student notice when term has ended */}
+              {termProgress.hasEnded && !isParent && !currentTermHasSnapshot && (
+                <View style={styles.noticeBanner}>
+                  <Ionicons name="alert-circle" size={20} color={colors.warning} />
+                  <Text style={styles.noticeBannerText}>
+                    Your term has ended! Submit any remaining grades so your parent can finalize payment.
+                  </Text>
+                </View>
+              )}
+
+              {/* Parent: Complete Term button (only if term ended and no snapshot yet) */}
+              {termProgress.hasEnded && isParent && !currentTermHasSnapshot && (
+                <TouchableOpacity
+                  style={[styles.newTermButton, styles.completeTermButton]}
+                  onPress={() => setShowCompleteModal(true)}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />
+                  <Text style={styles.newTermButtonText}>Complete Term</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Show completed badge if snapshot exists */}
+              {termProgress.hasEnded && currentTermHasSnapshot && (
+                <View style={styles.completedBadgeContainer}>
+                  <View style={styles.completedBadge}>
+                    <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                    <Text style={styles.completedBadgeText}>Term Completed</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Start New Term only available after term is completed */}
+              {termProgress.hasEnded && currentTermHasSnapshot && isParent && (
                 <TouchableOpacity
                   style={styles.newTermButton}
                   onPress={() => setShowSetupModal(true)}
@@ -373,6 +467,106 @@ export default function TermTrackingScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Complete Term Confirmation Modal */}
+      <Modal
+        visible={showCompleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCompleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.completeModalScroll}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Complete Term #{currentTermNumber}</Text>
+
+              {termConfig && (
+                <Text style={styles.completeModalDates}>
+                  {termProgress?.startDate} - {termProgress?.endDate}
+                </Text>
+              )}
+
+              {/* Pending grades warning */}
+              {pendingGradeCount > 0 && (
+                <View style={styles.warningBanner}>
+                  <Ionicons name="warning" size={18} color={colors.warning} />
+                  <Text style={styles.warningText}>
+                    {pendingGradeCount} pending grade{pendingGradeCount !== 1 ? 's' : ''} still need approval. Approve them before completing to include in earnings.
+                  </Text>
+                </View>
+              )}
+
+              {/* GPA */}
+              <View style={styles.completeSection}>
+                <View style={styles.gpaBadge}>
+                  <Text style={styles.gpaBadgeLabel}>GPA</Text>
+                  <Text style={styles.gpaBadgeValue}>{gpa ? gpa.toFixed(2) : 'N/A'}</Text>
+                </View>
+              </View>
+
+              {/* Earnings breakdown */}
+              <View style={styles.completeSection}>
+                <Text style={styles.completeSectionTitle}>Earnings</Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Grade Earnings</Text>
+                  <Text style={styles.detailValue}>{formatCurrency(totalReward)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Behavior Bonus</Text>
+                  <Text style={styles.detailValue}>{formatCurrency(behaviorEarnings)}</Text>
+                </View>
+                <View style={[styles.detailRow, styles.totalRow]}>
+                  <Text style={styles.totalLabel}>Total Earnings</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(totalEarnings)}</Text>
+                </View>
+              </View>
+
+              {/* Allocation breakdown */}
+              {allocation && totalEarnings > 0 && (
+                <View style={styles.completeSection}>
+                  <Text style={styles.completeSectionTitle}>Allocation</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Taxes (15%)</Text>
+                    <Text style={styles.detailValue}>{formatCurrency(allocation.taxQualified.taxes)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Retirement (10%)</Text>
+                    <Text style={styles.detailValue}>{formatCurrency(allocation.taxQualified.retirement)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Savings (25%)</Text>
+                    <Text style={styles.detailValue}>{formatCurrency(allocation.savings)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Discretionary (50%)</Text>
+                    <Text style={styles.detailValue}>{formatCurrency(allocation.discretionary)}</Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowCompleteModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmButton, isSavingSnapshot && styles.buttonDisabled]}
+                  onPress={handleCompleteTerm}
+                  disabled={isSavingSnapshot}
+                >
+                  {isSavingSnapshot ? (
+                    <ActivityIndicator size="small" color={colors.textInverse} />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Complete Term</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>
@@ -888,6 +1082,112 @@ function createStyles(colors: ThemeColors) {
     },
     buttonDisabled: {
       opacity: 0.7,
+    },
+    // Complete Term styles
+    completeTermButton: {
+      backgroundColor: colors.success,
+    },
+    completedBadgeContainer: {
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    completedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.success + '18',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 12,
+    },
+    completedBadgeText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    noticeBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.warning + '18',
+      padding: 14,
+      borderRadius: 12,
+      marginTop: 16,
+    },
+    noticeBannerText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.text,
+      lineHeight: 18,
+    },
+    completeModalScroll: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    completeModalDates: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 4,
+      marginBottom: 16,
+    },
+    warningBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.warning + '18',
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 16,
+    },
+    warningText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.text,
+      lineHeight: 18,
+    },
+    completeSection: {
+      marginBottom: 16,
+    },
+    completeSectionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    gpaBadge: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      padding: 16,
+      borderRadius: 12,
+    },
+    gpaBadgeLabel: {
+      fontSize: 12,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    gpaBadgeValue: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.primary,
+      marginTop: 4,
+    },
+    totalRow: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginTop: 8,
+      paddingTop: 12,
+    },
+    totalLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    totalValue: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.success,
     },
   });
 }
