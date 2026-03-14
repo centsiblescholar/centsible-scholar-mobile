@@ -76,7 +76,6 @@ export default function TabLayout() {
         options={{
           title: 'Earnings',
           headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Earnings` : 'Earnings',
-          href: userRole === 'student' ? null : '/(tabs)/earnings',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
