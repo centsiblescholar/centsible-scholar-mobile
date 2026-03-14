@@ -4,6 +4,7 @@ import {
   TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
   Pressable, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
@@ -209,11 +210,14 @@ export default function EarningsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Earnings Summary</Text>
-        <Text style={styles.headerSubtitle}>{selectedStudent?.name || 'Student'}'s Financial Overview</Text>
-      </View>
+    <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Earnings Summary</Text>
+          <Text style={styles.headerSubtitle}>{selectedStudent?.name || 'Student'}'s Financial Overview</Text>
+        </View>
+      </SafeAreaView>
+      <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
 
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Total Earnings</Text>
@@ -650,7 +654,8 @@ export default function EarningsScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

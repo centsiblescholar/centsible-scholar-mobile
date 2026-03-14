@@ -15,6 +15,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
@@ -146,8 +147,22 @@ export default function GradesScreen() {
     );
   }
 
+  const studentName = isParentView && selectedStudent?.name
+    ? selectedStudent.name.split(' ')[0]
+    : null;
+
   return (
     <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            {studentName ? `${studentName}'s Grades` : 'Grades'}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {gradeEntries.length} grade{gradeEntries.length !== 1 ? 's' : ''} submitted
+          </Text>
+        </View>
+      </SafeAreaView>
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -485,6 +500,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    padding: 20,
+    paddingBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textInverse,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: indigo[200],
+    marginTop: 4,
   },
   scrollView: {
     flex: 1,

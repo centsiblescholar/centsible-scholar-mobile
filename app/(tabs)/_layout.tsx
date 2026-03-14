@@ -36,6 +36,7 @@ export default function TabLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -45,7 +46,7 @@ export default function TabLayout() {
         name="grades"
         options={{
           title: 'Grades',
-          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Grades` : 'Grades',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="school-outline" size={size} color={color} />
           ),
@@ -55,7 +56,7 @@ export default function TabLayout() {
         name="behavior"
         options={{
           title: 'Behavior',
-          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Behavior` : 'Behavior',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="checkmark-circle-outline" size={size} color={color} />
           ),
@@ -65,7 +66,7 @@ export default function TabLayout() {
         name="learn"
         options={{
           title: 'Learn',
-          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Learning` : 'Learn',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bulb-outline" size={size} color={color} />
           ),
@@ -75,7 +76,7 @@ export default function TabLayout() {
         name="earnings"
         options={{
           title: 'Earnings',
-          headerTitle: isParent && studentFirstName ? `${studentFirstName}'s Earnings` : 'Earnings',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
