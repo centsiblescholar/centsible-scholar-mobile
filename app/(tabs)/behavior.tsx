@@ -140,7 +140,12 @@ export default function BehaviorScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Behavior</Text>
+          </View>
+        </SafeAreaView>
         <SkeletonList count={4} cardHeight={80} />
       </View>
     );
@@ -149,6 +154,11 @@ export default function BehaviorScreen() {
   if (error) {
     return (
       <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Behavior</Text>
+          </View>
+        </SafeAreaView>
         <ErrorState message={error.message || 'Failed to load behavior data'} onRetry={() => refetch()} />
       </View>
     );
@@ -156,19 +166,18 @@ export default function BehaviorScreen() {
 
   return (
     <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{isParentView && selectedStudent?.name ? `${selectedStudent.name.split(' ')[0]}'s Behavior` : 'Behavior'}</Text>
+          <Text style={styles.headerDate}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
+        </View>
+      </SafeAreaView>
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>{isParentView && selectedStudent?.name ? `${selectedStudent.name.split(' ')[0]}'s Behavior` : 'Behavior'}</Text>
-            <Text style={styles.headerDate}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </Text>
-          </View>
-        </SafeAreaView>
-
         <View style={styles.tabContainer}>
           <TouchableOpacity style={[styles.tab, activeTab === 'today' && styles.tabActive]} onPress={() => setActiveTab('today')}>
             <Text style={[styles.tabText, activeTab === 'today' && styles.tabTextActive]}>Today</Text>

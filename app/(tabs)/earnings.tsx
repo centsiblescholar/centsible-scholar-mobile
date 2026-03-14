@@ -194,16 +194,39 @@ export default function EarningsScreen() {
   ].filter(item => item.amount > 0);
 
   if (isLoading && !refreshing) {
-    return <View style={styles.loadingContainer}><SkeletonList count={4} cardHeight={100} /></View>;
+    return (
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Earnings Summary</Text>
+          </View>
+        </SafeAreaView>
+        <SkeletonList count={4} cardHeight={100} />
+      </View>
+    );
   }
 
   if (gradesError) {
-    return <View style={styles.container}><ErrorState message={gradesError.message || 'Failed to load earnings'} onRetry={() => refetchGrades()} /></View>;
+    return (
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Earnings Summary</Text>
+          </View>
+        </SafeAreaView>
+        <ErrorState message={gradesError.message || 'Failed to load earnings'} onRetry={() => refetchGrades()} />
+      </View>
+    );
   }
 
   if (totalEarnings === 0 && goals.length === 0 && !isLoading) {
     return (
       <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Earnings Summary</Text>
+          </View>
+        </SafeAreaView>
         <EmptyState icon="wallet-outline" title="No Earnings Yet" description="Earnings will appear once grades are entered." />
       </View>
     );

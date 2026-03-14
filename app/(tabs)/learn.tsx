@@ -49,7 +49,14 @@ function ParentQODProgressView() {
   ];
 
   if (isLoading && !refreshing) {
-    return <View style={styles.loadingContainer}><DashboardSkeleton /></View>;
+    return (
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}><Text style={styles.headerTitle}>Learning Progress</Text></View>
+        </SafeAreaView>
+        <DashboardSkeleton />
+      </View>
+    );
   }
 
   if (error) {
@@ -152,7 +159,14 @@ function StudentLearnView() {
   };
 
   if (loading) {
-    return <View style={styles.loadingContainer}><SkeletonList count={3} cardHeight={100} /></View>;
+    return (
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}><Text style={styles.headerTitle}>Daily Challenge</Text></View>
+        </SafeAreaView>
+        <SkeletonList count={3} cardHeight={100} />
+      </View>
+    );
   }
 
   if (!currentQuestion) {

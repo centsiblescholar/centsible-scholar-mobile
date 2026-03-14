@@ -133,7 +133,12 @@ export default function GradesScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Grades</Text>
+          </View>
+        </SafeAreaView>
         <SkeletonList count={4} cardHeight={80} />
       </View>
     );
@@ -142,6 +147,11 @@ export default function GradesScreen() {
   if (error) {
     return (
       <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Grades</Text>
+          </View>
+        </SafeAreaView>
         <ErrorState message={error.message || 'Failed to load grades'} onRetry={() => refetch()} />
       </View>
     );

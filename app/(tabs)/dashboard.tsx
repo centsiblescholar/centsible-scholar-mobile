@@ -155,7 +155,12 @@ function StudentDashboardView() {
 
   if (isLoading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Dashboard</Text>
+          </View>
+        </SafeAreaView>
         <DashboardSkeleton />
       </View>
     );
@@ -388,7 +393,12 @@ function ParentDashboardView() {
 
   if (isLoading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Family Dashboard</Text>
+          </View>
+        </SafeAreaView>
         <DashboardSkeleton />
       </View>
     );
@@ -396,11 +406,18 @@ function ParentDashboardView() {
 
   if (!students.length && !studentsLoading) {
     return (
-      <EmptyState
-        icon="home-outline"
-        title="Welcome to Centsible Scholar"
-        description="Your dashboard will show your progress here. Add a student to get started."
-      />
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Family Dashboard</Text>
+          </View>
+        </SafeAreaView>
+        <EmptyState
+          icon="home-outline"
+          title="Welcome to Centsible Scholar"
+          description="Your dashboard will show your progress here. Add a student to get started."
+        />
+      </View>
     );
   }
 
