@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, FlatList, Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useStudent } from '../../src/contexts/StudentContext';
 import { useQuestionOfTheDay } from '../../src/hooks/useQuestionOfTheDay';
@@ -54,15 +55,20 @@ function ParentQODProgressView() {
   if (error) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}><Text style={styles.headerTitle}>Learning Progress</Text><Text style={styles.headerSubtitle}>Family QOD Dashboard</Text></View>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}><Text style={styles.headerTitle}>Learning Progress</Text><Text style={styles.headerSubtitle}>Family QOD Dashboard</Text></View>
+        </SafeAreaView>
         <ErrorState message={error.message || 'Failed to load student progress'} onRetry={() => refetch()} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
-      <View style={styles.header}><Text style={styles.headerTitle}>Learning Progress</Text><Text style={styles.headerSubtitle}>Family QOD Dashboard</Text></View>
+    <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}><Text style={styles.headerTitle}>Learning Progress</Text><Text style={styles.headerSubtitle}>Family QOD Dashboard</Text></View>
+      </SafeAreaView>
+      <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}>
 
       <View style={styles.toggleContainer}><View style={styles.toggleRow}>
         {timeRangeOptions.map((option) => (
@@ -96,6 +102,7 @@ function ParentQODProgressView() {
         </>
       )}
     </ScrollView>
+    </View>
   );
 }
 
@@ -151,15 +158,20 @@ function StudentLearnView() {
   if (!currentQuestion) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}><Text style={styles.headerTitle}>Daily Challenge</Text><Text style={styles.headerSubtitle}>Financial Education</Text></View>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+          <View style={styles.header}><Text style={styles.headerTitle}>Daily Challenge</Text><Text style={styles.headerSubtitle}>Financial Education</Text></View>
+        </SafeAreaView>
         <EmptyState icon="bulb-outline" title="No Questions Available" description={`Questions for grade ${gradeLevel} are coming soon!`} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <View style={styles.header}><Text style={styles.headerTitle}>Daily Challenge</Text><Text style={styles.headerSubtitle}>Financial Education</Text></View>
+    <View style={styles.container}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.primary }}>
+        <View style={styles.header}><Text style={styles.headerTitle}>Daily Challenge</Text><Text style={styles.headerSubtitle}>Financial Education</Text></View>
+      </SafeAreaView>
+      <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {streakCount > 0 && (<View style={styles.streakBanner}><Text style={styles.streakEmoji}>🔥</Text><Text style={styles.streakText}>{streakCount} Day Streak!</Text></View>)}
       <View style={styles.content}>
         <View style={styles.questionCard}>
@@ -207,6 +219,7 @@ function StudentLearnView() {
         <View style={styles.infoCard}><Text style={styles.infoTitle}>Why Financial Education?</Text><Text style={styles.infoText}>Answer daily questions to build your financial knowledge and earn bonus rewards! The more you learn, the better prepared you'll be for managing money in the future.</Text></View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
