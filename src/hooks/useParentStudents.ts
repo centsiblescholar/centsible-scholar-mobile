@@ -10,6 +10,7 @@ export interface StudentInfo {
   grade_level: string;
   base_reward_amount: number;
   is_active: boolean;
+  reporting_frequency: string;
 }
 
 // Query key factory
@@ -39,7 +40,7 @@ async function fetchParentStudents(parentUserId: string): Promise<StudentInfo[]>
   // Now fetch student profiles for those user IDs
   const { data, error } = await supabase
     .from('student_profiles')
-    .select('id, user_id, name, email, grade_level, base_reward_amount, is_active')
+    .select('id, user_id, name, email, grade_level, base_reward_amount, is_active, reporting_frequency')
     .in('user_id', studentUserIds)
     .eq('is_active', true)
     .order('name');

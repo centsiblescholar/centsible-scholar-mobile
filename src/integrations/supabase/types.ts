@@ -1474,57 +1474,6 @@ export type Database = {
           },
         ]
       }
-      parent_pending_grades: {
-        Row: {
-          base_amount: number | null
-          created_at: string | null
-          grade: string
-          id: string
-          originated_by: string | null
-          parent_notes: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string | null
-          student_display_name: string | null
-          student_user_id: string
-          subject: string
-          submitted_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          base_amount?: number | null
-          created_at?: string | null
-          grade: string
-          id: string
-          originated_by?: string | null
-          parent_notes?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string | null
-          student_display_name?: string | null
-          student_user_id: string
-          subject: string
-          submitted_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          base_amount?: number | null
-          created_at?: string | null
-          grade?: string
-          id?: string
-          originated_by?: string | null
-          parent_notes?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string | null
-          student_display_name?: string | null
-          student_user_id?: string
-          subject?: string
-          submitted_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       parent_profiles: {
         Row: {
           consent_given_at: string | null
@@ -2001,6 +1950,7 @@ export type Database = {
           created_at: string
           custom_frequency_days: number | null
           email: string | null
+          external_savings: number
           grade_level: string
           has_completed_onboarding: boolean | null
           id: string
@@ -2021,6 +1971,7 @@ export type Database = {
           created_at?: string
           custom_frequency_days?: number | null
           email?: string | null
+          external_savings?: number
           grade_level: string
           has_completed_onboarding?: boolean | null
           id?: string
@@ -2041,6 +1992,7 @@ export type Database = {
           created_at?: string
           custom_frequency_days?: number | null
           email?: string | null
+          external_savings?: number
           grade_level?: string
           has_completed_onboarding?: boolean | null
           id?: string
@@ -2130,6 +2082,8 @@ export type Database = {
           current_term_end: string
           current_term_start: string
           id: string
+          payday: number | null
+          renewal_mode: string
           term_length: number
           updated_at: string
           user_id: string
@@ -2139,6 +2093,8 @@ export type Database = {
           current_term_end: string
           current_term_start: string
           id?: string
+          payday?: number | null
+          renewal_mode?: string
           term_length: number
           updated_at?: string
           user_id: string
@@ -2148,6 +2104,8 @@ export type Database = {
           current_term_end?: string
           current_term_start?: string
           id?: string
+          payday?: number | null
+          renewal_mode?: string
           term_length?: number
           updated_at?: string
           user_id?: string
@@ -2159,10 +2117,13 @@ export type Database = {
           allocation_breakdown: Json | null
           behavior_earnings: number
           created_at: string
+          education_earnings: number | null
           gpa: number | null
           grade_earnings: number
           grades_data: Json | null
           id: string
+          pay_period_number: number | null
+          status: string | null
           term_end: string
           term_number: number
           term_start: string
@@ -2174,10 +2135,13 @@ export type Database = {
           allocation_breakdown?: Json | null
           behavior_earnings?: number
           created_at?: string
+          education_earnings?: number | null
           gpa?: number | null
           grade_earnings?: number
           grades_data?: Json | null
           id?: string
+          pay_period_number?: number | null
+          status?: string | null
           term_end: string
           term_number: number
           term_start: string
@@ -2189,10 +2153,13 @@ export type Database = {
           allocation_breakdown?: Json | null
           behavior_earnings?: number
           created_at?: string
+          education_earnings?: number | null
           gpa?: number | null
           grade_earnings?: number
           grades_data?: Json | null
           id?: string
+          pay_period_number?: number | null
+          status?: string | null
           term_end?: string
           term_number?: number
           term_start?: string
@@ -2212,9 +2179,13 @@ export type Database = {
           downgrade_effective_date: string | null
           grace_period_expires: string | null
           grace_period_warnings_sent: number | null
+          iap_original_transaction_id: string | null
+          iap_product_id: string | null
           id: number
+          platform: string | null
           previous_subscription_type: string | null
           price_id: string | null
+          revenuecat_customer_id: string | null
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -2231,9 +2202,13 @@ export type Database = {
           downgrade_effective_date?: string | null
           grace_period_expires?: string | null
           grace_period_warnings_sent?: number | null
+          iap_original_transaction_id?: string | null
+          iap_product_id?: string | null
           id?: never
+          platform?: string | null
           previous_subscription_type?: string | null
           price_id?: string | null
+          revenuecat_customer_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -2250,9 +2225,13 @@ export type Database = {
           downgrade_effective_date?: string | null
           grace_period_expires?: string | null
           grace_period_warnings_sent?: number | null
+          iap_original_transaction_id?: string | null
+          iap_product_id?: string | null
           id?: never
+          platform?: string | null
           previous_subscription_type?: string | null
           price_id?: string | null
+          revenuecat_customer_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -2535,11 +2514,7 @@ export type Database = {
         Returns: undefined
       }
       request_grade_revision: {
-        Args: {
-          grade_id: string
-          parent_notes?: string
-          parent_user_id: string
-        }
+        Args: { grade_id: string; parent_notes: string; parent_user_id: string }
         Returns: undefined
       }
       student_acknowledge_assessment: {

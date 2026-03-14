@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { format, differenceInDays, parseISO, addWeeks } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import { useMemo } from 'react';
+
+// ── Types ──────────────────────────────────────────────────────────────
+
+export type PaycheckStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+export type RenewalMode = 'manual' | 'prompt' | 'auto';
 
 export interface TermConfig {
   id: string;
@@ -9,6 +15,8 @@ export interface TermConfig {
   term_length: number; // in weeks
   current_term_start: string;
   current_term_end: string;
+  renewal_mode: string; // RenewalMode
+  payday: number | null; // day of month
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +30,7 @@ export interface TermSnapshot {
   gpa: number | null;
   grade_earnings: number;
   behavior_earnings: number;
+  education_earnings: number;
   total_earnings: number;
   allocation_breakdown: {
     tax?: number;
@@ -30,23 +39,40 @@ export interface TermSnapshot {
     discretionary?: number;
   } | null;
   grades_data: any;
+  status: PaycheckStatus;
+  pay_period_number: number | null;
   created_at: string;
   updated_at: string;
 }
 
-// Query key factory
+export interface SavePaycheckInput {
+  term_number: number;
+  term_start: string;
+  term_end: string;
+  pay_period_number: number | null;
+  gpa: number | null;
+  grade_earnings: number;
+  behavior_earnings: number;
+  education_earnings: number;
+  total_earnings: number;
+  allocation_breakdown: Record<string, number> | null;
+  grades_data: any;
+}
+
+// ── Query key factory ──────────────────────────────────────────────────
+
 export const termTrackingKeys = {
   all: ['termTracking'] as const,
   config: (userId: string) => [...termTrackingKeys.all, 'config', userId] as const,
   snapshots: (userId: string) => [...termTrackingKeys.all, 'snapshots', userId] as const,
   currentSnapshot: (userId: string) => [...termTrackingKeys.all, 'currentSnapshot', userId] as const,
+  pendingPaychecks: (userId: string) => [...termTrackingKeys.all, 'pendingPaychecks', userId] as const,
 };
+
+// ── Helpers ────────────────────────────────────────────────────────────
 
 /**
  * Resolves a student profile ID or user ID to the actual user ID.
- *
- * @param studentUserIdOrProfileId - Either the student's auth user_id or student_profiles.id
- * @param parentUserId - The parent's auth user_id (used to resolve profile IDs)
  */
 async function resolveStudentUserId(
   studentUserIdOrProfileId: string,
@@ -56,7 +82,6 @@ async function resolveStudentUserId(
     return studentUserIdOrProfileId;
   }
 
-  // Check if this is a student_profiles.id
   const { data: profile } = await supabase
     .from('student_profiles')
     .select('user_id')
@@ -67,9 +92,10 @@ async function resolveStudentUserId(
     return profile.user_id;
   }
 
-  // It's already a user_id
   return studentUserIdOrProfileId;
 }
+
+// ── Data fetchers ──────────────────────────────────────────────────────
 
 async function fetchTermConfig(
   studentUserIdOrProfileId: string,
@@ -85,7 +111,6 @@ async function fetchTermConfig(
 
   if (error) {
     if (error.code === 'PGRST116') {
-      // No config found
       return null;
     }
     console.error('Error fetching term config:', error);
@@ -112,13 +137,45 @@ async function fetchTermSnapshots(
     throw error;
   }
 
-  // Map the data to ensure type compatibility
   return (data || []).map((snapshot) => ({
     ...snapshot,
     allocation_breakdown: snapshot.allocation_breakdown as TermSnapshot['allocation_breakdown'],
     grades_data: snapshot.grades_data,
+    status: (snapshot.status || 'completed') as PaycheckStatus,
+    education_earnings: snapshot.education_earnings ?? 0,
+    pay_period_number: snapshot.pay_period_number ?? null,
   }));
 }
+
+async function fetchPendingPaychecks(
+  studentUserIdOrProfileId: string,
+  parentUserId?: string
+): Promise<TermSnapshot[]> {
+  const userId = await resolveStudentUserId(studentUserIdOrProfileId, parentUserId);
+
+  const { data, error } = await supabase
+    .from('term_snapshots')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching pending paychecks:', error);
+    throw error;
+  }
+
+  return (data || []).map((snapshot) => ({
+    ...snapshot,
+    allocation_breakdown: snapshot.allocation_breakdown as TermSnapshot['allocation_breakdown'],
+    grades_data: snapshot.grades_data,
+    status: 'pending' as PaycheckStatus,
+    education_earnings: snapshot.education_earnings ?? 0,
+    pay_period_number: snapshot.pay_period_number ?? null,
+  }));
+}
+
+// ── Mutations ──────────────────────────────────────────────────────────
 
 async function createTermConfig(config: {
   user_id: string;
@@ -140,64 +197,6 @@ async function createTermConfig(config: {
   return data;
 }
 
-interface SaveSnapshotParams {
-  user_id: string;
-  term_number: number;
-  term_start: string;
-  term_end: string;
-  gpa: number | null;
-  grade_earnings: number;
-  behavior_earnings: number;
-  education_earnings?: number;
-  total_earnings: number;
-  allocation_breakdown: Record<string, number> | null;
-  grades_data: any;
-}
-
-async function saveTermSnapshot(params: SaveSnapshotParams): Promise<void> {
-  // Duplicate guard: check if snapshot already exists for same term dates
-  const { data: existing, error: checkError } = await supabase
-    .from('term_snapshots')
-    .select('id')
-    .eq('user_id', params.user_id)
-    .eq('term_start', params.term_start)
-    .eq('term_end', params.term_end)
-    .maybeSingle();
-
-  if (checkError) {
-    console.error('Error checking for existing snapshot:', checkError);
-    throw checkError;
-  }
-
-  if (existing) {
-    throw new Error('A snapshot already exists for this term period.');
-  }
-
-  const now = new Date().toISOString();
-
-  const { error } = await supabase.from('term_snapshots').insert({
-    user_id: params.user_id,
-    term_number: params.term_number,
-    term_start: params.term_start,
-    term_end: params.term_end,
-    gpa: params.gpa,
-    grade_earnings: params.grade_earnings,
-    behavior_earnings: params.behavior_earnings,
-    education_earnings: params.education_earnings ?? 0,
-    total_earnings: params.total_earnings,
-    allocation_breakdown: params.allocation_breakdown,
-    grades_data: params.grades_data,
-    status: 'completed',
-    created_at: now,
-    updated_at: now,
-  });
-
-  if (error) {
-    console.error('Error saving term snapshot:', error);
-    throw error;
-  }
-}
-
 async function updateTermConfig(
   id: string,
   updates: Partial<Omit<TermConfig, 'id' | 'user_id' | 'created_at'>>
@@ -217,13 +216,88 @@ async function updateTermConfig(
   return data;
 }
 
+async function savePaycheck(
+  userId: string,
+  params: SavePaycheckInput
+): Promise<void> {
+  // Duplicate guard: check for existing snapshot with same term dates + pay period
+  const query = supabase
+    .from('term_snapshots')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('term_start', params.term_start)
+    .eq('term_end', params.term_end);
+
+  // If pay_period_number is set, check uniqueness per period
+  if (params.pay_period_number !== null) {
+    query.eq('pay_period_number', params.pay_period_number);
+  }
+
+  const { data: existing, error: checkError } = await query.maybeSingle();
+
+  if (checkError) {
+    console.error('Error checking for existing paycheck:', checkError);
+    throw checkError;
+  }
+
+  if (existing) {
+    throw new Error('A paycheck already exists for this pay period.');
+  }
+
+  const now = new Date().toISOString();
+
+  const { error } = await supabase.from('term_snapshots').insert({
+    user_id: userId,
+    term_number: params.term_number,
+    term_start: params.term_start,
+    term_end: params.term_end,
+    pay_period_number: params.pay_period_number,
+    gpa: params.gpa,
+    grade_earnings: params.grade_earnings,
+    behavior_earnings: params.behavior_earnings,
+    education_earnings: params.education_earnings,
+    total_earnings: params.total_earnings,
+    allocation_breakdown: params.allocation_breakdown,
+    grades_data: params.grades_data,
+    status: 'pending',
+    created_at: now,
+    updated_at: now,
+  });
+
+  if (error) {
+    console.error('Error saving paycheck:', error);
+    throw error;
+  }
+}
+
+async function updatePaycheckStatus(
+  snapshotId: string,
+  status: PaycheckStatus
+): Promise<void> {
+  const { error } = await supabase
+    .from('term_snapshots')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', snapshotId);
+
+  if (error) {
+    console.error('Error updating paycheck status:', error);
+    throw error;
+  }
+}
+
+// ── Main hook ──────────────────────────────────────────────────────────
+
 export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const targetUserId = studentUserIdOrProfileId || '';
   const parentUserId = user?.id;
 
-  // Fetch term configuration
+  // ── Queries ────────────────────────────────────────────────────────
+
   const {
     data: termConfig,
     isLoading: configLoading,
@@ -233,10 +307,9 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     queryKey: termTrackingKeys.config(targetUserId),
     queryFn: () => fetchTermConfig(targetUserId, parentUserId),
     enabled: !!targetUserId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch term snapshots (historical)
   const {
     data: termSnapshots = [],
     isLoading: snapshotsLoading,
@@ -246,10 +319,22 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     queryKey: termTrackingKeys.snapshots(targetUserId),
     queryFn: () => fetchTermSnapshots(targetUserId, parentUserId),
     enabled: !!targetUserId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Create term config mutation
+  const {
+    data: pendingPaychecks = [],
+    isLoading: pendingLoading,
+    refetch: refetchPending,
+  } = useQuery({
+    queryKey: termTrackingKeys.pendingPaychecks(targetUserId),
+    queryFn: () => fetchPendingPaychecks(targetUserId, parentUserId),
+    enabled: !!targetUserId,
+    staleTime: 2 * 60 * 1000, // refresh more often for pending items
+  });
+
+  // ── Mutations ──────────────────────────────────────────────────────
+
   const createConfigMutation = useMutation({
     mutationFn: createTermConfig,
     onSuccess: () => {
@@ -257,7 +342,6 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     },
   });
 
-  // Update term config mutation
   const updateConfigMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<TermConfig, 'id' | 'user_id' | 'created_at'>> }) =>
       updateTermConfig(id, updates),
@@ -266,28 +350,65 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     },
   });
 
-  // Save term snapshot mutation
-  const snapshotMutation = useMutation({
-    mutationFn: (params: Omit<SaveSnapshotParams, 'user_id'>) =>
+  const savePaycheckMutation = useMutation({
+    mutationFn: (params: SavePaycheckInput) =>
       resolveStudentUserId(targetUserId, parentUserId).then((resolvedId) =>
-        saveTermSnapshot({ ...params, user_id: resolvedId })
+        savePaycheck(resolvedId, params)
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: termTrackingKeys.snapshots(targetUserId) });
-      queryClient.invalidateQueries({ queryKey: termTrackingKeys.currentSnapshot(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.pendingPaychecks(targetUserId) });
     },
   });
 
-  // Check if current term already has a snapshot
-  const currentTermHasSnapshot =
-    termConfig && termSnapshots.some(
-      (s) =>
-        s.term_start === termConfig.current_term_start.split('T')[0] &&
-        s.term_end === termConfig.current_term_end.split('T')[0]
+  const approvePaycheckMutation = useMutation({
+    mutationFn: (snapshotId: string) => updatePaycheckStatus(snapshotId, 'approved'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.snapshots(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.pendingPaychecks(targetUserId) });
+    },
+  });
+
+  const rejectPaycheckMutation = useMutation({
+    mutationFn: (snapshotId: string) => updatePaycheckStatus(snapshotId, 'rejected'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.snapshots(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: termTrackingKeys.pendingPaychecks(targetUserId) });
+    },
+  });
+
+  // ── Derived data ───────────────────────────────────────────────────
+
+  // Set of pay period numbers that already have a paycheck (any status)
+  const paidPeriodNumbers = useMemo(() => {
+    const currentStart = termConfig?.current_term_start?.split('T')[0];
+    const currentEnd = termConfig?.current_term_end?.split('T')[0];
+    if (!currentStart || !currentEnd) return new Set<number>();
+
+    return new Set(
+      termSnapshots
+        .filter(
+          (s) =>
+            s.term_start === currentStart &&
+            s.term_end === currentEnd &&
+            s.pay_period_number !== null
+        )
+        .map((s) => s.pay_period_number!)
     );
+  }, [termSnapshots, termConfig]);
+
+  // Check if current term already has a full-term snapshot
+  const currentTermHasSnapshot = useMemo(() => {
+    if (!termConfig) return false;
+    const start = termConfig.current_term_start.split('T')[0];
+    const end = termConfig.current_term_end.split('T')[0];
+    return termSnapshots.some(
+      (s) => s.term_start === start && s.term_end === end && s.pay_period_number === null
+    );
+  }, [termConfig, termSnapshots]);
 
   // Calculate term progress
-  const getTermProgress = () => {
+  const termProgress = useMemo(() => {
     if (!termConfig) return null;
 
     const now = new Date();
@@ -311,52 +432,56 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
       hasEnded: now > end,
       hasNotStarted: now < start,
     };
-  };
+  }, [termConfig]);
 
-  // Get current term number based on snapshots
-  const currentTermNumber = termSnapshots.length > 0
-    ? Math.max(...termSnapshots.map(s => s.term_number)) + 1
-    : 1;
+  // Current term number
+  const currentTermNumber = useMemo(() => {
+    if (termSnapshots.length === 0) return 1;
+    return Math.max(...termSnapshots.map((s) => s.term_number)) + 1;
+  }, [termSnapshots]);
 
-  // Calculate cumulative stats from all term snapshots
-  const cumulativeStats = termSnapshots.reduce(
-    (acc, snapshot) => ({
-      totalEarnings: acc.totalEarnings + snapshot.total_earnings,
-      gradeEarnings: acc.gradeEarnings + snapshot.grade_earnings,
-      behaviorEarnings: acc.behaviorEarnings + snapshot.behavior_earnings,
-      averageGPA:
-        snapshot.gpa !== null
-          ? acc.averageGPA + snapshot.gpa
-          : acc.averageGPA,
-      termsWithGPA: snapshot.gpa !== null ? acc.termsWithGPA + 1 : acc.termsWithGPA,
-    }),
-    {
-      totalEarnings: 0,
-      gradeEarnings: 0,
-      behaviorEarnings: 0,
-      averageGPA: 0,
-      termsWithGPA: 0,
-    }
-  );
+  // Cumulative stats — only count approved/completed snapshots
+  const cumulativeStats = useMemo(() => {
+    const approvedSnapshots = termSnapshots.filter(
+      (s) => s.status === 'approved' || s.status === 'completed'
+    );
 
-  // Calculate average GPA across all terms
-  const overallAverageGPA =
-    cumulativeStats.termsWithGPA > 0
-      ? cumulativeStats.averageGPA / cumulativeStats.termsWithGPA
-      : null;
+    const stats = approvedSnapshots.reduce(
+      (acc, snapshot) => ({
+        totalEarnings: acc.totalEarnings + snapshot.total_earnings,
+        gradeEarnings: acc.gradeEarnings + snapshot.grade_earnings,
+        behaviorEarnings: acc.behaviorEarnings + snapshot.behavior_earnings,
+        educationEarnings: acc.educationEarnings + (snapshot.education_earnings ?? 0),
+        averageGPA:
+          snapshot.gpa !== null ? acc.averageGPA + snapshot.gpa : acc.averageGPA,
+        termsWithGPA: snapshot.gpa !== null ? acc.termsWithGPA + 1 : acc.termsWithGPA,
+      }),
+      {
+        totalEarnings: 0,
+        gradeEarnings: 0,
+        behaviorEarnings: 0,
+        educationEarnings: 0,
+        averageGPA: 0,
+        termsWithGPA: 0,
+      }
+    );
 
-  // Helper to set up a new term
+    const overallAverageGPA =
+      stats.termsWithGPA > 0 ? stats.averageGPA / stats.termsWithGPA : null;
+
+    return { ...stats, overallAverageGPA };
+  }, [termSnapshots]);
+
+  // ── Actions ────────────────────────────────────────────────────────
+
   const setupNewTerm = async (termLengthWeeks: number = 9) => {
     if (!targetUserId) throw new Error('User ID is required');
-
-    // Resolve to actual user_id if we have a profile ID
     const resolvedUserId = await resolveStudentUserId(targetUserId, parentUserId);
 
     const startDate = new Date();
     const endDate = addWeeks(startDate, termLengthWeeks);
 
     if (termConfig) {
-      // Update existing config
       return updateConfigMutation.mutateAsync({
         id: termConfig.id,
         updates: {
@@ -366,7 +491,6 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
         },
       });
     } else {
-      // Create new config
       return createConfigMutation.mutateAsync({
         user_id: resolvedUserId,
         term_length: termLengthWeeks,
@@ -376,36 +500,70 @@ export function useTermTracking(studentUserIdOrProfileId: string | undefined) {
     }
   };
 
-  // Refetch all term data
-  const refetch = async () => {
-    await Promise.all([refetchConfig(), refetchSnapshots()]);
+  const updateTermDates = async (termLengthWeeks: number, startDate: Date) => {
+    if (!termConfig) throw new Error('No term config to update');
+    const endDate = addWeeks(startDate, termLengthWeeks);
+    return updateConfigMutation.mutateAsync({
+      id: termConfig.id,
+      updates: {
+        term_length: termLengthWeeks,
+        current_term_start: startDate.toISOString(),
+        current_term_end: endDate.toISOString(),
+      },
+    });
   };
+
+  const updateRenewalMode = async (mode: RenewalMode) => {
+    if (!termConfig) throw new Error('No term config to update');
+    return updateConfigMutation.mutateAsync({
+      id: termConfig.id,
+      updates: { renewal_mode: mode },
+    });
+  };
+
+  const refetch = async () => {
+    await Promise.all([refetchConfig(), refetchSnapshots(), refetchPending()]);
+  };
+
+  // ── Return ─────────────────────────────────────────────────────────
 
   return {
     // Data
     termConfig,
     termSnapshots,
+    pendingPaychecks,
     currentTermNumber,
-    termProgress: getTermProgress(),
-    cumulativeStats: {
-      ...cumulativeStats,
-      overallAverageGPA,
-    },
+    termProgress,
+    cumulativeStats,
+    paidPeriodNumbers,
 
     // Loading states
     isLoading: configLoading || snapshotsLoading,
     configLoading,
     snapshotsLoading,
+    pendingLoading,
 
     // Errors
     configError,
     snapshotsError,
 
-    // Mutations
+    // Term mutations
     setupNewTerm,
+    updateTermDates,
+    updateRenewalMode,
     isSettingUpTerm: createConfigMutation.isPending || updateConfigMutation.isPending,
-    saveTermSnapshot: snapshotMutation.mutateAsync,
-    isSavingSnapshot: snapshotMutation.isPending,
+
+    // Paycheck mutations
+    savePaycheck: savePaycheckMutation.mutateAsync,
+    isSavingPaycheck: savePaycheckMutation.isPending,
+    approvePaycheck: approvePaycheckMutation.mutateAsync,
+    isApprovingPaycheck: approvePaycheckMutation.isPending,
+    rejectPaycheck: rejectPaycheckMutation.mutateAsync,
+    isRejectingPaycheck: rejectPaycheckMutation.isPending,
+
+    // Legacy aliases (backward compat)
+    saveTermSnapshot: savePaycheckMutation.mutateAsync,
+    isSavingSnapshot: savePaycheckMutation.isPending,
     currentTermHasSnapshot,
 
     // Refetch

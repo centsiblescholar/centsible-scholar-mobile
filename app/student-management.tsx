@@ -30,6 +30,14 @@ const GRADE_LEVELS = [
   '15th Grade', '16th Grade',
 ];
 
+const PAY_FREQUENCIES = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Biweekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'midterm', label: 'Half-Term' },
+  { value: 'term', label: 'Full Term' },
+];
+
 function generatePassword(): string {
   const length = 12;
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
@@ -59,6 +67,7 @@ export default function StudentManagementScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [gradeLevel, setGradeLevel] = useState('6th Grade');
   const [baseReward, setBaseReward] = useState('10');
+  const [reportingFrequency, setReportingFrequency] = useState('term');
 
   const {
     activeStudents,
@@ -89,6 +98,7 @@ export default function StudentManagementScreen() {
     setShowPassword(false);
     setGradeLevel('6th Grade');
     setBaseReward('10');
+    setReportingFrequency('term');
   };
 
   const handleOpenAddModal = () => {
@@ -177,6 +187,7 @@ export default function StudentManagementScreen() {
         email: email.trim() || undefined,
         grade_level: gradeLevel,
         base_reward_amount: reward,
+        reporting_frequency: reportingFrequency,
       });
       setShowEditModal(false);
       setSelectedStudent(null);
@@ -224,6 +235,7 @@ export default function StudentManagementScreen() {
     setEmail(student.email || '');
     setGradeLevel(student.grade_level);
     setBaseReward(student.base_reward_amount.toString());
+    setReportingFrequency(student.reporting_frequency || 'term');
     setShowEditModal(true);
   };
 
@@ -587,6 +599,35 @@ export default function StudentManagementScreen() {
                     keyboardType="decimal-pad"
                   />
                 </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Pay Frequency</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.gradePicker}
+                >
+                  {PAY_FREQUENCIES.map((freq) => (
+                    <TouchableOpacity
+                      key={freq.value}
+                      style={[
+                        styles.gradeOption,
+                        reportingFrequency === freq.value && styles.gradeOptionActive,
+                      ]}
+                      onPress={() => setReportingFrequency(freq.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.gradeOptionText,
+                          reportingFrequency === freq.value && styles.gradeOptionTextActive,
+                        ]}
+                      >
+                        {freq.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
 
               <View style={styles.modalActions}>

@@ -57,6 +57,7 @@ function RootNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerBackTitle: '',
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -112,6 +113,12 @@ function RootNavigator() {
         name="manage-subscription"
         options={{
           title: 'Manage Subscription',
+        }}
+      />
+      <Stack.Screen
+        name="budget-planner"
+        options={{
+          title: 'Budget Planner',
         }}
       />
       <Stack.Screen

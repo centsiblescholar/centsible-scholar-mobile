@@ -11,17 +11,27 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { addWeeks, format, parseISO } from 'date-fns';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useStudent } from '../src/contexts/StudentContext';
 import { useTermTracking, TermSnapshot } from '../src/hooks/useTermTracking';
+import { usePaycheckCalculations } from '../src/hooks/usePaycheckCalculations';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { useStudentGrades } from '../src/hooks/useStudentGrades';
 import { useBehaviorBonus } from '../src/hooks/useBehaviorBonus';
+import { useEducationBonus } from '../src/hooks/useEducationBonus';
 import { usePendingGradeCount } from '../src/hooks/usePendingGradeCount';
+import { useParentStudents } from '../src/hooks/useParentStudents';
 import { calculateTotalAllocation } from '../src/shared/calculations/allocationCalculations';
+import { computePayPeriods, getCurrentPayPeriod, type PayFrequency } from '../src/utils/payPeriods';
+import { PayPeriodProgress } from '../src/components/term/PayPeriodProgress';
+import { PendingPaycheckCard } from '../src/components/term/PendingPaycheckCard';
+import { TermRenewalCard } from '../src/components/term/TermRenewalCard';
 import { LineChart } from 'react-native-chart-kit';
 import { useTheme, type ThemeColors } from '@/theme';
 import { SkeletonList } from '@/components/ui/SkeletonCard';
@@ -39,6 +49,9 @@ export default function TermTrackingScreen() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [termLength, setTermLength] = useState('9');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [startDate, setStartDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Use selected student's ID if parent, otherwise use logged-in user's ID
   // targetUserId uses profile ID for parents (resolveStudentUserId handles conversion)
@@ -49,36 +62,88 @@ export default function TermTrackingScreen() {
   const {
     termConfig,
     termSnapshots,
+    pendingPaychecks,
     currentTermNumber,
     termProgress,
     cumulativeStats,
+    paidPeriodNumbers,
     isLoading,
     configError,
     snapshotsError,
     setupNewTerm,
+    updateTermDates,
     isSettingUpTerm,
-    saveTermSnapshot,
-    isSavingSnapshot,
+    savePaycheck,
+    isSavingPaycheck,
+    approvePaycheck,
+    isApprovingPaycheck,
+    rejectPaycheck,
+    isRejectingPaycheck,
     currentTermHasSnapshot,
     refetch,
   } = useTermTracking(targetUserId);
 
+  // Get student's reporting frequency
+  const { students } = useParentStudents();
+  const selectedStudentInfo = students.find((s) => s.id === selectedStudent?.id);
+  const reportingFrequency: PayFrequency = (selectedStudentInfo?.reporting_frequency as PayFrequency) || 'term';
+
+  // Paycheck calculations (auto-populates from grades + bonuses)
+  const paycheckCalc = usePaycheckCalculations(resolvedStudentUserId);
+
   // Grade and behavior data for term completion
   const { gradeEntries, totalReward, gpa } = useStudentGrades(resolvedStudentUserId);
   const { bonusAmount: behaviorEarnings } = useBehaviorBonus(resolvedStudentUserId, totalReward);
+  const { bonusAmount: educationEarnings } = useEducationBonus(resolvedStudentUserId, totalReward);
   const pendingGradeCount = usePendingGradeCount();
 
   // Calculate allocation for the confirmation modal
-  const totalEarnings = totalReward + behaviorEarnings;
+  const totalEarnings = totalReward + behaviorEarnings + educationEarnings;
   const allocation = useMemo(() => {
     if (totalEarnings <= 0) return null;
     return calculateTotalAllocation(gradeEntries);
   }, [gradeEntries, totalEarnings]);
 
+  // Compute pay periods for the current term
+  const payPeriods = useMemo(() => {
+    if (!termConfig) return [];
+    return computePayPeriods(
+      parseISO(termConfig.current_term_start),
+      parseISO(termConfig.current_term_end),
+      reportingFrequency
+    );
+  }, [termConfig, reportingFrequency]);
+
+  const currentPayPeriod = useMemo(() => getCurrentPayPeriod(payPeriods), [payPeriods]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
+  };
+
+  // Computed end date for the modal preview
+  const computedEndDate = useMemo(() => {
+    const weeks = parseInt(termLength, 10);
+    if (isNaN(weeks) || weeks < 1) return null;
+    return addWeeks(startDate, weeks);
+  }, [startDate, termLength]);
+
+  const openEditModal = () => {
+    if (!termConfig) return;
+    setIsEditMode(true);
+    setTermLength(String(termConfig.term_length));
+    setStartDate(parseISO(termConfig.current_term_start));
+    setShowDatePicker(false);
+    setShowSetupModal(true);
+  };
+
+  const openCreateModal = () => {
+    setIsEditMode(false);
+    setTermLength('9');
+    setStartDate(new Date());
+    setShowDatePicker(false);
+    setShowSetupModal(true);
   };
 
   const handleSetupTerm = async () => {
@@ -89,11 +154,17 @@ export default function TermTrackingScreen() {
     }
 
     try {
-      await setupNewTerm(weeks);
-      setShowSetupModal(false);
-      Alert.alert('Success', 'Term has been set up successfully!');
+      if (isEditMode) {
+        await updateTermDates(weeks, startDate);
+        setShowSetupModal(false);
+        Alert.alert('Success', 'Term has been updated successfully!');
+      } else {
+        await setupNewTerm(weeks);
+        setShowSetupModal(false);
+        Alert.alert('Success', 'Term has been set up successfully!');
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to set up term');
+      Alert.alert('Error', error.message || 'Failed to save term');
     }
   };
 
@@ -101,14 +172,15 @@ export default function TermTrackingScreen() {
     if (!termConfig) return;
 
     try {
-      await saveTermSnapshot({
+      await savePaycheck({
         term_number: currentTermNumber,
         term_start: termConfig.current_term_start.split('T')[0],
         term_end: termConfig.current_term_end.split('T')[0],
+        pay_period_number: null,
         gpa: gpa || null,
         grade_earnings: totalReward,
         behavior_earnings: behaviorEarnings,
-        education_earnings: 0,
+        education_earnings: educationEarnings,
         total_earnings: totalEarnings,
         allocation_breakdown: allocation
           ? {
@@ -129,11 +201,42 @@ export default function TermTrackingScreen() {
       setShowCompleteModal(false);
       Alert.alert(
         'Term Completed',
-        `Term #${currentTermNumber} is complete!\n\nTotal Earnings: $${totalEarnings.toFixed(2)}\n\nThe student's earnings are ready for payment.`
+        `Term #${currentTermNumber} is complete!\n\nTotal Earnings: $${totalEarnings.toFixed(2)}\n\nThe paycheck is pending your review.`
       );
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to complete term');
     }
+  };
+
+  const handleApprovePaycheck = async (snapshotId: string) => {
+    try {
+      await approvePaycheck(snapshotId);
+      Alert.alert('Approved', 'Paycheck has been approved!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to approve paycheck');
+    }
+  };
+
+  const handleRejectPaycheck = async (snapshotId: string) => {
+    Alert.alert(
+      'Reject Paycheck',
+      'Are you sure you want to reject this paycheck? The student will need to resubmit.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await rejectPaycheck(snapshotId);
+              Alert.alert('Rejected', 'Paycheck has been rejected.');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to reject paycheck');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
@@ -174,7 +277,18 @@ export default function TermTrackingScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Current Term</Text>
-            <Text style={styles.termNumber}>Term #{currentTermNumber}</Text>
+            <View style={styles.sectionHeaderRight}>
+              {termConfig && isParent && termProgress && !termProgress.hasEnded && (
+                <TouchableOpacity
+                  style={styles.editTermButton}
+                  onPress={openEditModal}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="create-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+              <Text style={styles.termNumber}>Term #{currentTermNumber}</Text>
+            </View>
           </View>
 
           {termConfig && termProgress ? (
@@ -268,7 +382,7 @@ export default function TermTrackingScreen() {
               {termProgress.hasEnded && currentTermHasSnapshot && isParent && (
                 <TouchableOpacity
                   style={styles.newTermButton}
-                  onPress={() => setShowSetupModal(true)}
+                  onPress={openCreateModal}
                 >
                   <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
                   <Text style={styles.newTermButtonText}>Start New Term</Text>
@@ -285,7 +399,7 @@ export default function TermTrackingScreen() {
                 </Text>
                 <TouchableOpacity
                   style={styles.setupButton}
-                  onPress={() => setShowSetupModal(true)}
+                  onPress={openCreateModal}
                 >
                   <Text style={styles.setupButtonText}>Set Up Term</Text>
                 </TouchableOpacity>
@@ -293,6 +407,47 @@ export default function TermTrackingScreen() {
             </View>
           )}
         </View>
+
+        {/* Pay Period Progress (shown when term is active) */}
+        {termConfig && termProgress?.isActive && payPeriods.length > 1 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pay Period</Text>
+            <PayPeriodProgress
+              currentPeriod={currentPayPeriod}
+              totalPeriods={payPeriods.length}
+              paidCount={paidPeriodNumbers.size}
+            />
+          </View>
+        )}
+
+        {/* Pending Paychecks (parent view) */}
+        {isParent && pendingPaychecks.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              Pending Paychecks ({pendingPaychecks.length})
+            </Text>
+            {pendingPaychecks.map((paycheck) => (
+              <PendingPaycheckCard
+                key={paycheck.id}
+                paycheck={paycheck}
+                onApprove={handleApprovePaycheck}
+                onReject={handleRejectPaycheck}
+                isApproving={isApprovingPaycheck}
+                isRejecting={isRejectingPaycheck}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Term Renewal Card (parent view, when term has ended and snapshot exists) */}
+        {isParent && termConfig && termProgress?.hasEnded && currentTermHasSnapshot && (
+          <TermRenewalCard
+            termConfig={termConfig}
+            currentTermNumber={currentTermNumber}
+            onRenew={(weeks) => setupNewTerm(weeks)}
+            isRenewing={isSettingUpTerm}
+          />
+        )}
 
         {/* Cumulative Stats */}
         {termSnapshots.length > 0 && (
@@ -398,7 +553,7 @@ export default function TermTrackingScreen() {
         <View style={{ height: 40 }} />
       </View>
 
-      {/* Setup Term Modal */}
+      {/* Setup / Edit Term Modal */}
       <Modal
         visible={showSetupModal}
         transparent
@@ -407,9 +562,13 @@ export default function TermTrackingScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set Up Term</Text>
+            <Text style={styles.modalTitle}>
+              {isEditMode ? 'Edit Term' : 'Set Up Term'}
+            </Text>
             <Text style={styles.modalSubtitle}>
-              Enter the length of your term in weeks.
+              {isEditMode
+                ? 'Update your term length and start date.'
+                : 'Enter the length of your term in weeks.'}
             </Text>
 
             <View style={styles.inputContainer}>
@@ -447,6 +606,56 @@ export default function TermTrackingScreen() {
               ))}
             </View>
 
+            {/* Start Date (edit mode) */}
+            {isEditMode && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Start Date</Text>
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowDatePicker(!showDatePicker)}
+                >
+                  <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                  <Text style={styles.datePickerText}>
+                    {format(startDate, 'MMM d, yyyy')}
+                  </Text>
+                  <Ionicons
+                    name={showDatePicker ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={startDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                      if (selectedDate) {
+                        setStartDate(selectedDate);
+                      }
+                    }}
+                    style={styles.datePicker}
+                  />
+                )}
+              </View>
+            )}
+
+            {/* Calculated End Date */}
+            {isEditMode && computedEndDate && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>End Date (calculated)</Text>
+                <View style={styles.readOnlyDate}>
+                  <Ionicons name="calendar" size={18} color={colors.textSecondary} />
+                  <Text style={styles.readOnlyDateText}>
+                    {format(computedEndDate, 'MMM d, yyyy')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -462,7 +671,9 @@ export default function TermTrackingScreen() {
                 {isSettingUpTerm ? (
                   <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Start Term</Text>
+                  <Text style={styles.confirmButtonText}>
+                    {isEditMode ? 'Update Term' : 'Start Term'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -517,6 +728,10 @@ export default function TermTrackingScreen() {
                   <Text style={styles.detailLabel}>Behavior Bonus</Text>
                   <Text style={styles.detailValue}>{formatCurrency(behaviorEarnings)}</Text>
                 </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Education Bonus</Text>
+                  <Text style={styles.detailValue}>{formatCurrency(educationEarnings)}</Text>
+                </View>
                 <View style={[styles.detailRow, styles.totalRow]}>
                   <Text style={styles.totalLabel}>Total Earnings</Text>
                   <Text style={styles.totalValue}>{formatCurrency(totalEarnings)}</Text>
@@ -554,11 +769,11 @@ export default function TermTrackingScreen() {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.confirmButton, isSavingSnapshot && styles.buttonDisabled]}
+                  style={[styles.confirmButton, isSavingPaycheck && styles.buttonDisabled]}
                   onPress={handleCompleteTerm}
-                  disabled={isSavingSnapshot}
+                  disabled={isSavingPaycheck}
                 >
-                  {isSavingSnapshot ? (
+                  {isSavingPaycheck ? (
                     <ActivityIndicator size="small" color={colors.textInverse} />
                   ) : (
                     <Text style={styles.confirmButtonText}>Complete Term</Text>
@@ -703,6 +918,16 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 12,
+    },
+    sectionHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    editTermButton: {
+      padding: 6,
+      borderRadius: 8,
+      backgroundColor: colors.primaryLight,
     },
     sectionTitle: {
       fontSize: 18,
@@ -1028,6 +1253,36 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       gap: 12,
       marginBottom: 24,
+    },
+    datePickerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 12,
+      padding: 14,
+    },
+    datePickerText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+    },
+    datePicker: {
+      marginTop: 8,
+    },
+    readOnlyDate: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 12,
+      padding: 14,
+    },
+    readOnlyDateText: {
+      fontSize: 16,
+      color: colors.textSecondary,
     },
     presetButton: {
       paddingHorizontal: 16,
