@@ -41,7 +41,7 @@ export default function GradesScreen() {
 
   const targetUserId = isParentView ? selectedStudent?.user_id : user?.id;
 
-  const { grades, gradeEntries, totalReward, gpa, isLoading, error, submitGrade, isSubmitting, refetch } = useStudentGrades(targetUserId);
+  const { grades, gradeEntries, totalReward, gpa, isLoading, error, submitGrade, isSubmitting, updateGrade, isUpdating, deleteGrade, isDeleting, refetch } = useStudentGrades(targetUserId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
@@ -50,6 +50,9 @@ export default function GradesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'grades' | 'analytics'>('grades');
   const [conflictModalVisible, setConflictModalVisible] = useState(false);
+  const [editingGradeId, setEditingGradeId] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState('');
+  const [editSelectedGrade, setEditSelectedGrade] = useState('');
 
   // Grade conflict detection (parent view only)
   const { conflicts, conflictCount, refetch: refetchConflicts } = useGradeConflicts(
@@ -139,6 +142,55 @@ export default function GradesScreen() {
   };
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+
+  const isEditable = (g: { originated_by: string | null; status: string }) =>
+    !isParentView &&
+    g.originated_by === 'student' &&
+    (g.status === 'pending' || g.status === 'needs_revision');
+
+  const startEditing = (g: { id: string; subject: string; grade: string }) => {
+    setEditingGradeId(g.id);
+    setEditSubject(g.subject);
+    setEditSelectedGrade(g.grade);
+  };
+
+  const cancelEditing = () => {
+    setEditingGradeId(null);
+    setEditSubject('');
+    setEditSelectedGrade('');
+  };
+
+  const handleUpdate = async () => {
+    if (!editingGradeId || !editSubject.trim() || !editSelectedGrade) return;
+    try {
+      await updateGrade({ id: editingGradeId, subject: editSubject.trim(), grade: editSelectedGrade });
+      cancelEditing();
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update grade');
+    }
+  };
+
+  const handleDelete = (gradeId: string, subject: string) => {
+    Alert.alert(
+      'Delete Grade',
+      `Are you sure you want to delete the grade for "${subject}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteGrade(gradeId);
+              if (editingGradeId === gradeId) cancelEditing();
+            } catch (err: unknown) {
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete grade');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   if (isLoading) {
     return (
@@ -365,8 +417,68 @@ export default function GradesScreen() {
                       : 0;
                     const isPending = g.status === 'pending' || g.status === 'needs_revision';
                     const isRejected = g.status === 'rejected';
+                    const canEdit = isEditable(g);
+                    const isEditingThis = editingGradeId === g.id;
+
+                    if (isEditingThis) {
+                      return (
+                        <View key={g.id} style={[styles.gradeCard, styles.gradeCardEditing]}>
+                          <View style={styles.editForm}>
+                            <TextInput
+                              style={styles.editInput}
+                              value={editSubject}
+                              onChangeText={setEditSubject}
+                              placeholder="Subject"
+                              placeholderTextColor={colors.textTertiary}
+                            />
+                            <View style={styles.editGradeSelector}>
+                              {GRADES.map((gr) => (
+                                <TouchableOpacity
+                                  key={gr}
+                                  style={[
+                                    styles.editGradeOption,
+                                    editSelectedGrade === gr && { backgroundColor: getGradeColor(gr) },
+                                  ]}
+                                  onPress={() => setEditSelectedGrade(gr)}
+                                >
+                                  <Text style={[
+                                    styles.editGradeOptionText,
+                                    editSelectedGrade === gr && { color: colors.textInverse },
+                                  ]}>
+                                    {gr}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                            <View style={styles.editActions}>
+                              <TouchableOpacity style={styles.editDeleteBtn} onPress={() => handleDelete(g.id, g.subject)}>
+                                <Text style={styles.editDeleteText}>Delete</Text>
+                              </TouchableOpacity>
+                              <View style={styles.editRightActions}>
+                                <TouchableOpacity style={styles.editCancelBtn} onPress={cancelEditing}>
+                                  <Text style={styles.editCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.editSaveBtn, (isUpdating) && { opacity: 0.6 }]}
+                                  onPress={handleUpdate}
+                                  disabled={isUpdating}
+                                >
+                                  <Text style={styles.editSaveText}>{isUpdating ? 'Saving...' : 'Save'}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    }
+
                     return (
-                      <View key={g.id} style={[styles.gradeCard, isPending && styles.gradeCardPending, isRejected && styles.gradeCardRejected]}>
+                      <TouchableOpacity
+                        key={g.id}
+                        style={[styles.gradeCard, isPending && styles.gradeCardPending, isRejected && styles.gradeCardRejected]}
+                        onPress={canEdit ? () => startEditing(g) : undefined}
+                        activeOpacity={canEdit ? 0.7 : 1}
+                      >
                         <View style={styles.gradeInfo}>
                           <Text style={styles.gradeSubject}>{g.subject}</Text>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -389,6 +501,9 @@ export default function GradesScreen() {
                               </View>
                             )}
                           </View>
+                          {canEdit && (
+                            <Text style={styles.tapToEditHint}>Tap to edit</Text>
+                          )}
                         </View>
                         <View style={styles.gradeRight}>
                           <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(g.grade) }]}>
@@ -398,7 +513,7 @@ export default function GradesScreen() {
                             {isPending ? 'Pending' : formatCurrency(reward)}
                           </Text>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -967,5 +1082,87 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.text,
     width: 36,
     textAlign: 'right',
+  },
+  gradeCardEditing: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  editForm: {
+    width: '100%',
+    gap: 12,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: colors.borderDark,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    color: colors.text,
+  },
+  editGradeSelector: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  editGradeOption: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.borderDark,
+    alignItems: 'center',
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  editGradeOptionText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  editRightActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editDeleteBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  editDeleteText: {
+    color: colors.error,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  editCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderDark,
+  },
+  editCancelText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  editSaveBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  editSaveText: {
+    color: colors.textInverse,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  tapToEditHint: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

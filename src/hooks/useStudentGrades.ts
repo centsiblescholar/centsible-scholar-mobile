@@ -96,6 +96,33 @@ async function submitGradeEntry(params: {
   }
 }
 
+async function updateGradeEntry(
+  id: string,
+  updates: { subject: string; grade: string }
+): Promise<void> {
+  const { error } = await supabase
+    .from('student_grades')
+    .update({ subject: updates.subject, grade: updates.grade })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating grade:', error);
+    throw error;
+  }
+}
+
+async function deleteGradeEntry(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('student_grades')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting grade:', error);
+    throw error;
+  }
+}
+
 export function useStudentGrades(studentUserId?: string) {
   const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
@@ -132,6 +159,23 @@ export function useStudentGrades(studentUserId?: string) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (params: { id: string; subject: string; grade: string }) =>
+      updateGradeEntry(params.id, { subject: params.subject, grade: params.grade }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: ['gradeApproval'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteGradeEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(targetUserId) });
+      queryClient.invalidateQueries({ queryKey: ['gradeApproval'] });
+    },
+  });
+
   // Only APPROVED grades count toward rewards and GPA
   const approvedGrades = grades.filter((g) => g.status === 'approved');
 
@@ -164,5 +208,9 @@ export function useStudentGrades(studentUserId?: string) {
     refetch,
     submitGrade: submitMutation.mutateAsync,
     isSubmitting: submitMutation.isPending,
+    updateGrade: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
+    deleteGrade: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
