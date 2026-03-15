@@ -15,6 +15,7 @@ import { useTheme, type ThemeColors, indigo, tints } from '@/theme';
 import { SkeletonList, DashboardSkeleton } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { getArticlesForGradeLevel, type FinancialArticle } from '../../src/data/financialArticles';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const STUDENT_CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -143,6 +144,9 @@ function StudentLearnView() {
   const baseRewardAmount = selectedStudent?.base_reward_amount || 0;
   const { accuracyPercentage, totalQuestions, correctAnswers, currentTier, bonusAmount, refetch: refetchEducation } = useEducationBonus(targetUserId, baseRewardAmount);
 
+  const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
+  const articles = getArticlesForGradeLevel(gradeLevel);
+
   const onRefresh = async () => { refetchEducation(); setRefreshing(true); setRefreshing(false); };
 
   const getOptionStyle = (index: number) => {
@@ -230,6 +234,30 @@ function StudentLearnView() {
             {!currentTier && (<Text style={styles.noTierText}>Reach 50% accuracy to start earning bonuses</Text>)}
           </View>
         )}
+        {/* Financial Education Articles */}
+        <Text style={styles.sectionTitle}>Learn More</Text>
+        {articles.map((article) => (
+          <TouchableOpacity
+            key={article.id}
+            style={styles.articleCard}
+            onPress={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.articleHeader}>
+              <Text style={styles.articleEmoji}>{article.emoji}</Text>
+              <View style={styles.articleHeaderText}>
+                <Text style={styles.articleTitle}>{article.title}</Text>
+                <Text style={styles.articleMeta}>{article.readTimeMinutes} min read</Text>
+              </View>
+              <Text style={styles.articleChevron}>{expandedArticle === article.id ? '▲' : '▼'}</Text>
+            </View>
+            <Text style={styles.articleSummary}>{article.summary}</Text>
+            {expandedArticle === article.id && (
+              <Text style={styles.articleContent}>{article.content}</Text>
+            )}
+          </TouchableOpacity>
+        ))}
+
         <View style={styles.infoCard}><Text style={styles.infoTitle}>Why Financial Education?</Text><Text style={styles.infoText}>Answer daily questions to build your financial knowledge and earn bonus rewards! The more you learn, the better prepared you'll be for managing money in the future.</Text></View>
       </View>
     </ScrollView>
@@ -290,6 +318,17 @@ const createStudentStyles = (colors: ThemeColors) => StyleSheet.create({
   infoCard: { backgroundColor: '#F0FDFA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#99F6E4' },
   infoTitle: { fontSize: 14, fontWeight: '600', color: '#0D9488', marginBottom: 8 },
   infoText: { fontSize: 14, color: '#115E59', lineHeight: 22 },
+  // Financial articles
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 20, marginBottom: 12 },
+  articleCard: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 },
+  articleHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  articleEmoji: { fontSize: 24, marginRight: 10 },
+  articleHeaderText: { flex: 1 },
+  articleTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  articleMeta: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
+  articleChevron: { fontSize: 10, color: colors.textTertiary },
+  articleSummary: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  articleContent: { fontSize: 14, color: colors.text, lineHeight: 22, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
 });
 
 const createParentStyles = (colors: ThemeColors) => StyleSheet.create({

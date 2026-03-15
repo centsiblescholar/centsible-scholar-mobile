@@ -31,6 +31,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import PendingReviewsWidget from '../../src/components/dashboard/PendingReviewsWidget';
 import PendingGradesWidget from '../../src/components/dashboard/PendingGradesWidget';
+import { useBadges } from '../../src/hooks/useBadges';
+import BadgeShowcase from '../../src/components/badges/BadgeShowcase';
+import BadgeNotification from '../../src/components/badges/BadgeNotification';
+import { useAppTour } from '../../src/hooks/useAppTour';
+import TourTooltip from '../../src/components/tour/TourTooltip';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const METRIC_CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -93,6 +98,13 @@ function StudentDashboardView() {
     streakCount,
     loading: qodLoading,
   } = useQuestionOfTheDay(gradeLevel);
+
+  // Badge system
+  const {
+    badges,
+    newBadges,
+    dismissNotification: dismissBadge,
+  } = useBadges(gradeEntries, assessments, totalReward, gradeLevel, studentUserId);
 
   const [refreshing, setRefreshing] = useState(false);
   const [activeMetricIndex, setActiveMetricIndex] = useState(0);
@@ -167,6 +179,14 @@ function StudentDashboardView() {
   }
 
   return (
+    <View style={{ flex: 1 }}>
+      {/* Badge unlock notification */}
+      {newBadges.length > 0 && (
+        <BadgeNotification
+          badge={newBadges[0]}
+          onDismiss={() => dismissBadge(newBadges[0].id)}
+        />
+      )}
     <ScrollView
       style={styles.container}
       refreshControl={
@@ -333,7 +353,15 @@ function StudentDashboardView() {
           </View>
         </View>
       </View>
+
+      {/* E. Achievement Badges */}
+      {badges.length > 0 && (
+        <View style={styles.section}>
+          <BadgeShowcase badges={badges} />
+        </View>
+      )}
     </ScrollView>
+    </View>
   );
 }
 
@@ -342,14 +370,21 @@ function StudentDashboardView() {
 // ---------------------------------------------------------------------------
 export default function DashboardScreen() {
   const { user, userRole } = useAuth();
+  const tour = useAppTour(userRole);
 
-  // Student users see the dedicated student dashboard
-  if (userRole === 'student') {
-    return <StudentDashboardView />;
-  }
-
-  // --- Parent dashboard code below (unchanged) ---
-  return <ParentDashboardView />;
+  return (
+    <>
+      {userRole === 'student' ? <StudentDashboardView /> : <ParentDashboardView />}
+      <TourTooltip
+        visible={tour.showTour}
+        step={tour.currentStep}
+        currentIndex={tour.currentStepIndex}
+        totalSteps={tour.totalSteps}
+        onNext={tour.nextStep}
+        onSkip={tour.skipTour}
+      />
+    </>
+  );
 }
 
 function ParentDashboardView() {

@@ -290,6 +290,23 @@ export default function EarningsScreen() {
             ))}
           </View>
 
+          {/* What-If Calculator CTA */}
+          <TouchableOpacity
+            style={styles.budgetPlannerCta}
+            onPress={() => router.push('/simulation')}
+          >
+            <View style={styles.budgetPlannerCtaLeft}>
+              <Ionicons name="sparkles-outline" size={20} color="#8B5CF6" />
+              <View>
+                <Text style={styles.budgetPlannerCtaTitle}>What-If Calculator</Text>
+                <Text style={styles.budgetPlannerCtaSubtext}>
+                  Simulate how grade or behavior changes affect your paycheck
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+
           {/* Budget Planner CTA */}
           {allocation.discretionary > 0 && (
             <TouchableOpacity

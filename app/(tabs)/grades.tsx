@@ -25,6 +25,9 @@ import { useTheme, type ThemeColors, indigo, gray, grades as gradeColors } from 
 import { SkeletonList } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { useGradeConflicts } from '../../src/hooks/useGradeConflicts';
+import ConflictBanner from '../../src/components/grades/ConflictBanner';
+import GradeConflictModal from '../../src/components/grades/GradeConflictModal';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -46,6 +49,12 @@ export default function GradesScreen() {
   const [baseAmount, setBaseAmount] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'grades' | 'analytics'>('grades');
+  const [conflictModalVisible, setConflictModalVisible] = useState(false);
+
+  // Grade conflict detection (parent view only)
+  const { conflicts, conflictCount, refetch: refetchConflicts } = useGradeConflicts(
+    isParentView ? targetUserId : undefined,
+  );
 
   const getGradeColor = (grade: string) => {
     return gradeColors[grade as keyof typeof gradeColors] || colors.textSecondary;
@@ -189,6 +198,14 @@ export default function GradesScreen() {
             <Text style={styles.summaryValue}>{gradeEntries.length > 0 ? gpa.toFixed(2) : '--'}</Text>
           </View>
         </View>
+
+        {/* Grade Conflict Banner (parent view only) */}
+        {isParentView && conflictCount > 0 && (
+          <ConflictBanner
+            conflictCount={conflictCount}
+            onPress={() => setConflictModalVisible(true)}
+          />
+        )}
 
         {/* Tab Toggle */}
         <View style={styles.tabContainer}>
@@ -496,6 +513,18 @@ export default function GradesScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Grade Conflict Resolution Modal */}
+      <GradeConflictModal
+        visible={conflictModalVisible}
+        onClose={() => setConflictModalVisible(false)}
+        conflicts={conflicts}
+        onResolved={() => {
+          refetchConflicts();
+          refetch();
+          setConflictModalVisible(false);
+        }}
+      />
     </View>
   );
 }
