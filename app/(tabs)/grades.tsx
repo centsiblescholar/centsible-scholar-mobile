@@ -159,9 +159,12 @@ export default function GradesScreen() {
     setEditSelectedGrade('');
   };
 
+  const GRADE_ORDER = ['F', 'D', 'C', 'B', 'A'];
+
   const handleUpdate = async () => {
     if (!editingGradeId || !editSubject.trim() || !editSelectedGrade) return;
     const currentGrade = grades.find((g) => g.id === editingGradeId);
+    const oldGrade = currentGrade?.grade;
     try {
       await updateGrade({
         id: editingGradeId,
@@ -170,7 +173,16 @@ export default function GradesScreen() {
         currentStatus: currentGrade?.status,
       });
       if (currentGrade?.status === 'approved') {
-        Alert.alert('Grade Updated', 'Your grade change has been submitted for parent approval.');
+        const oldRank = GRADE_ORDER.indexOf(oldGrade || '');
+        const newRank = GRADE_ORDER.indexOf(editSelectedGrade);
+        if (newRank > oldRank && oldRank >= 0) {
+          Alert.alert(
+            'Great Job! 🎉',
+            `You improved from ${oldGrade} to ${editSelectedGrade} in ${editSubject.trim()}! Your updated grade has been submitted for parent approval.`
+          );
+        } else {
+          Alert.alert('Grade Updated', 'Your grade change has been submitted for parent approval.');
+        }
       }
       cancelEditing();
     } catch (err: unknown) {
