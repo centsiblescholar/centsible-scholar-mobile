@@ -145,8 +145,7 @@ export default function GradesScreen() {
 
   const isEditable = (g: { originated_by: string | null; status: string }) =>
     !isParentView &&
-    g.originated_by === 'student' &&
-    (g.status === 'pending' || g.status === 'needs_revision');
+    (g.status === 'pending' || g.status === 'needs_revision' || g.status === 'approved');
 
   const startEditing = (g: { id: string; subject: string; grade: string }) => {
     setEditingGradeId(g.id);
@@ -162,8 +161,17 @@ export default function GradesScreen() {
 
   const handleUpdate = async () => {
     if (!editingGradeId || !editSubject.trim() || !editSelectedGrade) return;
+    const currentGrade = grades.find((g) => g.id === editingGradeId);
     try {
-      await updateGrade({ id: editingGradeId, subject: editSubject.trim(), grade: editSelectedGrade });
+      await updateGrade({
+        id: editingGradeId,
+        subject: editSubject.trim(),
+        grade: editSelectedGrade,
+        currentStatus: currentGrade?.status,
+      });
+      if (currentGrade?.status === 'approved') {
+        Alert.alert('Grade Updated', 'Your grade change has been submitted for parent approval.');
+      }
       cancelEditing();
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update grade');

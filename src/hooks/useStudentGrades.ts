@@ -98,11 +98,23 @@ async function submitGradeEntry(params: {
 
 async function updateGradeEntry(
   id: string,
-  updates: { subject: string; grade: string }
+  updates: { subject: string; grade: string },
+  resetToPending: boolean = false
 ): Promise<void> {
+  const updateData: Record<string, string> = {
+    subject: updates.subject,
+    grade: updates.grade,
+  };
+
+  if (resetToPending) {
+    // Student edited an approved grade — needs parent re-approval
+    updateData.status = 'pending';
+    updateData.originated_by = 'student';
+  }
+
   const { error } = await supabase
     .from('student_grades')
-    .update({ subject: updates.subject, grade: updates.grade })
+    .update(updateData)
     .eq('id', id);
 
   if (error) {
@@ -160,8 +172,12 @@ export function useStudentGrades(studentUserId?: string) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (params: { id: string; subject: string; grade: string }) =>
-      updateGradeEntry(params.id, { subject: params.subject, grade: params.grade }),
+    mutationFn: (params: { id: string; subject: string; grade: string; currentStatus?: string }) =>
+      updateGradeEntry(
+        params.id,
+        { subject: params.subject, grade: params.grade },
+        !isParent && params.currentStatus === 'approved'
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentGradesKeys.list(targetUserId) });
       queryClient.invalidateQueries({ queryKey: ['gradeApproval'] });
