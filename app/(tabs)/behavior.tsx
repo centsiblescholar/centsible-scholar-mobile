@@ -129,7 +129,7 @@ export default function BehaviorScreen() {
     ];
     const averages = categories.map((cat) => {
       const sum = assessments.reduce((acc, a) => acc + (a[cat.key as keyof BehaviorScores] || 0), 0);
-      return sum / assessments.length;
+      return Math.round((sum / assessments.length) * 100) / 100;
     });
     return { labels: categories.map((c) => c.label), data: averages };
   };
@@ -232,7 +232,7 @@ export default function BehaviorScreen() {
                     width={screenWidth * 1.5} height={200} yAxisSuffix="" yAxisLabel=""
                     chartConfig={{
                       backgroundColor: colors.card, backgroundGradientFrom: colors.card, backgroundGradientTo: colors.card,
-                      decimalPlaces: 1, color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                      decimalPlaces: 2, color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
                       labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`, barPercentage: 0.6,
                     }}
                     style={{ marginVertical: 8, borderRadius: 16 }} fromZero showValuesOnTopOfBars
