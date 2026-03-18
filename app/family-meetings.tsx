@@ -146,46 +146,70 @@ export default function FamilyMeetingsScreen() {
   // ─── Step Handlers ──────────────────────────────────────────
 
   const handleStep1Complete = useCallback(async () => {
-    const notes = updateStepNotes('breathing', { completed: true });
-    await goToNextStep(notes);
+    try {
+      const notes = updateStepNotes('breathing', { completed: true });
+      await goToNextStep(notes);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to advance to next step');
+    }
   }, [updateStepNotes, goToNextStep]);
 
   const handleStep2Complete = useCallback(
     async (topic: string) => {
-      const notes = updateStepNotes('connection', { topic });
-      await goToNextStep(notes);
+      try {
+        const notes = updateStepNotes('connection', { topic });
+        await goToNextStep(notes);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to advance to next step');
+      }
     },
     [updateStepNotes, goToNextStep]
   );
 
   const handleStep3Complete = useCallback(
     async (reviewNotes: string, reviewedGoalIds: string[]) => {
-      const notes = updateStepNotes('review', { notes: reviewNotes, goalsReviewed: reviewedGoalIds });
-      await goToNextStep(notes);
+      try {
+        const notes = updateStepNotes('review', { notes: reviewNotes, goalsReviewed: reviewedGoalIds });
+        await goToNextStep(notes);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to advance to next step');
+      }
     },
     [updateStepNotes, goToNextStep]
   );
 
   const handleStep4Complete = useCallback(
     async (discussionNotes: string, discussedConflictIds: string[]) => {
-      const notes = updateStepNotes('discussion', { notes: discussionNotes, conflictsDiscussed: discussedConflictIds });
-      await goToNextStep(notes);
+      try {
+        const notes = updateStepNotes('discussion', { notes: discussionNotes, conflictsDiscussed: discussedConflictIds });
+        await goToNextStep(notes);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to advance to next step');
+      }
     },
     [updateStepNotes, goToNextStep]
   );
 
   const handleStep5Complete = useCallback(
     async (planningNotes: string) => {
-      const notes = updateStepNotes('planning', { notes: planningNotes });
-      await goToNextStep(notes);
+      try {
+        const notes = updateStepNotes('planning', { notes: planningNotes });
+        await goToNextStep(notes);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to advance to next step');
+      }
     },
     [updateStepNotes, goToNextStep]
   );
 
   const handleStep6Complete = useCallback(
     async (closingNotes: string, gratitude: string) => {
-      const notes = updateStepNotes('closing', { notes: closingNotes, gratitude });
-      await goToNextStep(notes);
+      try {
+        const notes = updateStepNotes('closing', { notes: closingNotes, gratitude });
+        await goToNextStep(notes);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to advance to next step');
+      }
     },
     [updateStepNotes, goToNextStep]
   );

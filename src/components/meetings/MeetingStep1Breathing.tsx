@@ -18,6 +18,11 @@ export function MeetingStep1Breathing({ completed, onComplete }: Props) {
   const [phase, setPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     return () => {
@@ -28,7 +33,7 @@ export function MeetingStep1Breathing({ completed, onComplete }: Props) {
   const runBreathingCycle = (currentCycle: number) => {
     if (currentCycle >= TOTAL_CYCLES) {
       setIsBreathing(false);
-      onComplete();
+      onCompleteRef.current();
       return;
     }
 
@@ -76,6 +81,10 @@ export function MeetingStep1Breathing({ completed, onComplete }: Props) {
           <Text style={styles.completedText}>Breathing exercise completed!</Text>
           <Text style={styles.completedSubtext}>Everyone is centered and ready.</Text>
         </View>
+        <TouchableOpacity style={styles.startButton} onPress={onComplete}>
+          <Ionicons name="arrow-forward" size={20} color={colors.textInverse} />
+          <Text style={styles.startButtonText}>Continue to Next Step</Text>
+        </TouchableOpacity>
       </View>
     );
   }
