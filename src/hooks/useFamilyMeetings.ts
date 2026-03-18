@@ -90,7 +90,7 @@ async function updateMeetingSchedule(
 }
 
 async function startMeetingFn(meetingId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('family_meetings')
     .update({
       started_at: new Date().toISOString(),
@@ -99,9 +99,12 @@ async function startMeetingFn(meetingId: string): Promise<void> {
       goals_reviewed: [],
       updated_at: new Date().toISOString(),
     })
-    .eq('id', meetingId);
+    .eq('id', meetingId)
+    .select('id')
+    .single();
 
   if (error) throw error;
+  if (!data) throw new Error('Meeting not found or access denied');
 }
 
 async function advanceStepFn(
@@ -109,16 +112,24 @@ async function advanceStepFn(
   newStep: number,
   stepNotes: StepNotes
 ): Promise<void> {
-  const { error } = await supabase
+  console.log('[advanceStep] Advancing to step', newStep, 'for meeting', meetingId);
+  const { data, error } = await supabase
     .from('family_meetings')
     .update({
       current_step: newStep,
       step_notes: stepNotes as any,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', meetingId);
+    .eq('id', meetingId)
+    .select('id, current_step')
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[advanceStep] Error:', error);
+    throw error;
+  }
+  if (!data) throw new Error('Failed to advance step — meeting not found or access denied');
+  console.log('[advanceStep] Success, now at step', data.current_step);
 }
 
 async function completeMeetingFn(
@@ -126,7 +137,7 @@ async function completeMeetingFn(
   stepNotes: StepNotes,
   goalsReviewed: string[]
 ): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('family_meetings')
     .update({
       current_step: TOTAL_STEPS,
@@ -134,13 +145,16 @@ async function completeMeetingFn(
       goals_reviewed: goalsReviewed as any,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', meetingId);
+    .eq('id', meetingId)
+    .select('id')
+    .single();
 
   if (error) throw error;
+  if (!data) throw new Error('Failed to complete meeting — not found or access denied');
 }
 
 async function resetMeetingFn(meetingId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('family_meetings')
     .update({
       current_step: 0,
@@ -149,9 +163,12 @@ async function resetMeetingFn(meetingId: string): Promise<void> {
       started_at: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', meetingId);
+    .eq('id', meetingId)
+    .select('id')
+    .single();
 
   if (error) throw error;
+  if (!data) throw new Error('Failed to reset meeting — not found or access denied');
 }
 
 // ─── Evaluations ────────────────────────────────────────────
@@ -438,13 +455,47 @@ export function useFamilyMeetings(userId: string | undefined) {
 
   const startMeetingMutation = useMutation({
     mutationFn: (meetingId: string) => startMeetingFn(meetingId),
-    onSuccess: invalidateAll,
+    onMutate: async (meetingId) => {
+      await queryClient.cancelQueries({ queryKey: familyMeetingsKeys.meeting(targetUserId) });
+      const previousMeeting = queryClient.getQueryData(familyMeetingsKeys.meeting(targetUserId));
+      queryClient.setQueryData(familyMeetingsKeys.meeting(targetUserId), (old: FamilyMeeting | null | undefined) => {
+        if (!old) return old;
+        return { ...old, started_at: new Date().toISOString(), current_step: 0, step_notes: {}, goals_reviewed: [] };
+      });
+      return { previousMeeting };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousMeeting !== undefined) {
+        queryClient.setQueryData(familyMeetingsKeys.meeting(targetUserId), context.previousMeeting);
+      }
+    },
+    onSettled: () => {
+      invalidateAll();
+    },
   });
 
   const advanceStepMutation = useMutation({
     mutationFn: (args: { meetingId: string; newStep: number; stepNotes: StepNotes }) =>
       advanceStepFn(args.meetingId, args.newStep, args.stepNotes),
-    onSuccess: invalidateAll,
+    onMutate: async (args) => {
+      // Optimistically update the meeting in cache so UI responds immediately
+      await queryClient.cancelQueries({ queryKey: familyMeetingsKeys.meeting(targetUserId) });
+      const previousMeeting = queryClient.getQueryData(familyMeetingsKeys.meeting(targetUserId));
+      queryClient.setQueryData(familyMeetingsKeys.meeting(targetUserId), (old: FamilyMeeting | null | undefined) => {
+        if (!old) return old;
+        return { ...old, current_step: args.newStep, step_notes: args.stepNotes };
+      });
+      return { previousMeeting };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback on error
+      if (context?.previousMeeting !== undefined) {
+        queryClient.setQueryData(familyMeetingsKeys.meeting(targetUserId), context.previousMeeting);
+      }
+    },
+    onSettled: () => {
+      invalidateAll();
+    },
   });
 
   const completeMeetingMutation = useMutation({
