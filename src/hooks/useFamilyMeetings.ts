@@ -9,7 +9,6 @@ import {
   MeetingGoal,
   GoalSpecifics,
   MeetingConflict,
-  calculateTotalScore,
   TOTAL_STEPS,
 } from '../types/family-meeting';
 
@@ -189,8 +188,6 @@ async function submitEvaluationFn(
   studentUserId: string,
   input: EvaluationInput
 ): Promise<ChildEvaluation> {
-  const totalScore = calculateTotalScore(input);
-
   const { data, error } = await supabase
     .from('meeting_child_evaluations')
     .insert({
@@ -200,7 +197,6 @@ async function submitEvaluationFn(
       parents_listened: input.parents_listened,
       parents_asked_questions: input.parents_asked_questions,
       liked_meeting: input.liked_meeting,
-      total_score: totalScore,
     })
     .select()
     .single();
