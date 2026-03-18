@@ -4,6 +4,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, type ThemeColors } from '@/theme';
 import { MeetingConflict } from '../../types/family-meeting';
 
+const FINANCIAL_IDENTITY_PROMPTS = {
+  middle: [
+    'What does money mean to your family?',
+    'How do you feel when you save vs. spend?',
+    'What is one thing you learned about money this week?',
+  ],
+  high: [
+    'How do your spending habits reflect your values?',
+    'What financial goal are you working toward and why?',
+    'How do you decide between wants and needs?',
+    'What would you do differently if you had more financial responsibility?',
+  ],
+};
+
+const DISCUSSION_TIPS = [
+  'Use "I feel..." statements instead of "You always..."',
+  'Listen to understand, not to respond',
+  'One person speaks at a time',
+  'Stay on the topic being discussed',
+];
+
 interface Props {
   pendingConflicts: MeetingConflict[];
   meetingId: string;
@@ -12,6 +33,7 @@ interface Props {
   onResolveConflict: (conflictId: string) => void;
   onMarkDiscussed: (conflictId: string) => void;
   onAddConflict: (description: string) => void;
+  onCarryForward?: (conflictId: string) => void;
 }
 
 export function MeetingStep4Discussion({
@@ -22,11 +44,14 @@ export function MeetingStep4Discussion({
   onResolveConflict,
   onMarkDiscussed,
   onAddConflict,
+  onCarryForward,
 }: Props) {
   const { colors } = useTheme();
   const [notes, setNotes] = useState(initialNotes || '');
   const [newConflict, setNewConflict] = useState('');
   const [discussedIds, setDiscussedIds] = useState<Set<string>>(new Set());
+  const [showFinancialPrompts, setShowFinancialPrompts] = useState(false);
+  const [showTips, setShowTips] = useState(false);
 
   const handleAddConflict = () => {
     if (newConflict.trim()) {
@@ -48,6 +73,27 @@ export function MeetingStep4Discussion({
         Discuss any conflicts or concerns. Use "I feel..." statements and listen actively.
       </Text>
 
+      {/* Meeting Rules / Tips (collapsible) */}
+      <TouchableOpacity
+        style={styles.tipsToggle}
+        onPress={() => setShowTips(!showTips)}
+      >
+        <Ionicons name="bulb-outline" size={18} color={colors.warning} />
+        <Text style={styles.tipsToggleText}>Discussion Tips</Text>
+        <Ionicons name={showTips ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textTertiary} />
+      </TouchableOpacity>
+      {showTips && (
+        <View style={styles.tipsCard}>
+          {DISCUSSION_TIPS.map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Pending Conflicts */}
       {pendingConflicts.length > 0 ? (
         <View style={styles.conflictsList}>
           <Text style={styles.sectionLabel}>Pending Conflicts</Text>
@@ -68,13 +114,24 @@ export function MeetingStep4Discussion({
                     <Text style={styles.discussButtonText}>Discussed</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity
-                    style={styles.resolveButton}
-                    onPress={() => onResolveConflict(conflict.id)}
-                  >
-                    <Ionicons name="checkmark" size={16} color={colors.textInverse} />
-                    <Text style={styles.resolveButtonText}>Resolved</Text>
-                  </TouchableOpacity>
+                  <View style={styles.conflictActionRow}>
+                    <TouchableOpacity
+                      style={styles.resolveButton}
+                      onPress={() => onResolveConflict(conflict.id)}
+                    >
+                      <Ionicons name="checkmark" size={16} color={colors.textInverse} />
+                      <Text style={styles.resolveButtonText}>Resolved</Text>
+                    </TouchableOpacity>
+                    {onCarryForward && (
+                      <TouchableOpacity
+                        style={styles.carryForwardButton}
+                        onPress={() => onCarryForward(conflict.id)}
+                      >
+                        <Ionicons name="arrow-forward" size={14} color={colors.warning} />
+                        <Text style={styles.carryForwardText}>Next</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             </View>
@@ -107,6 +164,34 @@ export function MeetingStep4Discussion({
         </View>
       </View>
 
+      {/* Financial Identity Check-In */}
+      <TouchableOpacity
+        style={styles.financialToggle}
+        onPress={() => setShowFinancialPrompts(!showFinancialPrompts)}
+      >
+        <Ionicons name="cash-outline" size={18} color={colors.primary} />
+        <Text style={styles.financialToggleText}>Financial Identity Check-In</Text>
+        <Ionicons name={showFinancialPrompts ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textTertiary} />
+      </TouchableOpacity>
+      {showFinancialPrompts && (
+        <View style={styles.financialSection}>
+          <Text style={styles.financialSubheading}>Middle School</Text>
+          {FINANCIAL_IDENTITY_PROMPTS.middle.map((prompt, i) => (
+            <View key={`m-${i}`} style={styles.promptRow}>
+              <Ionicons name="chatbubble-outline" size={14} color={colors.primary} />
+              <Text style={styles.promptText}>{prompt}</Text>
+            </View>
+          ))}
+          <Text style={[styles.financialSubheading, { marginTop: 12 }]}>High School</Text>
+          {FINANCIAL_IDENTITY_PROMPTS.high.map((prompt, i) => (
+            <View key={`h-${i}`} style={styles.promptRow}>
+              <Ionicons name="chatbubble-outline" size={14} color={colors.primary} />
+              <Text style={styles.promptText}>{prompt}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       <View style={styles.notesSection}>
         <Text style={styles.sectionLabel}>Discussion Notes</Text>
         <TextInput
@@ -136,6 +221,20 @@ function createStyles(colors: ThemeColors) {
     container: { padding: 16 },
     instruction: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 24 },
     sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
+
+    // Tips
+    tipsToggle: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: colors.warning + '11', borderRadius: 12, padding: 14, marginBottom: 8,
+    },
+    tipsToggleText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+    tipsCard: {
+      backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 16, gap: 10,
+    },
+    tipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    tipText: { fontSize: 14, color: colors.textSecondary, flex: 1, lineHeight: 20 },
+
+    // Conflicts
     conflictsList: { marginBottom: 24 },
     conflictCard: {
       flexDirection: 'row', alignItems: 'center',
@@ -146,6 +245,7 @@ function createStyles(colors: ThemeColors) {
     conflictText: { fontSize: 15, color: colors.text, lineHeight: 20 },
     conflictMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
     conflictActions: { marginLeft: 12 },
+    conflictActionRow: { gap: 6 },
     discussButton: {
       paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
       backgroundColor: colors.primary + '22', minHeight: 36, justifyContent: 'center',
@@ -157,6 +257,13 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.success, minHeight: 36,
     },
     resolveButtonText: { fontSize: 13, fontWeight: '600', color: colors.textInverse },
+    carryForwardButton: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+      backgroundColor: colors.warning + '22', minHeight: 30,
+    },
+    carryForwardText: { fontSize: 12, fontWeight: '600', color: colors.warning },
+
     emptyCard: {
       alignItems: 'center', padding: 24,
       backgroundColor: colors.success + '11', borderRadius: 12, marginBottom: 24,
@@ -173,6 +280,20 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
     },
     addButtonDisabled: { opacity: 0.5 },
+
+    // Financial Identity
+    financialToggle: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: colors.primary + '11', borderRadius: 12, padding: 14, marginBottom: 8,
+    },
+    financialToggleText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+    financialSection: {
+      backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 24,
+    },
+    financialSubheading: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 8 },
+    promptRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+    promptText: { fontSize: 14, color: colors.textSecondary, flex: 1, lineHeight: 20 },
+
     notesSection: { marginBottom: 24 },
     input: {
       backgroundColor: colors.input, borderWidth: 1, borderColor: colors.inputBorder,

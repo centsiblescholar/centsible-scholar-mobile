@@ -8,14 +8,18 @@ interface Props {
   onComplete: () => void;
 }
 
-const BREATH_DURATION = 4000; // 4 seconds per phase
-const TOTAL_CYCLES = 3;
+// 4-2-6 breathing pattern (inhale 4s, hold 2s, exhale 6s)
+const INHALE_DURATION = 4000;
+const HOLD_DURATION = 2000;
+const EXHALE_DURATION = 6000;
+const REST_DURATION = 2000; // pause between cycles
+const TOTAL_CYCLES = 5;
 
 export function MeetingStep1Breathing({ completed, onComplete }: Props) {
   const { colors } = useTheme();
   const [isBreathing, setIsBreathing] = useState(false);
   const [cycle, setCycle] = useState(0);
-  const [phase, setPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  const [phase, setPhase] = useState<'inhale' | 'hold' | 'exhale' | 'rest'>('inhale');
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCompleteRef = useRef(onComplete);
@@ -37,32 +41,36 @@ export function MeetingStep1Breathing({ completed, onComplete }: Props) {
       return;
     }
 
-    // Inhale
+    // Inhale (4s)
     setPhase('inhale');
     Animated.timing(scaleAnim, {
       toValue: 1.5,
-      duration: BREATH_DURATION,
+      duration: INHALE_DURATION,
       useNativeDriver: true,
     }).start();
 
     timerRef.current = setTimeout(() => {
-      // Hold
+      // Hold (2s)
       setPhase('hold');
       timerRef.current = setTimeout(() => {
-        // Exhale
+        // Exhale (6s)
         setPhase('exhale');
         Animated.timing(scaleAnim, {
           toValue: 1,
-          duration: BREATH_DURATION,
+          duration: EXHALE_DURATION,
           useNativeDriver: true,
         }).start();
 
         timerRef.current = setTimeout(() => {
           setCycle(currentCycle + 1);
-          runBreathingCycle(currentCycle + 1);
-        }, BREATH_DURATION);
-      }, BREATH_DURATION);
-    }, BREATH_DURATION);
+          // Rest (2s) between cycles
+          setPhase('rest');
+          timerRef.current = setTimeout(() => {
+            runBreathingCycle(currentCycle + 1);
+          }, REST_DURATION);
+        }, EXHALE_DURATION);
+      }, HOLD_DURATION);
+    }, INHALE_DURATION);
   };
 
   const startBreathing = () => {
@@ -99,7 +107,7 @@ export function MeetingStep1Breathing({ completed, onComplete }: Props) {
         <View style={styles.breathingContainer}>
           <Animated.View style={[styles.breathCircle, { transform: [{ scale: scaleAnim }] }]}>
             <Text style={styles.breathText}>
-              {phase === 'inhale' ? 'Breathe In' : phase === 'hold' ? 'Hold' : 'Breathe Out'}
+              {phase === 'inhale' ? 'Breathe In' : phase === 'hold' ? 'Hold' : phase === 'exhale' ? 'Breathe Out' : 'Rest'}
             </Text>
           </Animated.View>
           <Text style={styles.cycleText}>

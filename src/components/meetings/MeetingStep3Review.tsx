@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, type ThemeColors } from '@/theme';
-import { MeetingGoal } from '../../types/family-meeting';
+import { MeetingGoal, GoalStatus } from '../../types/family-meeting';
 
 interface Props {
   activeGoals: MeetingGoal[];
   initialNotes?: string;
   initialReviewedGoals?: string[];
   onComplete: (notes: string, reviewedGoalIds: string[]) => void;
-  onUpdateGoalStatus: (goalId: string, status: 'completed' | 'dropped') => void;
+  onUpdateGoalStatus: (goalId: string, status: GoalStatus) => void;
 }
+
+const STATUS_OPTIONS: { value: GoalStatus; label: string; icon: string; color: 'success' | 'primary' | 'warning' | 'error' }[] = [
+  { value: 'completed', label: 'Done', icon: 'checkmark-circle', color: 'success' },
+  { value: 'in_progress', label: 'Working', icon: 'time', color: 'primary' },
+  { value: 'not_started', label: 'Not Yet', icon: 'ellipse-outline', color: 'warning' },
+  { value: 'dropped', label: 'Drop', icon: 'close-circle', color: 'error' },
+];
 
 export function MeetingStep3Review({
   activeGoals,
@@ -60,20 +67,31 @@ export function MeetingStep3Review({
                 {goal.specifics?.measurable && (
                   <Text style={styles.goalSpecific}>Target: {goal.specifics.measurable}</Text>
                 )}
-              </View>
-              <View style={styles.goalActions}>
-                <TouchableOpacity
-                  style={styles.goalActionButton}
-                  onPress={() => onUpdateGoalStatus(goal.id, 'completed')}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.success} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.goalActionButton}
-                  onPress={() => onUpdateGoalStatus(goal.id, 'dropped')}
-                >
-                  <Ionicons name="close-circle-outline" size={22} color={colors.error} />
-                </TouchableOpacity>
+                {(goal.specifics?.deadline || goal.specifics?.timeline) && (
+                  <Text style={styles.goalSpecific}>By: {goal.specifics.deadline || goal.specifics.timeline}</Text>
+                )}
+                {goal.specifics?.reward && (
+                  <Text style={styles.goalSpecific}>Reward: {goal.specifics.reward}</Text>
+                )}
+                {goal.specifics?.measurement && (
+                  <Text style={styles.goalSpecific}>Measure: {goal.specifics.measurement}</Text>
+                )}
+
+                {/* Status Actions */}
+                <View style={styles.statusActions}>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.statusButton, { backgroundColor: colors[opt.color] + '15' }]}
+                      onPress={() => onUpdateGoalStatus(goal.id, opt.value)}
+                    >
+                      <Ionicons name={opt.icon as any} size={14} color={colors[opt.color]} />
+                      <Text style={[styles.statusButtonText, { color: colors[opt.color] }]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
           ))}
@@ -117,16 +135,20 @@ function createStyles(colors: ThemeColors) {
     sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
     goalsList: { marginBottom: 24 },
     goalCard: {
-      flexDirection: 'row', alignItems: 'center',
+      flexDirection: 'row', alignItems: 'flex-start',
       backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 8,
       shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
     },
-    goalCheckbox: { marginRight: 12 },
+    goalCheckbox: { marginRight: 12, marginTop: 2 },
     goalContent: { flex: 1 },
     goalText: { fontSize: 15, color: colors.text, lineHeight: 20 },
-    goalSpecific: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
-    goalActions: { flexDirection: 'row', gap: 8, marginLeft: 8 },
-    goalActionButton: { padding: 4, minWidth: 30, minHeight: 30, alignItems: 'center', justifyContent: 'center' },
+    goalSpecific: { fontSize: 12, color: colors.textTertiary, marginTop: 3 },
+    statusActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    statusButton: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+    },
+    statusButtonText: { fontSize: 12, fontWeight: '600' },
     emptyCard: {
       alignItems: 'center', padding: 24,
       backgroundColor: colors.backgroundSecondary, borderRadius: 12, marginBottom: 24,

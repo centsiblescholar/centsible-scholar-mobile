@@ -21,6 +21,7 @@ export const familyMeetingsKeys = {
   goals: (meetingId: string) => [...familyMeetingsKeys.all, 'goals', meetingId] as const,
   activeGoals: (userId: string) => [...familyMeetingsKeys.all, 'activeGoals', userId] as const,
   conflicts: (userId: string) => [...familyMeetingsKeys.all, 'conflicts', userId] as const,
+  allEvaluations: (userId: string) => [...familyMeetingsKeys.all, 'allEvaluations', userId] as const,
 };
 
 // ─── Transform helpers ──────────────────────────────────────
@@ -131,7 +132,6 @@ async function completeMeetingFn(
       current_step: TOTAL_STEPS,
       step_notes: stepNotes as any,
       goals_reviewed: goalsReviewed as any,
-      started_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', meetingId);
@@ -246,7 +246,7 @@ async function createGoalFn(
 
 async function updateGoalStatusFn(
   goalId: string,
-  status: 'active' | 'completed' | 'dropped',
+  status: 'active' | 'completed' | 'achieved' | 'in_progress' | 'not_started' | 'dropped',
   reviewedInMeetingId?: string
 ): Promise<void> {
   const { error } = await supabase
@@ -328,6 +328,36 @@ async function markConflictDiscussedFn(
   if (error) throw error;
 }
 
+async function carryForwardConflictFn(conflictId: string): Promise<void> {
+  const { error } = await supabase
+    .from('meeting_conflict_queue')
+    .update({
+      status: 'carried_forward',
+    })
+    .eq('id', conflictId);
+
+  if (error) throw error;
+}
+
+async function fetchAllEvaluations(userId: string): Promise<ChildEvaluation[]> {
+  const { data: meeting } = await supabase
+    .from('family_meetings')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!meeting) return [];
+
+  const { data, error } = await supabase
+    .from('meeting_child_evaluations')
+    .select('*')
+    .eq('meeting_id', meeting.id)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ─── Main Hook ──────────────────────────────────────────────
 
 export function useFamilyMeetings(userId: string | undefined) {
@@ -376,6 +406,16 @@ export function useFamilyMeetings(userId: string | undefined) {
     queryKey: familyMeetingsKeys.evaluations(meeting?.id ?? ''),
     queryFn: () => fetchEvaluations(meeting!.id),
     enabled: !!meeting?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const {
+    data: allEvaluations = [],
+    refetch: refetchAllEvaluations,
+  } = useQuery({
+    queryKey: familyMeetingsKeys.allEvaluations(targetUserId),
+    queryFn: () => fetchAllEvaluations(targetUserId),
+    enabled: !!targetUserId,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -431,7 +471,7 @@ export function useFamilyMeetings(userId: string | undefined) {
   });
 
   const updateGoalStatusMutation = useMutation({
-    mutationFn: (args: { goalId: string; status: 'active' | 'completed' | 'dropped'; reviewedInMeetingId?: string }) =>
+    mutationFn: (args: { goalId: string; status: 'active' | 'completed' | 'achieved' | 'in_progress' | 'not_started' | 'dropped'; reviewedInMeetingId?: string }) =>
       updateGoalStatusFn(args.goalId, args.status, args.reviewedInMeetingId),
     onSuccess: invalidateAll,
   });
@@ -454,6 +494,11 @@ export function useFamilyMeetings(userId: string | undefined) {
     onSuccess: invalidateAll,
   });
 
+  const carryForwardConflictMutation = useMutation({
+    mutationFn: (conflictId: string) => carryForwardConflictFn(conflictId),
+    onSuccess: invalidateAll,
+  });
+
   const pendingConflicts = conflicts.filter((c) => c.status === 'pending');
   const isInProgress = !!meeting?.started_at && (meeting.current_step ?? 0) < TOTAL_STEPS;
 
@@ -463,6 +508,7 @@ export function useFamilyMeetings(userId: string | undefined) {
       refetchGoals(),
       refetchConflicts(),
       refetchEvaluations(),
+      refetchAllEvaluations(),
     ]);
   };
 
@@ -472,6 +518,7 @@ export function useFamilyMeetings(userId: string | undefined) {
     conflicts,
     pendingConflicts,
     evaluations,
+    allEvaluations,
     isLoading: meetingLoading || goalsLoading || conflictsLoading,
     isInProgress,
 
@@ -490,7 +537,7 @@ export function useFamilyMeetings(userId: string | undefined) {
 
     createGoal: (meetingId: string, goalText: string, studentUserId: string | null, specifics?: GoalSpecifics) =>
       createGoalMutation.mutateAsync({ meetingId, goalText, studentUserId, specifics }),
-    updateGoalStatus: (goalId: string, status: 'active' | 'completed' | 'dropped', reviewedInMeetingId?: string) =>
+    updateGoalStatus: (goalId: string, status: 'active' | 'completed' | 'achieved' | 'in_progress' | 'not_started' | 'dropped', reviewedInMeetingId?: string) =>
       updateGoalStatusMutation.mutateAsync({ goalId, status, reviewedInMeetingId }),
 
     addConflict: (addedBy: string, description: string) =>
@@ -499,6 +546,8 @@ export function useFamilyMeetings(userId: string | undefined) {
       resolveConflictMutation.mutateAsync({ conflictId, meetingId }),
     markConflictDiscussed: (conflictId: string, meetingId: string) =>
       markConflictDiscussedMutation.mutateAsync({ conflictId, meetingId }),
+    carryForwardConflict: (conflictId: string) =>
+      carryForwardConflictMutation.mutateAsync(conflictId),
 
     refetch,
 

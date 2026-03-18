@@ -22,6 +22,9 @@ import {
   StepNotes,
   getMeetingStatus,
   EvaluationInput,
+  GoalSpecifics,
+  GoalStatus,
+  formatMeetingTime,
 } from '../src/types/family-meeting';
 import { MeetingStepper } from '../src/components/meetings/MeetingStepper';
 import { MeetingStep1Breathing } from '../src/components/meetings/MeetingStep1Breathing';
@@ -32,6 +35,9 @@ import { MeetingStep5Planning } from '../src/components/meetings/MeetingStep5Pla
 import { MeetingStep6Closing } from '../src/components/meetings/MeetingStep6Closing';
 import { MeetingCompletedCard } from '../src/components/meetings/MeetingCompletedCard';
 import { StudentMeetingView } from '../src/components/meetings/StudentMeetingView';
+import { MeetingScheduler } from '../src/components/meetings/MeetingScheduler';
+import { EvaluationTrendCard } from '../src/components/meetings/EvaluationTrendCard';
+import { scheduleMeetingReminder } from '../src/services/notifications';
 
 export default function FamilyMeetingsScreen() {
   const { user } = useAuth();
@@ -40,16 +46,20 @@ export default function FamilyMeetingsScreen() {
   const { isParent } = useUserProfile();
   const { students } = useParentStudents();
   const [refreshing, setRefreshing] = useState(false);
+  const [showScheduler, setShowScheduler] = useState(false);
 
   const {
     meeting,
     activeGoals,
     pendingConflicts,
+    conflicts,
     evaluations,
+    allEvaluations,
     isLoading,
     isInProgress,
     isSubmittingEvaluation,
     createOrGetMeeting,
+    updateSchedule,
     startMeeting,
     advanceStep,
     completeMeeting,
@@ -60,6 +70,7 @@ export default function FamilyMeetingsScreen() {
     addConflict,
     resolveConflict,
     markConflictDiscussed,
+    carryForwardConflict,
     refetch,
     error,
   } = useFamilyMeetings(user?.id);
@@ -86,7 +97,6 @@ export default function FamilyMeetingsScreen() {
       if (!meeting) return;
       const nextStep = currentStep + 1;
       if (nextStep >= TOTAL_STEPS) {
-        // Complete the meeting
         await completeMeeting(meeting.id, updatedNotes, meeting.goals_reviewed);
       } else {
         await advanceStep(meeting.id, nextStep, updatedNotes);
@@ -116,7 +126,7 @@ export default function FamilyMeetingsScreen() {
       'Your progress is saved. You can resume anytime.',
       [
         { text: 'Continue Meeting', style: 'cancel' },
-        { text: 'Exit', onPress: () => {} }, // just dismiss — state is already saved in DB
+        { text: 'Exit', onPress: () => {} },
       ]
     );
   }, []);
@@ -142,6 +152,26 @@ export default function FamilyMeetingsScreen() {
       ]
     );
   }, [meeting, resetMeeting]);
+
+  // ─── Scheduling ──────────────────────────────────────────────
+  const handleSaveSchedule = useCallback(
+    async (date: string, time: string, recurrence: string) => {
+      try {
+        const m = await createOrGetMeeting();
+        await updateSchedule(m.id, date, time, recurrence);
+        setShowScheduler(false);
+
+        // Schedule a reminder notification
+        const [hours, minutes] = time.split(':').map(Number);
+        const meetingDate = new Date(date);
+        meetingDate.setHours(hours, minutes, 0, 0);
+        await scheduleMeetingReminder(m.id, meetingDate);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to save schedule');
+      }
+    },
+    [createOrGetMeeting, updateSchedule]
+  );
 
   // ─── Step Handlers ──────────────────────────────────────────
 
@@ -227,10 +257,10 @@ export default function FamilyMeetingsScreen() {
   );
 
   const handleCreateGoal = useCallback(
-    async (goalText: string, studentUserId: string | null) => {
+    async (goalText: string, studentUserId: string | null, specifics?: GoalSpecifics) => {
       if (!meeting) return;
       try {
-        await createGoal(meeting.id, goalText, studentUserId);
+        await createGoal(meeting.id, goalText, studentUserId, specifics);
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to create goal');
       }
@@ -239,7 +269,7 @@ export default function FamilyMeetingsScreen() {
   );
 
   const handleUpdateGoalStatus = useCallback(
-    async (goalId: string, status: 'completed' | 'dropped') => {
+    async (goalId: string, status: GoalStatus) => {
       if (!meeting) return;
       try {
         await updateGoalStatus(goalId, status, meeting.id);
@@ -283,6 +313,17 @@ export default function FamilyMeetingsScreen() {
       }
     },
     [addConflict, user]
+  );
+
+  const handleCarryForward = useCallback(
+    async (conflictId: string) => {
+      try {
+        await carryForwardConflict(conflictId);
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to carry forward conflict');
+      }
+    },
+    [carryForwardConflict]
   );
 
   // ─── Loading / Error States ─────────────────────────────────
@@ -357,6 +398,7 @@ export default function FamilyMeetingsScreen() {
               onResolveConflict={handleResolveConflict}
               onMarkDiscussed={handleMarkDiscussed}
               onAddConflict={handleAddConflict}
+              onCarryForward={handleCarryForward}
             />
           );
         case 4:
@@ -409,6 +451,8 @@ export default function FamilyMeetingsScreen() {
       >
         <MeetingCompletedCard
           evaluations={evaluations}
+          activeGoals={activeGoals}
+          conflicts={conflicts}
           onStartNew={handleResetMeeting}
         />
       </ScrollView>
@@ -416,6 +460,8 @@ export default function FamilyMeetingsScreen() {
   }
 
   // ─── Home / Start View ──────────────────────────────────────
+
+  const hasSchedule = meeting?.scheduled_date && meeting?.scheduled_time;
 
   return (
     <ScrollView
@@ -434,6 +480,63 @@ export default function FamilyMeetingsScreen() {
             concerns, and plan together.
           </Text>
         </View>
+
+        {/* Scheduled Meeting Display */}
+        {hasSchedule && !showScheduler && (
+          <View style={styles.scheduleCard}>
+            <View style={styles.scheduleHeader}>
+              <Ionicons name="calendar" size={20} color={colors.primary} />
+              <Text style={styles.scheduleTitle}>Next Meeting</Text>
+            </View>
+            <Text style={styles.scheduleDate}>
+              {new Date(meeting!.scheduled_date!).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.scheduleTime}>
+              {formatMeetingTime(meeting!.scheduled_time!)}
+              {meeting!.recurrence && (
+                <Text style={styles.scheduleRecurrence}>
+                  {' '}· Repeats {meeting!.recurrence}
+                </Text>
+              )}
+            </Text>
+            <TouchableOpacity
+              style={styles.editScheduleButton}
+              onPress={() => setShowScheduler(true)}
+            >
+              <Ionicons name="create-outline" size={16} color={colors.primary} />
+              <Text style={styles.editScheduleText}>Edit Schedule</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Scheduler */}
+        {showScheduler && (
+          <MeetingScheduler
+            scheduledDate={meeting?.scheduled_date ?? null}
+            scheduledTime={meeting?.scheduled_time ?? null}
+            recurrence={meeting?.recurrence ?? null}
+            onSave={handleSaveSchedule}
+            onCancel={() => setShowScheduler(false)}
+          />
+        )}
+
+        {/* Schedule button if no schedule set */}
+        {!hasSchedule && !showScheduler && (
+          <TouchableOpacity
+            style={styles.schedulePrompt}
+            onPress={() => setShowScheduler(true)}
+          >
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+            <Text style={styles.schedulePromptText}>Schedule Recurring Meeting</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Evaluation Trend */}
+        <EvaluationTrendCard evaluations={allEvaluations} />
 
         {/* Steps Preview */}
         <View style={styles.stepsPreview}>
@@ -520,6 +623,30 @@ function createStyles(colors: ThemeColors) {
     },
     heroTitle: { fontSize: 24, fontWeight: '700', color: colors.text },
     heroSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
+
+    // Schedule Display
+    scheduleCard: {
+      backgroundColor: colors.card, borderRadius: 16, padding: 20,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+      marginBottom: 24,
+    },
+    scheduleHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    scheduleTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+    scheduleDate: { fontSize: 18, fontWeight: '600', color: colors.text },
+    scheduleTime: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
+    scheduleRecurrence: { color: colors.primary, fontWeight: '500' },
+    editScheduleButton: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border,
+    },
+    editScheduleText: { fontSize: 14, color: colors.primary, fontWeight: '500' },
+
+    // Schedule Prompt
+    schedulePrompt: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      backgroundColor: colors.primary + '11', borderRadius: 12, padding: 14, marginBottom: 24,
+    },
+    schedulePromptText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 
     // Steps Preview
     stepsPreview: {
