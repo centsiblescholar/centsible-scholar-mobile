@@ -1,4 +1,5 @@
 import { useEffect, useRef, ReactNode } from 'react';
+import { InteractionManager } from 'react-native';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { getRevenueCatApiKey } from '../constants/revenuecatConfig';
@@ -15,7 +16,8 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
   const { user } = useAuth();
   const isConfigured = useRef(false);
 
-  // Configure SDK once on mount (skip in Expo Go or when using placeholder keys)
+  // Configure SDK after initial render completes to avoid crash-on-launch
+  // if the native module throws during the critical first-frame window.
   useEffect(() => {
     if (isConfigured.current || isExpoGo) return;
 
@@ -25,16 +27,20 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
       return;
     }
 
-    try {
-      if (__DEV__) {
-        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-      }
+    const task = InteractionManager.runAfterInteractions(() => {
+      try {
+        if (__DEV__) {
+          Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+        }
 
-      Purchases.configure({ apiKey });
-      isConfigured.current = true;
-    } catch (error) {
-      console.warn('RevenueCat: Failed to configure SDK:', error);
-    }
+        Purchases.configure({ apiKey });
+        isConfigured.current = true;
+      } catch (error) {
+        console.warn('RevenueCat: Failed to configure SDK:', error);
+      }
+    });
+
+    return () => task.cancel();
   }, []);
 
   // Identify user when auth state changes (skip in Expo Go)
