@@ -1,7 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { Database } from './types';
 
 // Lazy-load Google Sign-In to avoid crash in Expo Go / simulator
@@ -15,6 +14,17 @@ async function getGoogleSignin() {
     _isSuccessResponse = mod.isSuccessResponse;
   }
   return { GoogleSignin: _GoogleSignin, isSuccessResponse: _isSuccessResponse };
+}
+
+// Lazy-load Apple Authentication to avoid crash-on-launch on iPad.
+// The synchronous top-level import triggers native module initialization
+// before the bridge is ready, causing EXC_BAD_ACCESS on iPadOS.
+let _AppleAuthentication: typeof import('expo-apple-authentication') | null = null;
+async function getAppleAuthentication() {
+  if (!_AppleAuthentication) {
+    _AppleAuthentication = await import('expo-apple-authentication');
+  }
+  return _AppleAuthentication;
 }
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -134,6 +144,7 @@ export async function ensureParentProfile(
  * Uses signInWithIdToken for native flow (no browser redirect).
  */
 export async function signInWithApple() {
+  const AppleAuthentication = await getAppleAuthentication();
   const credential = await AppleAuthentication.signInAsync({
     requestedScopes: [
       AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
