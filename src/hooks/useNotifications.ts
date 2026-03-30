@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import * as Notifications from 'expo-notifications';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  getNotifications,
   requestNotificationPermissions,
   getExpoPushToken,
   areNotificationsEnabled,
@@ -59,14 +59,19 @@ export function useNotifications(): UseNotificationsReturn {
   const [scheduledNotifications, setScheduledNotifications] = useState<ScheduledNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const notificationListener = useRef<ReturnType<typeof Notifications.addNotificationReceivedListener> | undefined>(undefined);
-  const responseListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | undefined>(undefined);
+  const notificationListener = useRef<{ remove: () => void } | undefined>(undefined);
+  const responseListener = useRef<{ remove: () => void } | undefined>(undefined);
 
-  // Initialize notifications
+  // Initialize notifications (lazy-loaded to avoid TurboModule crash on iPad)
   useEffect(() => {
+    let cancelled = false;
+
     const initialize = async () => {
       setIsLoading(true);
       try {
+        const Notifications = await getNotifications();
+        if (cancelled) return;
+
         // Check current permission status
         const { status } = await Notifications.getPermissionsAsync();
         setHasPermission(status === 'granted');
@@ -84,31 +89,32 @@ export function useNotifications(): UseNotificationsReturn {
         // Load scheduled notifications
         const scheduled = await getScheduledNotifications();
         setScheduledNotifications(scheduled);
+
+        // Set up notification listeners (wrapped for simulator safety)
+        try {
+          notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
+            console.log('Notification received:', notification);
+          });
+
+          responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
+            console.log('Notification response:', response);
+            handleNotificationResponse(response);
+          });
+        } catch (error) {
+          console.warn('Notification listeners not available:', error);
+        }
       } catch (error) {
         // Gracefully handle notification init failures (e.g., missing entitlements in simulator)
         console.warn('Notifications init skipped (may be expected in simulator):', error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     initialize();
 
-    // Set up notification listeners (wrapped for simulator safety)
-    try {
-      notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-        console.log('Notification received:', notification);
-      });
-
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log('Notification response:', response);
-        handleNotificationResponse(response);
-      });
-    } catch (error) {
-      console.warn('Notification listeners not available:', error);
-    }
-
     return () => {
+      cancelled = true;
       try {
         if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
           notificationListener.current.remove();
@@ -123,7 +129,7 @@ export function useNotifications(): UseNotificationsReturn {
   }, [user?.id]);
 
   // Handle notification taps
-  const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
+  const handleNotificationResponse = (response: any) => {
     const data = response.notification.request.content.data;
     const type = data?.type as NotificationType;
 

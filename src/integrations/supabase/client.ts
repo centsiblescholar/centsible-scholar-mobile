@@ -3,8 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './types';
 
-// Lazy-load Google Sign-In to avoid crash in Expo Go / simulator
-// (native module not available without a dev build)
+// Lazy-load native auth modules to avoid TurboModule crashes on iPad
+// during the critical first-frame window (native NSException → Hermes corruption)
+let _AppleAuthentication: typeof import('expo-apple-authentication') | null = null;
+async function getAppleAuthentication() {
+  if (!_AppleAuthentication) {
+    _AppleAuthentication = await import('expo-apple-authentication');
+  }
+  return _AppleAuthentication;
+}
+
 let _GoogleSignin: any = null;
 let _isSuccessResponse: any = null;
 async function getGoogleSignin() {

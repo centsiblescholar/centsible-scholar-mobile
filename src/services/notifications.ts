@@ -1,23 +1,35 @@
-import * as Notifications from 'expo-notifications';
-import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, InteractionManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configure notification behavior (wrapped in try-catch for simulator compatibility)
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-} catch (error) {
-  console.warn('Notifications: Failed to set handler (expected in simulator):', error);
+// Lazy-load expo-notifications to avoid TurboModule crashes on iPad
+// during the critical first-frame window (native NSException → Hermes corruption)
+let _Notifications: typeof import('expo-notifications') | null = null;
+let _handlerConfigured = false;
+
+export async function getNotifications() {
+  if (!_Notifications) {
+    _Notifications = await import('expo-notifications');
+    // Configure notification behavior on first load
+    if (!_handlerConfigured) {
+      _handlerConfigured = true;
+      try {
+        _Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+          }),
+        });
+      } catch (error) {
+        console.warn('Notifications: Failed to set handler (expected in simulator):', error);
+      }
+    }
+  }
+  return _Notifications;
 }
 
 // Storage keys
@@ -54,6 +66,8 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     console.log('Push notifications require a physical device');
     return false;
   }
+
+  const Notifications = await getNotifications();
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -123,6 +137,7 @@ export async function getExpoPushToken(): Promise<string | null> {
       return null;
     }
 
+    const Notifications = await getNotifications();
     const token = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
@@ -144,10 +159,11 @@ export async function scheduleNotification(
   type: NotificationType,
   title: string,
   body: string,
-  trigger: Notifications.NotificationTriggerInput,
+  trigger: any,
   data?: Record<string, any>
 ): Promise<string | null> {
   try {
+    const Notifications = await getNotifications();
     const channelId = getChannelForType(type);
 
     const notificationId = await Notifications.scheduleNotificationAsync({
@@ -198,6 +214,8 @@ export async function scheduleMeetingReminder(
     minute: '2-digit',
   });
 
+  const { SchedulableTriggerInputTypes } = await getNotifications();
+
   return scheduleNotification(
     'meeting_reminder',
     'Family Meeting Reminder',
@@ -216,6 +234,8 @@ export async function scheduleDailyQODReminder(
 ): Promise<string | null> {
   // Cancel any existing QOD reminders first
   await cancelNotificationsByType('daily_qod');
+
+  const { SchedulableTriggerInputTypes } = await getNotifications();
 
   return scheduleNotification(
     'daily_qod',
@@ -298,6 +318,8 @@ export async function scheduleTermEndingReminder(
     return null;
   }
 
+  const { SchedulableTriggerInputTypes } = await getNotifications();
+
   return scheduleNotification(
     'term_ending',
     'Term Ending Soon',
@@ -311,6 +333,7 @@ export async function scheduleTermEndingReminder(
  * Cancel a specific notification
  */
 export async function cancelNotification(notificationId: string): Promise<void> {
+  const Notifications = await getNotifications();
   await Notifications.cancelScheduledNotificationAsync(notificationId);
   await removeScheduledNotification(notificationId);
 }
@@ -331,6 +354,7 @@ export async function cancelNotificationsByType(type: NotificationType): Promise
  * Cancel all scheduled notifications
  */
 export async function cancelAllNotifications(): Promise<void> {
+  const Notifications = await getNotifications();
   await Notifications.cancelAllScheduledNotificationsAsync();
   await AsyncStorage.removeItem(STORAGE_KEYS.SCHEDULED_NOTIFICATIONS);
 }
@@ -356,6 +380,7 @@ export async function areNotificationsEnabled(): Promise<boolean> {
     return stored === 'true';
   }
 
+  const Notifications = await getNotifications();
   const { status } = await Notifications.getPermissionsAsync();
   return status === 'granted';
 }
@@ -375,6 +400,7 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
  * Get the badge count
  */
 export async function getBadgeCount(): Promise<number> {
+  const Notifications = await getNotifications();
   return Notifications.getBadgeCountAsync();
 }
 
@@ -382,6 +408,7 @@ export async function getBadgeCount(): Promise<number> {
  * Set the badge count
  */
 export async function setBadgeCount(count: number): Promise<void> {
+  const Notifications = await getNotifications();
   await Notifications.setBadgeCountAsync(count);
 }
 
