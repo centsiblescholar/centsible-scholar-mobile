@@ -24,17 +24,6 @@ async function getGoogleSignin() {
   return { GoogleSignin: _GoogleSignin, isSuccessResponse: _isSuccessResponse };
 }
 
-// Lazy-load Apple Authentication to avoid crash-on-launch on iPad.
-// The synchronous top-level import triggers native module initialization
-// before the bridge is ready, causing EXC_BAD_ACCESS on iPadOS.
-let _AppleAuthentication: typeof import('expo-apple-authentication') | null = null;
-async function getAppleAuthentication() {
-  if (!_AppleAuthentication) {
-    _AppleAuthentication = await import('expo-apple-authentication');
-  }
-  return _AppleAuthentication;
-}
-
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
