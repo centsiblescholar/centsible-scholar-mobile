@@ -79,7 +79,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.505700171676-vcdjgol1ubhlvk5psbgdcm7r5pu5tk8e"
         }
-      ]
+      ],
+      "./plugins/withStoreKitConfig"
     ],
     "experiments": {
       "typedRoutes": true
