@@ -1,11 +1,21 @@
 import { Platform } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import Purchases, { PurchasesError } from 'react-native-purchases';
 import { REVENUECAT_CONFIG } from '../constants/revenuecatConfig';
 import { SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { subscriptionKeys } from './useSubscriptionStatus';
+
+// Lazy-load react-native-purchases to match RevenueCatProvider pattern and
+// prevent TurboModule bridge initialisation at import time.
+let _Purchases: typeof import('react-native-purchases') | null = null;
+
+async function getPurchases() {
+  if (!_Purchases) {
+    _Purchases = await import('react-native-purchases');
+  }
+  return _Purchases;
+}
 
 export interface PurchaseInput {
   plan: 'single' | 'midsize' | 'large';
@@ -65,6 +75,8 @@ export function useRevenueCatPurchase() {
   const mutation = useMutation({
     mutationFn: async (input: PurchaseInput) => {
       if (!user) throw new Error('User must be authenticated to purchase');
+
+      const { default: Purchases } = await getPurchases();
 
       // 1. Look up the plan
       const plan = SUBSCRIPTION_PLANS.find((p) => p.id === input.plan);
@@ -147,6 +159,8 @@ export function useRestorePurchases() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('User must be authenticated to restore purchases');
+
+      const { default: Purchases } = await getPurchases();
 
       // Call RevenueCat restore
       await Purchases.restorePurchases();
