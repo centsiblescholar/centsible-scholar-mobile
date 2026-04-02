@@ -79,6 +79,40 @@ async function detectRoleFromProfiles(userId: string): Promise<UserRole> {
   return null;
 }
 
+/**
+ * Resolve role with retries. After signup/login, the session JWT and
+ * database trigger may not be fully propagated when `onAuthStateChange`
+ * fires. Re-fetching the user from Supabase after a short delay gives
+ * the metadata and profile time to land.
+ */
+async function resolveRoleWithRetry(user: User, maxRetries = 3): Promise<UserRole> {
+  // First try: check the user object we already have
+  let role = extractRole(user);
+  if (role) return role;
+
+  // Fallback: check profile tables
+  role = await detectRoleFromProfiles(user.id);
+  if (role) return role;
+
+  // Retry: re-fetch the user from Supabase after a delay (metadata may have landed)
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    await new Promise((r) => setTimeout(r, attempt * 1000)); // 1s, 2s, 3s
+
+    // Re-fetch fresh user data from Supabase auth
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    if (freshUser) {
+      role = extractRole(freshUser);
+      if (role) return role;
+    }
+
+    // Re-try profile tables (trigger may have completed by now)
+    role = await detectRoleFromProfiles(user.id);
+    if (role) return role;
+  }
+
+  return null;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -107,17 +141,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
-        let role = extractRole(initialSession?.user ?? null);
-
-        // Fallback: detect role from profile tables if metadata is missing
-        if (initialSession?.user && !role) {
-          role = await detectRoleFromProfiles(initialSession.user.id);
+        let role: UserRole = null;
+        if (initialSession?.user) {
+          role = await resolveRoleWithRetry(initialSession.user);
           if (authVersionRef.current !== version) return; // stale
         }
 
         setUserRole(role);
 
-        // If there is a user but role is still invalid after fallback, sign out with error
+        // If there is a user but role is still invalid after retries, sign out with error
         if (initialSession?.user && !role) {
           await signOutWithError(
             'Your account is missing role information. Please contact support.'
@@ -149,17 +181,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        let role = extractRole(newSession?.user ?? null);
-
-        // Fallback: detect role from profile tables if metadata is missing
-        if (event === 'SIGNED_IN' && newSession?.user && !role) {
-          role = await detectRoleFromProfiles(newSession.user.id);
+        let role: UserRole = null;
+        if (newSession?.user) {
+          role = await resolveRoleWithRetry(newSession.user);
           if (authVersionRef.current !== eventVersion) return; // superseded by newer event
         }
 
         setUserRole(role);
 
-        // If user just signed in but role is still invalid after fallback, sign out with error
+        // If user just signed in but role is still invalid after retries, sign out with error
         if (event === 'SIGNED_IN' && newSession?.user && !role) {
           await signOutWithError(
             'Your account is missing role information. Please contact support.'
