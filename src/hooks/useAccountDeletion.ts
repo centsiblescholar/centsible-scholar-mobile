@@ -16,7 +16,8 @@ interface AccountDeletionState {
 }
 
 export function useAccountDeletion() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isStudent = userRole === 'student';
   const { isActive } = useSubscriptionStatus();
 
   const [state, setState] = useState<AccountDeletionState>({
@@ -28,8 +29,13 @@ export function useAccountDeletion() {
     subscriptionBlockReason: null,
   });
 
-  // Check if user can delete (subscription status)
+  // Check if user can delete (subscription status) - parents only
   useEffect(() => {
+    if (isStudent) {
+      // Students can always delete their own account
+      setState((prev) => ({ ...prev, canDelete: true, subscriptionBlockReason: null }));
+      return;
+    }
     if (isActive === true) {
       setState((prev) => ({
         ...prev,
@@ -43,11 +49,11 @@ export function useAccountDeletion() {
         subscriptionBlockReason: null,
       }));
     }
-  }, [isActive]);
+  }, [isActive, isStudent]);
 
-  // Fetch student count on mount
+  // Fetch student count on mount - parents only
   useEffect(() => {
-    if (!user) return;
+    if (!user || isStudent) return;
 
     const fetchStudentCount = async () => {
       try {
@@ -68,7 +74,7 @@ export function useAccountDeletion() {
     };
 
     fetchStudentCount();
-  }, [user]);
+  }, [user, isStudent]);
 
   const setStep = useCallback((step: DeletionStep) => {
     setState((prev) => ({ ...prev, step, error: null }));

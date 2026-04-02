@@ -58,12 +58,12 @@ serve(async (request: Request) => {
 
     logStep('Authenticated user', { userId: user.id, email: user.email })
 
-    // --- Verify parent role ---
+    // --- Verify role ---
     const userType = user.user_metadata?.user_type
-    if (userType !== 'parent') {
-      logStep('Non-parent user attempted account deletion', { userId: user.id, userType })
+    if (userType !== 'parent' && userType !== 'student') {
+      logStep('Unknown role attempted account deletion', { userId: user.id, userType })
       return new Response(
-        JSON.stringify({ success: false, error: 'Only parent accounts can delete accounts. Students cannot delete their own accounts.' }),
+        JSON.stringify({ success: false, error: 'Unknown account type. Please contact support.' }),
         {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -71,7 +71,34 @@ serve(async (request: Request) => {
       )
     }
 
-    // --- Check subscription status ---
+    // --- Student self-deletion (simple path) ---
+    if (userType === 'student') {
+      logStep('Student self-deletion', { userId: user.id })
+
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
+      if (deleteError) {
+        logStep('Failed to delete student user', { userId: user.id, error: deleteError.message })
+        throw deleteError
+      }
+
+      logStep('Student account deletion complete', { userId: user.id })
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Student account deleted successfully',
+          studentsDeleted: 0,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // --- Parent deletion flow ---
+
+    // Check subscription status
     logStep('Checking subscription status', { userId: user.id })
 
     const { data: subscription, error: subError } = await supabaseAdmin
@@ -102,7 +129,7 @@ serve(async (request: Request) => {
 
     logStep('Subscription check passed (no active subscription)', { userId: user.id })
 
-    // --- Find student relationships ---
+    // Find student relationships
     const { data: students, error: relError } = await supabaseAdmin
       .from('parent_student_relationships')
       .select('student_user_id')
@@ -116,11 +143,8 @@ serve(async (request: Request) => {
     const studentCount = students?.length || 0
     logStep('Found student relationships', { userId: user.id, studentCount })
 
-    // --- Cascade delete: students first, then parent ---
+    // Cascade delete: students first, then parent
     // CRITICAL: Delete auth users FIRST. Foreign key CASCADE handles public table cleanup.
-    // Do NOT manually delete from public tables before auth.admin.deleteUser.
-
-    // Delete each student's auth user
     for (const student of students || []) {
       logStep('Deleting student auth user', { studentUserId: student.student_user_id })
 
@@ -150,7 +174,7 @@ serve(async (request: Request) => {
 
     logStep('Parent auth user deleted', { userId: user.id })
 
-    // --- Success response ---
+    // Success response
     logStep('Account deletion complete', {
       userId: user.id,
       studentsDeleted: studentCount,

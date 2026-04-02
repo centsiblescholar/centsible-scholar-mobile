@@ -13,11 +13,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAccountDeletion } from '../src/hooks/useAccountDeletion';
+import { useUserProfile } from '../src/hooks/useUserProfile';
 import { useTheme, type ThemeColors } from '@/theme';
 
 export default function DeleteAccountScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { isStudent } = useUserProfile();
   const {
     step,
     isDeleting,
@@ -135,7 +137,7 @@ export default function DeleteAccountScreen() {
           <BulletItem text="Earnings and savings goals" colors={colors} styles={styles} />
         </View>
 
-        {studentCount > 0 && (
+        {!isStudent && studentCount > 0 && (
           <View style={styles.studentWarningBox}>
             <Ionicons name="people" size={22} color={colors.error} />
             <Text style={styles.studentWarningText}>
@@ -148,7 +150,7 @@ export default function DeleteAccountScreen() {
           </View>
         )}
 
-        {subscriptionBlockReason && (
+        {!isStudent && subscriptionBlockReason && (
           <View style={styles.subscriptionBlockBox}>
             <Ionicons name="card" size={22} color={colors.warning} />
             <View style={styles.subscriptionBlockContent}>

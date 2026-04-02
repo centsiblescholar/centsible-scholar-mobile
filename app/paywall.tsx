@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -150,6 +150,30 @@ export default function PaywallScreen() {
   const { platform, isActive } = useSubscriptionStatus();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
+  const [offeringsReady, setOfferingsReady] = useState<boolean | null>(null); // null=loading
+  const [offeringsError, setOfferingsError] = useState<string | null>(null);
+
+  // Pre-check that RevenueCat offerings are available
+  useEffect(() => {
+    let cancelled = false;
+    const checkOfferings = async () => {
+      try {
+        const { default: Purchases } = await import('react-native-purchases');
+        const offerings = await Purchases.getOfferings();
+        if (cancelled) return;
+        if (offerings.current && offerings.current.availablePackages.length > 0) {
+          setOfferingsReady(true);
+        } else {
+          setOfferingsError('No subscription packages are currently available. Please try again later.');
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        setOfferingsError(err?.message || 'Unable to load subscription options. Please try again.');
+      }
+    };
+    checkOfferings();
+    return () => { cancelled = true; };
+  }, []);
 
   // Use Premium plan for representative savings percentage
   const premiumPlan = SUBSCRIPTION_PLANS.find((p) => p.id === 'midsize')!;
@@ -255,6 +279,40 @@ export default function PaywallScreen() {
               Your subscription is managed through the website. To change your plan, please visit
               centsiblescholar.com.
             </Text>
+          </View>
+        ) : offeringsError ? (
+          <View style={styles.webGuardContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+            <Text style={styles.webGuardTitle}>Unable to Load Plans</Text>
+            <Text style={styles.webGuardMessage}>{offeringsError}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setOfferingsError(null);
+                setOfferingsReady(null);
+                // Re-trigger the effect by forcing a re-render
+                import('react-native-purchases').then(({ default: Purchases }) => {
+                  Purchases.getOfferings().then((offerings) => {
+                    if (offerings.current && offerings.current.availablePackages.length > 0) {
+                      setOfferingsReady(true);
+                    } else {
+                      setOfferingsError('No subscription packages are currently available. Please try again later.');
+                    }
+                  }).catch((err: any) => {
+                    setOfferingsError(err?.message || 'Unable to load subscription options.');
+                  });
+                }).catch((err: any) => {
+                  setOfferingsError(err?.message || 'Unable to load subscription options.');
+                });
+              }}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : offeringsReady === null ? (
+          <View style={styles.webGuardContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.webGuardTitle}>Loading Plans...</Text>
           </View>
         ) : (
           <>
@@ -578,6 +636,20 @@ function createStyles(colors: ThemeColors) {
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
+    },
+    retryButton: {
+      marginTop: 16,
+      paddingHorizontal: 32,
+      paddingVertical: 14,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      minHeight: 48,
+      justifyContent: 'center',
+    },
+    retryButtonText: {
+      color: colors.textInverse,
+      fontSize: 16,
+      fontWeight: '600',
     },
   });
 }

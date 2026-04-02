@@ -207,7 +207,12 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.card}>
             <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}><Text style={styles.signOutRowText}>Sign Out</Text></TouchableOpacity>
-            {isParent && (<TouchableOpacity style={[styles.deleteRow, styles.linkRowLast]} onPress={handleDeleteAccount}><Text style={styles.deleteRowText}>Delete Account</Text></TouchableOpacity>)}
+            <TouchableOpacity style={[styles.deleteRow, styles.linkRowLast]} onPress={handleDeleteAccount}>
+              <View style={styles.deleteRowContent}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={styles.deleteRowText}>Delete Account</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -248,6 +253,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   signOutRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.backgroundSecondary, minHeight: 44, justifyContent: 'center' },
   signOutRowText: { fontSize: 16, color: colors.primary, fontWeight: '500' },
   deleteRow: { paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
+  deleteRowContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   deleteRowText: { fontSize: 16, color: colors.error, fontWeight: '500' },
   replayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   replayTextContainer: { flex: 1 },
