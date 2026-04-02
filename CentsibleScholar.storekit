@@ -1,0 +1,263 @@
+{
+  "identifier" : "",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6760275514",
+    "_developerTeamID" : "YZQBXA85RG",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 742690800,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21973233",
+      "localizations" : [
+        {
+          "description" : "Centsible Scholar Premium",
+          "displayName" : "Centsible Scholar Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Centsible Scholar Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "159.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6760430319",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "large_annual_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Up to 5 students. 30-day free trial, then $159.99/year.",
+              "displayName" : "Large Family (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.large.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Large Family Annual",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "15.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6760430639",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "large_monthly_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Up to 5 students. 30-day free trial, then $15.99/month.",
+              "displayName" : "Large Family (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.large.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Large Family Monthly",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "129.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6760430558",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "midsize_annual_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Up to 3 students. 30-day free trial, then $129.99/year.",
+              "displayName" : "Mid-Size Family (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.midsize.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Mid-Size Family Annual",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "12.99",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6760430789",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "midsize_monthly_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Up to 3 students. 30-day free trial, then $12.99/month.",
+              "displayName" : "Mid-Size Family (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.midsize.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Mid-Size Family Monthly",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "99.99",
+          "familyShareable" : false,
+          "groupNumber" : 5,
+          "internalID" : "6760432678",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "single_annual_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "1 student. 30-day free trial, then $99.99/year.",
+              "displayName" : "Standard (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.single.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Standard Annual",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 6,
+          "internalID" : "6760432516",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "single_monthly_free_trial",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "1 student. 30-day free trial, then $9.99/month.",
+              "displayName" : "Standard (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.centsiblescholar.single.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Standard Monthly",
+          "subscriptionGroupID" : "21973233",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

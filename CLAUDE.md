@@ -26,8 +26,8 @@
 
 ## Architecture
 
-- Expo SDK 54 managed workflow (no native ios/android dirs)
-- EAS Build for cloud compilation
+- Expo SDK 54 with prebuild (native ios/ and android/ dirs present)
+- Local Xcode builds (iOS) and Gradle builds (Android)
 - Supabase backend with RLS
 - TanStack React Query for all data hooks
 - Expo Router with `(auth)` and `(tabs)` groups
