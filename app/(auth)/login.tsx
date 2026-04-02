@@ -34,7 +34,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signInWithEmail(email, password);
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'An error occurred during login';
       Alert.alert('Login Failed', msg);
@@ -47,7 +47,7 @@ export default function LoginScreen() {
     setSocialLoading('apple');
     try {
       await signInWithApple();
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const err = error instanceof Error ? error : null;
       if (err?.message !== 'ERR_REQUEST_CANCELED' && (err as any)?.code !== 'ERR_REQUEST_CANCELED') {
@@ -62,7 +62,7 @@ export default function LoginScreen() {
     setSocialLoading('google');
     try {
       await signInWithGoogle();
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : '';
       if (msg !== 'Google sign-in was cancelled') {

@@ -69,7 +69,7 @@ export default function SignupScreen() {
         );
       }
 
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred during signup';
       if (message.toLowerCase().includes('already registered')) {
@@ -93,7 +93,7 @@ export default function SignupScreen() {
     setSocialLoading('apple');
     try {
       await signInWithApple();
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const err = error instanceof Error ? error : null;
       if (err?.message !== 'ERR_REQUEST_CANCELED' && (err as any)?.code !== 'ERR_REQUEST_CANCELED') {
@@ -108,7 +108,7 @@ export default function SignupScreen() {
     setSocialLoading('google');
     try {
       await signInWithGoogle();
-      router.replace('/(tabs)/dashboard');
+      router.replace('/');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : '';
       if (msg !== 'Google sign-in was cancelled') {

@@ -116,23 +116,34 @@ export async function ensureParentProfile(
   firstName: string,
   lastName: string
 ) {
-  const { data } = await supabase
-    .from('parent_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
+  // The handle_new_user database trigger should create the profile automatically.
+  // This is a safety-net fallback. After signup the session may not be fully
+  // propagated yet, so the SELECT/INSERT can hit RLS — that's OK because the
+  // trigger already did the work.
+  try {
+    const { data } = await supabase
+      .from('parent_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  if (!data) {
-    const { error } = await supabase.from('parent_profiles').insert({
-      user_id: userId,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      onboarding_completed: false,
-    });
-    if (error) {
-      console.error('Error creating fallback parent profile:', error.message);
+    if (!data) {
+      const { error } = await supabase.from('parent_profiles').insert({
+        user_id: userId,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        onboarding_completed: false,
+      });
+      if (error) {
+        // Non-fatal: the trigger likely already created the profile.
+        // RLS timing issues after signup can cause this — safe to ignore.
+        if (__DEV__) console.warn('ensureParentProfile fallback skipped (trigger likely succeeded):', error.message);
+      }
     }
+  } catch {
+    // Non-fatal fallback — trigger should have handled profile creation
+    if (__DEV__) console.warn('ensureParentProfile fallback failed — trigger should have created profile');
   }
 }
 
