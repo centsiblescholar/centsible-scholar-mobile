@@ -93,7 +93,8 @@
         }
       ],
       "./plugins/withStoreKitConfig",
-      "./plugins/withTurboModuleCrashFix"
+      "./plugins/withTurboModuleCrashFix",
+      "./plugins/withFmtConstevalFix"
     ],
     "experiments": {
       "typedRoutes": true
