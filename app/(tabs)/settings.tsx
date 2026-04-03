@@ -114,6 +114,7 @@ export default function SettingsScreen() {
                 <TouchableOpacity style={[styles.editProfileButton, { marginTop: 8 }]} onPress={() => router.push('/behavior-approval' as any)}><Text style={styles.editProfileButtonText}>Behavior Approval</Text></TouchableOpacity>
               </>
             )}
+            <TouchableOpacity style={[styles.signOutButton, { marginTop: 16 }]} onPress={handleSignOut}><Text style={styles.signOutButtonText}>Sign Out</Text></TouchableOpacity>
           </View>
         </View>
 
@@ -199,14 +200,7 @@ export default function SettingsScreen() {
             {[{ label: 'Help Center', url: 'https://centsiblescholar.com/help' }, { label: 'Contact Support', url: 'mailto:support@centsiblescholar.com' }, { label: 'Privacy Policy', url: 'https://centsiblescholar.com/privacy' }].map((item) => (
               <TouchableOpacity key={item.label} style={styles.linkRow} onPress={() => Linking.openURL(item.url)}><Text style={styles.linkText}>{item.label}</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
             ))}
-            <TouchableOpacity style={[styles.linkRow, styles.linkRowLast]} onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}><Text style={styles.linkText}>Terms of Service</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}><Text style={styles.signOutRowText}>Sign Out</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}><Text style={styles.linkText}>Terms of Service</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.deleteRow, styles.linkRowLast]} onPress={handleDeleteAccount}>
               <View style={styles.deleteRowContent}>
                 <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -250,8 +244,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   linkRowLast: { borderBottomWidth: 0 },
   linkText: { fontSize: 16, color: colors.primary },
   chevron: { fontSize: 20, color: colors.textTertiary },
-  signOutRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.backgroundSecondary, minHeight: 44, justifyContent: 'center' },
-  signOutRowText: { fontSize: 16, color: colors.primary, fontWeight: '500' },
+  signOutButton: { padding: 12, borderRadius: 8, alignItems: 'center', minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  signOutButtonText: { fontSize: 14, color: colors.primary, fontWeight: '600' },
   deleteRow: { paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
   deleteRowContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   deleteRowText: { fontSize: 16, color: colors.error, fontWeight: '500' },
