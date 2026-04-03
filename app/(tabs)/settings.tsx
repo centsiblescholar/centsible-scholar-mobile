@@ -197,7 +197,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
           <View style={styles.card}>
-            {[{ label: 'Help Center', url: 'https://centsiblescholar.com/help' }, { label: 'Contact Support', url: 'mailto:support@centsiblescholar.com' }, { label: 'Privacy Policy', url: 'https://centsiblescholar.com/privacy' }].map((item) => (
+            {[{ label: 'Contact Support', url: 'mailto:support@centsiblescholar.com' }, { label: 'Privacy Policy', url: 'https://centsiblescholar.com/privacy' }].map((item) => (
               <TouchableOpacity key={item.label} style={styles.linkRow} onPress={() => Linking.openURL(item.url)}><Text style={styles.linkText}>{item.label}</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}><Text style={styles.linkText}>Terms of Service</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
