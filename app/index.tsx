@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useStudentProfile } from '../src/hooks/useStudentProfile';
@@ -48,7 +49,44 @@ export default function Index() {
 
   // Hooks must be called unconditionally (React rules of hooks).
   const { hasCompletedOnboarding, isLoading: profileLoading } = useStudentProfile();
-  const { gateStatus, isStudent: isStudentGate, refetch: subRefetch } = useSubscriptionGate();
+  const { gateStatus, isStudent: isStudentGate, error: gateError, refetch: subRefetch } = useSubscriptionGate();
+
+  // Use imperative navigation to avoid <Redirect> issues during rapid re-renders
+  const hasNavigated = useRef(false);
+
+  // Determine target route
+  let targetRoute: string | null = null;
+
+  if (!loading && !user) {
+    targetRoute = '/(auth)/login';
+  } else if (!loading && user && userRole) {
+    if (gateStatus === 'not_subscribed' && !isStudentGate) {
+      targetRoute = '/paywall';
+    } else if (gateStatus === 'subscribed') {
+      if (userRole === 'parent') {
+        targetRoute = '/(tabs)/dashboard';
+      } else if (userRole === 'student') {
+        if (!profileLoading) {
+          targetRoute = hasCompletedOnboarding ? '/(tabs)/dashboard' : '/(onboarding)';
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (targetRoute && !hasNavigated.current) {
+      hasNavigated.current = true;
+      if (__DEV__) console.log('[Index] Navigating to:', targetRoute, '| gateStatus:', gateStatus, '| role:', userRole);
+      router.replace(targetRoute as any);
+    }
+  }, [targetRoute, gateStatus, userRole]);
+
+  // Reset navigation flag on sign-out so re-login can navigate again
+  useEffect(() => {
+    if (!user) {
+      hasNavigated.current = false;
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -58,13 +96,11 @@ export default function Index() {
     );
   }
 
-  // No user -- redirect to login
   if (!user) {
     return <Redirect href="/(auth)/login" />;
   }
 
-  // User exists but role is null -- role extraction failed, signOutWithError
-  // is in progress. Show spinner to avoid flash before SIGNED_OUT redirects.
+  // Role still resolving (retry in progress)
   if (!userRole) {
     return (
       <View style={styles.container}>
@@ -73,7 +109,7 @@ export default function Index() {
     );
   }
 
-  // Subscription gate (both parents and students)
+  // Subscription gate loading
   if (gateStatus === 'loading') {
     return (
       <View style={styles.container}>
@@ -83,40 +119,30 @@ export default function Index() {
   }
 
   if (gateStatus === 'error') {
-    return <SubscriptionErrorScreen onRetry={subRefetch} />;
+    if (__DEV__) console.log('[Index] Gate error:', gateError?.message);
+    return <SubscriptionErrorScreen onRetry={() => { hasNavigated.current = false; subRefetch(); }} />;
   }
 
-  if (gateStatus === 'not_subscribed') {
-    if (isStudentGate) {
-      return <StudentNoSubscriptionScreen />;
-    }
-    return <Redirect href={"/paywall" as any} />;
+  // Student without parent subscription
+  if (gateStatus === 'not_subscribed' && isStudentGate) {
+    return <StudentNoSubscriptionScreen />;
   }
 
-  // gateStatus === 'subscribed' -- continue to existing redirect logic
-
-  // Parent goes straight to dashboard
-  if (userRole === 'parent') {
-    return <Redirect href="/(tabs)/dashboard" />;
+  // Student onboarding check
+  if (userRole === 'student' && gateStatus === 'subscribed' && profileLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
+    );
   }
 
-  // Student: check onboarding status
-  if (userRole === 'student') {
-    if (profileLoading) {
-      return (
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color="#4F46E5" />
-        </View>
-      );
-    }
-    if (!hasCompletedOnboarding) {
-      return <Redirect href="/(onboarding)" />;
-    }
-    return <Redirect href="/(tabs)/dashboard" />;
-  }
-
-  // Fallback (should not reach -- invalid role triggers signOutWithError)
-  return <Redirect href="/(tabs)/dashboard" />;
+  // Fallback: show spinner while useEffect navigation fires
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#4F46E5" />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
