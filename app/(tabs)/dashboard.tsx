@@ -450,7 +450,9 @@ function ParentDashboardView() {
         <EmptyState
           icon="home-outline"
           title="Welcome to Centsible Scholar"
-          description="Your dashboard will show your progress here. Add a student to get started."
+          description="Add your first student to start tracking grades, behavior, and rewards."
+          actionLabel="Add Your First Student"
+          onAction={() => router.push('/student-management' as never)}
         />
       </View>
     );
