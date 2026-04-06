@@ -200,7 +200,7 @@ export default function SettingsScreen() {
             {[{ label: 'Contact Support', url: 'mailto:support@centsiblescholar.com' }, { label: 'Privacy Policy', url: 'https://centsiblescholar.com/privacy' }].map((item) => (
               <TouchableOpacity key={item.label} style={styles.linkRow} onPress={() => Linking.openURL(item.url)}><Text style={styles.linkText}>{item.label}</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL('https://centsiblescholar.com/terms')}><Text style={styles.linkText}>Terms of Service</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/terms-of-service' as any)}><Text style={styles.linkText}>Terms of Service</Text><Text style={styles.chevron}>&rsaquo;</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.deleteRow, styles.linkRowLast]} onPress={handleDeleteAccount}>
               <View style={styles.deleteRowContent}>
                 <Ionicons name="trash-outline" size={20} color={colors.error} />
