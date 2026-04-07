@@ -57,7 +57,7 @@ function RootNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerBackTitle: '',
+        headerBackButtonDisplayMode: 'minimal',
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
