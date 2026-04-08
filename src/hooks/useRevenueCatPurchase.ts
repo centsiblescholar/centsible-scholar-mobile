@@ -6,6 +6,9 @@ import { COACHING_PRODUCT } from '../constants/coachingProduct';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { subscriptionKeys } from './useSubscriptionStatus';
+// `import type` is erased at compile time — no runtime penalty, preserves
+// the lazy-load pattern below.
+import type { PurchasesPackage } from 'react-native-purchases';
 
 // Lazy-load react-native-purchases to match RevenueCatProvider pattern and
 // prevent TurboModule bridge initialisation at import time.
@@ -209,18 +212,77 @@ export function useCoachingPurchase() {
       const { default: Purchases } = await getPurchases();
 
       const offerings = await Purchases.getOfferings();
-      if (!offerings.current) {
+
+      // Collect every package across every offering RC returned. Coaching may
+      // live in the `current` (default) offering alongside subscriptions, OR
+      // in a separate standalone offering. We don't care which — we just want
+      // the package whose underlying product.identifier matches.
+      const allOfferingKeys = Object.keys(offerings.all ?? {});
+      const allPackages: Array<{ offeringKey: string; pkg: PurchasesPackage }> = [];
+      for (const key of allOfferingKeys) {
+        const offering = offerings.all[key];
+        if (!offering) continue;
+        for (const pkg of offering.availablePackages) {
+          allPackages.push({ offeringKey: key, pkg });
+        }
+      }
+
+      // Prefer the current offering's match for speed; fall back to any
+      // offering that contains the coaching product id.
+      let pkg: PurchasesPackage | undefined = offerings.current?.availablePackages.find(
+        (p) => p.product.identifier === COACHING_PRODUCT.appleProductId
+      );
+      let matchedOfferingKey = offerings.current?.identifier ?? null;
+
+      if (!pkg) {
+        const fallback = allPackages.find(
+          (entry) => entry.pkg.product.identifier === COACHING_PRODUCT.appleProductId
+        );
+        if (fallback) {
+          pkg = fallback.pkg;
+          matchedOfferingKey = fallback.offeringKey;
+        }
+      }
+
+      if (!pkg) {
+        // Build a diagnostic dump so we can tell at a glance whether the
+        // coaching product is missing entirely from RC, or merely not wrapped
+        // in a package inside any offering.
+        const offeringSummary = allOfferingKeys.length === 0
+          ? '(none — offerings.all is empty)'
+          : allOfferingKeys
+              .map((key) => {
+                const off = offerings.all[key];
+                const pkgs = off?.availablePackages ?? [];
+                const pkgList = pkgs
+                  .map((p) => `${p.identifier}=${p.product.identifier}`)
+                  .join(', ');
+                return `${key}: [${pkgList || 'empty'}]`;
+              })
+              .join(' | ');
+
+        // Also dump to the Metro console so we can copy the full structure.
+        console.warn(
+          '[useCoachingPurchase] Coaching product not found in any offering.',
+          {
+            expectedProductId: COACHING_PRODUCT.appleProductId,
+            currentOffering: offerings.current?.identifier ?? null,
+            offeringsAllKeys: allOfferingKeys,
+            offeringSummary,
+          }
+        );
+
         throw new Error(
-          'No offerings available. Please check your RevenueCat configuration.'
+          `Coaching package not found. Expected product id "${COACHING_PRODUCT.appleProductId}". ` +
+            `Offerings seen: ${offeringSummary}`
         );
       }
 
-      const pkg = offerings.current.availablePackages.find(
-        (p) => p.product.identifier === COACHING_PRODUCT.appleProductId
-      );
-      if (!pkg) {
-        throw new Error('Coaching session is not available right now.');
-      }
+      console.log('[useCoachingPurchase] Found coaching package', {
+        offering: matchedOfferingKey,
+        packageIdentifier: pkg.identifier,
+        productIdentifier: pkg.product.identifier,
+      });
 
       try {
         await Purchases.purchasePackage(pkg);

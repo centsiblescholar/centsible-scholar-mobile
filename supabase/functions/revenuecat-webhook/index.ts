@@ -443,8 +443,14 @@ async function handleCoachingPurchase(
       `Purchased at: ${purchasedAt || '—'}`,
     ].join('\n')
 
+    // IMPORTANT: Resend verifies sending domains *exactly* — the verified
+    // domain in this project is `send.centsiblescholar.com`, NOT the bare
+    // root `centsiblescholar.com`. Sending from `noreply@centsiblescholar.com`
+    // returns a 403 "domain is not verified" error even though the parent
+    // domain exists and receives email. Always send from an address at
+    // `@send.centsiblescholar.com`.
     const emailResult = await resend.emails.send({
-      from: 'Centsible Scholar <noreply@centsiblescholar.com>',
+      from: 'Centsible Scholar <noreply@send.centsiblescholar.com>',
       to: [notifyTo],
       subject: 'New coaching session booked — $89',
       html,
