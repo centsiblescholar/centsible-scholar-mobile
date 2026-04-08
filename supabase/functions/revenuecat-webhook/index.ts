@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { Resend } from 'https://esm.sh/resend@2.0.0'
 
 // ─── Structured Logging ───────────────────────────────────────────────────────
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -15,6 +16,19 @@ const PRODUCT_TYPE_MAP: Record<string, string> = {
   'com.centsiblescholar.large.monthly': 'large',
   'com.centsiblescholar.large.annual': 'large',
 }
+
+// ─── One-off (non-subscription) Coaching products ─────────────────────────────
+// Any product_id in this set is routed to handleCoachingPurchase instead of
+// handleSubscriptionActive. Coaching rows live in `coaching_orders`, NOT
+// `user_subscriptions` — they don't grant recurring access, they're one-shot
+// booking tickets.
+const COACHING_PRODUCT_IDS = new Set<string>([
+  'one_on_one_coaching',
+])
+
+// Fallback email if COACHING_NOTIFICATION_EMAIL secret is missing. Prevents
+// the silent-failure class that dropped the first two test bookings.
+const DEFAULT_COACHING_NOTIFICATION_EMAIL = 'coaching@centsiblescholar.com'
 
 // ─── Store to Platform Mapping ────────────────────────────────────────────────
 const STORE_PLATFORM_MAP: Record<string, string> = {
@@ -229,6 +243,230 @@ async function handleBillingIssue(
   logStep('Subscription marked as past_due', { userId })
 }
 
+// ─── Coaching one-time purchase handler ──────────────────────────────────────
+// Handles INITIAL_PURCHASE (and NON_RENEWING_PURCHASE, which RC may emit for
+// Consumables) for coaching product IDs. Writes to `coaching_orders`, NOT
+// `user_subscriptions`.
+//
+// Flow:
+//   1. Find the most-recently-created pending coaching_orders row for this
+//      user (created by `create-coaching-iap-order` before the Apple purchase).
+//   2. If found: UPDATE → status='paid', stamp iap_original_transaction_id,
+//      purchased_at.
+//   3. If NOT found (client failed to call create-coaching-iap-order, or the
+//      user purchased via a path that skipped the form): INSERT a bare paid
+//      row so the payment is at least recorded.
+//   4. Send the Resend notification email with whatever buyer details exist.
+//
+// Idempotency: the unique index `idx_coaching_orders_iap_txn` on
+// `iap_original_transaction_id` (WHERE not null) ensures RC's at-least-once
+// delivery can't create duplicate paid rows for the same Apple transaction.
+async function handleCoachingPurchase(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  event: Record<string, unknown>
+): Promise<void> {
+  const userId = event.app_user_id as string
+  const productId = event.product_id as string
+  const store = event.store as string
+  const purchasedAtMs = event.purchased_at_ms as number | null
+  const originalTransactionId = (event.original_transaction_id as string | null) || null
+
+  if (!userId) {
+    logStep('Coaching: missing app_user_id, skipping')
+    return
+  }
+
+  const platform = STORE_PLATFORM_MAP[store] || 'apple'
+  const purchasedAt = msToISO(purchasedAtMs)
+
+  // Short-circuit on duplicate delivery: if a paid row with this txn id
+  // already exists, we've already fired the email. Skip cleanly.
+  if (originalTransactionId) {
+    const { data: existingPaid } = await supabaseAdmin
+      .from('coaching_orders')
+      .select('id, status')
+      .eq('iap_original_transaction_id', originalTransactionId)
+      .maybeSingle()
+
+    if (existingPaid && (existingPaid as Record<string, unknown>).status === 'paid') {
+      logStep('Coaching: duplicate txn already paid, skipping', {
+        orderId: (existingPaid as Record<string, unknown>).id,
+        originalTransactionId,
+      })
+      return
+    }
+  }
+
+  // Step 1 — find the pending row created by create-coaching-iap-order.
+  const { data: pendingRow, error: findError } = await supabaseAdmin
+    .from('coaching_orders')
+    .select('id, customer_email, customer_name, customer_phone, best_day_to_call, best_time_to_call, session_notes')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .eq('platform', 'apple')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (findError) {
+    logStep('Coaching: failed to query pending row', { userId, error: findError.message })
+  }
+
+  let orderId: string
+  let customerEmail: string | null = null
+  let customerName: string | null = null
+  let customerPhone: string | null = null
+  let bestDayToCall: string | null = null
+  let bestTimeToCall: string | null = null
+  let sessionNotes: string | null = null
+
+  if (pendingRow) {
+    const row = pendingRow as Record<string, string | null>
+    // Step 2 — update the pending row to paid.
+    orderId = row.id as string
+    customerEmail = row.customer_email
+    customerName = row.customer_name
+    customerPhone = row.customer_phone
+    bestDayToCall = row.best_day_to_call
+    bestTimeToCall = row.best_time_to_call
+    sessionNotes = row.session_notes
+
+    const { error: updateError } = await supabaseAdmin
+      .from('coaching_orders')
+      .update({
+        status: 'paid',
+        iap_original_transaction_id: originalTransactionId,
+        iap_product_id: productId,
+        platform,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+
+    if (updateError) {
+      logStep('Coaching: failed to mark pending row paid', { orderId, error: updateError.message })
+      throw new Error(`Failed to mark coaching_orders paid: ${updateError.message}`)
+    }
+
+    logStep('Coaching: pending row marked paid', { orderId, userId, originalTransactionId })
+  } else {
+    // Step 3 — no pending row (form skipped or create_pending failed).
+    // Insert a bare paid row so the $89 payment is at least on record.
+    logStep('Coaching: no pending row found, inserting bare paid row', { userId })
+
+    // Look up the user's email from auth.users as a last resort so the
+    // notification email has *something* to identify the buyer.
+    try {
+      const { data: userLookup } = await (supabaseAdmin as unknown as {
+        auth: { admin: { getUserById: (id: string) => Promise<{ data: { user: { email: string | null } | null } }> } }
+      }).auth.admin.getUserById(userId)
+      customerEmail = userLookup?.user?.email ?? null
+    } catch (err: unknown) {
+      logStep('Coaching: failed to look up user email for bare row', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from('coaching_orders')
+      .insert({
+        user_id: userId,
+        amount: 8900,
+        currency: 'usd',
+        status: 'paid',
+        platform,
+        iap_product_id: productId,
+        iap_original_transaction_id: originalTransactionId,
+        customer_email: customerEmail,
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !inserted) {
+      logStep('Coaching: failed to insert bare paid row', { error: insertError?.message })
+      throw new Error(`Failed to insert coaching_orders: ${insertError?.message}`)
+    }
+
+    orderId = (inserted as Record<string, string>).id
+  }
+
+  // Step 4 — fire notification email. Failures do NOT throw — the payment
+  // and DB update already succeeded, we don't want RC to retry a successful
+  // webhook just because Resend is down.
+  try {
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    if (!resendApiKey) {
+      logStep('Coaching: RESEND_API_KEY not configured, skipping notification email')
+      return
+    }
+
+    const notifyTo =
+      Deno.env.get('COACHING_NOTIFICATION_EMAIL') || DEFAULT_COACHING_NOTIFICATION_EMAIL
+    const resend = new Resend(resendApiKey)
+
+    const safe = (s: string | null) =>
+      (s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+
+    const html = `
+      <h2>New coaching session booked — $89</h2>
+      <p><strong>Source:</strong> iOS In-App Purchase</p>
+      <table cellpadding="6" style="border-collapse:collapse">
+        <tr><td><strong>Name</strong></td><td>${safe(customerName) || '—'}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${safe(customerEmail) || '—'}</td></tr>
+        <tr><td><strong>Phone</strong></td><td>${safe(customerPhone) || '—'}</td></tr>
+        <tr><td><strong>Best day to call</strong></td><td>${safe(bestDayToCall) || '—'}</td></tr>
+        <tr><td><strong>Best time to call</strong></td><td>${safe(bestTimeToCall) || '—'}</td></tr>
+        <tr><td valign="top"><strong>Session goals</strong></td><td>${safe(sessionNotes) || '—'}</td></tr>
+      </table>
+      <p>
+        <strong>Coaching order:</strong> ${orderId}<br/>
+        <strong>Apple txn:</strong> ${safe(originalTransactionId) || '—'}<br/>
+        <strong>Purchased at:</strong> ${safe(purchasedAt) || '—'}
+      </p>
+    `.trim()
+
+    const text = [
+      `New coaching session booked — $89`,
+      ``,
+      `Source: iOS In-App Purchase`,
+      `Name: ${customerName || '—'}`,
+      `Email: ${customerEmail || '—'}`,
+      `Phone: ${customerPhone || '—'}`,
+      `Best day to call: ${bestDayToCall || '—'}`,
+      `Best time to call: ${bestTimeToCall || '—'}`,
+      `Session goals: ${sessionNotes || '—'}`,
+      ``,
+      `Coaching order: ${orderId}`,
+      `Apple txn: ${originalTransactionId || '—'}`,
+      `Purchased at: ${purchasedAt || '—'}`,
+    ].join('\n')
+
+    const emailResult = await resend.emails.send({
+      from: 'Centsible Scholar <noreply@centsiblescholar.com>',
+      to: [notifyTo],
+      subject: 'New coaching session booked — $89',
+      html,
+      text,
+    })
+
+    // Resend v4 returns { data, error } — never trust absence-of-throw.
+    if (emailResult.error) {
+      logStep('Coaching: Resend returned error', { error: emailResult.error })
+    } else {
+      logStep('Coaching: notification email sent', {
+        to: notifyTo,
+        messageId: emailResult.data?.id,
+        orderId,
+      })
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    logStep('Coaching: notification email threw', { error: message })
+  }
+}
+
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 serve(async (request: Request) => {
@@ -324,7 +562,68 @@ serve(async (request: Request) => {
   }
 
   // ─── Process Event ────────────────────────────────────────────────────────
+  // If the product is a coaching one-shot, route to the coaching handler BEFORE
+  // the subscription switch — coaching rows live in `coaching_orders`, not
+  // `user_subscriptions`, and we don't want the "unknown product → default to
+  // single tier" fallthrough in PRODUCT_TYPE_MAP to fabricate a fake
+  // subscription row for a coaching buyer.
+  const incomingProductId = event.product_id as string | undefined
+  const isCoachingProduct =
+    typeof incomingProductId === 'string' && COACHING_PRODUCT_IDS.has(incomingProductId)
+
   try {
+    if (
+      isCoachingProduct &&
+      (eventType === 'INITIAL_PURCHASE' || eventType === 'NON_RENEWING_PURCHASE')
+    ) {
+      logStep(`Processing coaching ${eventType}`, {
+        appUserId: event.app_user_id,
+        productId: incomingProductId,
+      })
+      await handleCoachingPurchase(supabaseAdmin, event)
+
+      // Record for idempotency + return.
+      const processingTime = Date.now() - startTime
+      try {
+        await recordProcessedEvent(supabaseAdmin, eventId, eventType, processingTime)
+      } catch (recordError: unknown) {
+        const message = recordError instanceof Error ? recordError.message : String(recordError)
+        logStep('Failed to record coaching event for idempotency', { error: message })
+      }
+      return new Response(JSON.stringify({
+        received: true,
+        event_id: eventId,
+        coaching: true,
+        processing_time_ms: processingTime,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Coaching events we don't have explicit handling for (cancellation,
+    // refund, expiration on a consumable — rare) are logged and skipped
+    // so they never fall through into the subscription path below.
+    if (isCoachingProduct) {
+      logStep('Coaching event type not handled, skipping', {
+        type: eventType,
+        productId: incomingProductId,
+      })
+      const processingTime = Date.now() - startTime
+      try {
+        await recordProcessedEvent(supabaseAdmin, eventId, eventType, processingTime)
+      } catch { /* best-effort */ }
+      return new Response(JSON.stringify({
+        received: true,
+        event_id: eventId,
+        coaching: true,
+        unhandled: true,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     switch (eventType) {
       case 'INITIAL_PURCHASE':
       case 'RENEWAL':
