@@ -721,12 +721,17 @@ export type Database = {
       coaching_orders: {
         Row: {
           amount: number
+          best_day_to_call: string | null
+          best_time_to_call: string | null
           created_at: string
           currency: string | null
           customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
+          iap_original_transaction_id: string | null
+          iap_product_id: string | null
           id: string
+          platform: string | null
           session_notes: string | null
           status: string
           stripe_session_id: string | null
@@ -735,12 +740,17 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          best_day_to_call?: string | null
+          best_time_to_call?: string | null
           created_at?: string
           currency?: string | null
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          iap_original_transaction_id?: string | null
+          iap_product_id?: string | null
           id?: string
+          platform?: string | null
           session_notes?: string | null
           status?: string
           stripe_session_id?: string | null
@@ -749,12 +759,17 @@ export type Database = {
         }
         Update: {
           amount?: number
+          best_day_to_call?: string | null
+          best_time_to_call?: string | null
           created_at?: string
           currency?: string | null
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          iap_original_transaction_id?: string | null
+          iap_product_id?: string | null
           id?: string
+          platform?: string | null
           session_notes?: string | null
           status?: string
           stripe_session_id?: string | null

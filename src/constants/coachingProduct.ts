@@ -14,5 +14,4 @@ export const COACHING_PRODUCT = {
     'Convenient phone consultations',
   ],
   appleProductId: 'one_on_one_coaching',
-  bookingUrl: 'https://www.centsiblescholar.com/book-coaching',
 };
