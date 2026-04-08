@@ -4,7 +4,21 @@
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "89.00",
+      "familyShareable" : false,
+      "internalID" : "6761802008",
+      "localizations" : [
+        {
+          "description" : "Professional coaching focused on your specific academic, behavioral, and financial goals.",
+          "displayName" : "One-on-One Coaching",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "one_on_one_coaching",
+      "referenceName" : "One-on-One Coaching",
+      "type" : "Consumable"
+    }
   ],
   "settings" : {
     "_applicationInternalID" : "6760275514",

@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { REVENUECAT_CONFIG } from '../constants/revenuecatConfig';
 import { SUBSCRIPTION_PLANS } from '../constants/subscriptionPlans';
+import { COACHING_PRODUCT } from '../constants/coachingProduct';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { subscriptionKeys } from './useSubscriptionStatus';
@@ -182,5 +183,61 @@ export function useRestorePurchases() {
     restore: mutation.mutateAsync,
     isRestoring: mutation.isPending,
     restoreError: mutation.error,
+  };
+}
+
+/**
+ * One-on-One Coaching purchase hook.
+ *
+ * Coaching is a Consumable IAP (not a subscription), so this hook is a
+ * slimmed-down sibling of useRevenueCatPurchase:
+ *   - No plan / billingInterval input (single SKU).
+ *   - No webhook polling — the RC client SDK confirms the purchase locally
+ *     and we trust it to show the booking link.
+ *   - No subscription cache invalidation.
+ *
+ * If a backend record of coaching purchases is later needed, add polling
+ * + query invalidation here without changing the screen's call site.
+ */
+export function useCoachingPurchase() {
+  const { user } = useAuth();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('User must be authenticated to purchase');
+
+      const { default: Purchases } = await getPurchases();
+
+      const offerings = await Purchases.getOfferings();
+      if (!offerings.current) {
+        throw new Error(
+          'No offerings available. Please check your RevenueCat configuration.'
+        );
+      }
+
+      const pkg = offerings.current.availablePackages.find(
+        (p) => p.product.identifier === COACHING_PRODUCT.appleProductId
+      );
+      if (!pkg) {
+        throw new Error('Coaching session is not available right now.');
+      }
+
+      try {
+        await Purchases.purchasePackage(pkg);
+      } catch (error: any) {
+        if (error.userCancelled) {
+          throw new Error('Purchase cancelled');
+        }
+        throw error;
+      }
+
+      return { confirmed: true };
+    },
+  });
+
+  return {
+    purchase: mutation.mutateAsync,
+    isPurchasing: mutation.isPending,
+    purchaseError: mutation.error,
   };
 }

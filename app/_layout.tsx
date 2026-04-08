@@ -116,6 +116,12 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="coaching"
+        options={{
+          title: 'One-on-One Coaching',
+        }}
+      />
+      <Stack.Screen
         name="budget-planner"
         options={{
           title: 'Budget Planner',
