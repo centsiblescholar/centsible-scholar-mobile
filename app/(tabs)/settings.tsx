@@ -139,6 +139,7 @@ export default function SettingsScreen() {
               {featureCount > 0 && (<View style={styles.row}><Text style={styles.label}>Features</Text><Text style={styles.value}>{featureCount} features included</Text></View>)}
               {periodEndDate && (<View style={styles.row}><Text style={styles.label}>Renews</Text><Text style={styles.value}>{periodEndDate}</Text></View>)}
               <TouchableOpacity style={styles.manageButton} onPress={handleManageSubscription}><Ionicons name="card-outline" size={18} color={colors.primary} /><Text style={styles.manageButtonText}>{isActive ? 'Manage Subscription' : 'Subscribe Now'}</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.manageButton, { marginTop: 8 }]} onPress={() => router.push('/coaching' as any)}><Ionicons name="school-outline" size={18} color={colors.primary} /><Text style={styles.manageButtonText}>One-on-One Coaching</Text></TouchableOpacity>
               <TouchableOpacity style={[styles.restoreButton, isRestoring && styles.buttonDisabled]} onPress={handleRestorePurchases} disabled={isRestoring}>
                 {isRestoring ? <ActivityIndicator size="small" color={colors.primary} /> : (<><Ionicons name="refresh-circle-outline" size={18} color={colors.primary} /><Text style={styles.restoreButtonText}>Restore Purchases</Text></>)}
               </TouchableOpacity>
