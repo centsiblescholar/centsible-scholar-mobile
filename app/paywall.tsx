@@ -228,7 +228,15 @@ export default function PaywallScreen() {
   };
 
   const handleDismiss = () => {
-    router.back();
+    // The paywall is reached via router.replace() from index, so there is no
+    // previous screen on the stack. Navigate forward to the dashboard if the
+    // user now has an active subscription; otherwise stay on the paywall.
+    if (isActive === true) {
+      router.replace('/(tabs)/dashboard' as any);
+    } else if (router.canGoBack()) {
+      router.back();
+    }
+    // If not subscribed and can't go back, do nothing — they need to subscribe.
   };
 
   // Determine the displayed price for trial disclosure
