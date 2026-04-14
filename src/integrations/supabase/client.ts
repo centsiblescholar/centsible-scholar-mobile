@@ -108,7 +108,10 @@ export async function signUpWithEmail(
 
 /**
  * Fallback: ensure parent_profiles record exists after signup.
- * The handle_new_user trigger should create it, but this is a safety net.
+ * The handle_new_user trigger should create it, but for social sign-ups
+ * (Apple/Google) the trigger does NOT create a profile because Apple/Google
+ * metadata doesn't include user_type. This function is critical for social
+ * sign-ups — not just a "safety net."
  */
 export async function ensureParentProfile(
   userId: string,
@@ -116,10 +119,6 @@ export async function ensureParentProfile(
   firstName: string,
   lastName: string
 ) {
-  // The handle_new_user database trigger should create the profile automatically.
-  // This is a safety-net fallback. After signup the session may not be fully
-  // propagated yet, so the SELECT/INSERT can hit RLS — that's OK because the
-  // trigger already did the work.
   try {
     const { data } = await supabase
       .from('parent_profiles')
@@ -136,14 +135,23 @@ export async function ensureParentProfile(
         onboarding_completed: false,
       });
       if (error) {
-        // Non-fatal: the trigger likely already created the profile.
-        // RLS timing issues after signup can cause this — safe to ignore.
-        if (__DEV__) console.warn('ensureParentProfile fallback skipped (trigger likely succeeded):', error.message);
+        console.warn('ensureParentProfile insert failed, retrying after delay:', error.message);
+        // RLS may not be ready yet for new social sign-up sessions — retry
+        await new Promise((r) => setTimeout(r, 1500));
+        const { error: retryError } = await supabase.from('parent_profiles').insert({
+          user_id: userId,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          onboarding_completed: false,
+        });
+        if (retryError) {
+          console.warn('ensureParentProfile retry also failed:', retryError.message);
+        }
       }
     }
-  } catch {
-    // Non-fatal fallback — trigger should have handled profile creation
-    if (__DEV__) console.warn('ensureParentProfile fallback failed — trigger should have created profile');
+  } catch (err) {
+    console.warn('ensureParentProfile unexpected error:', err);
   }
 }
 
@@ -231,6 +239,10 @@ export async function signInWithGoogle() {
 /**
  * For social sign-ups: ensure the user gets parent role metadata and a parent profile.
  * Only runs for new users who don't have user_type set yet.
+ *
+ * CRITICAL: supabase.auth.updateUser() returns { data, error } — it does NOT throw.
+ * We must check the error return. Without user_type metadata, AuthContext will
+ * sign the user out with "missing role information."
  */
 async function ensureSocialSignUpProfile(
   user: any,
@@ -240,14 +252,31 @@ async function ensureSocialSignUpProfile(
   // If user already has user_type, they're an existing user — skip
   if (user.user_metadata?.user_type) return;
 
-  // All sign-ups are parent accounts
-  await supabase.auth.updateUser({
+  // Set parent role metadata — MUST check for errors
+  const { error: updateError } = await supabase.auth.updateUser({
     data: {
       user_type: 'parent',
       first_name: firstName || '',
       last_name: lastName || '',
     },
   });
+
+  if (updateError) {
+    console.error('Failed to set user_type metadata:', updateError.message);
+    // Retry once after short delay (session may not be ready yet)
+    await new Promise((r) => setTimeout(r, 1000));
+    const { error: retryError } = await supabase.auth.updateUser({
+      data: {
+        user_type: 'parent',
+        first_name: firstName || '',
+        last_name: lastName || '',
+      },
+    });
+    if (retryError) {
+      console.error('Retry failed to set user_type metadata:', retryError.message);
+      throw new Error('Unable to complete account setup. Please try again.');
+    }
+  }
 
   // Create parent profile if it doesn't exist
   await ensureParentProfile(
