@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
+import { parentStudentsKeys } from './useParentStudents';
 
 export interface StudentProfile {
   id: string;
@@ -219,6 +220,8 @@ export function useStudentManagement() {
     mutationFn: (input: CreateStudentInput) => createStudent(parentUserId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentManagementKeys.list(parentUserId) });
+      // Also invalidate the parentStudents cache used by StudentContext/dashboard
+      queryClient.invalidateQueries({ queryKey: parentStudentsKeys.all });
     },
   });
 
