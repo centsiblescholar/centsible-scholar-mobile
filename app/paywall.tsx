@@ -317,7 +317,7 @@ export default function PaywallScreen() {
         ) : (
           <>
             {/* Subtitle */}
-            <Text style={styles.subtitle}>Start your 7-day free trial today</Text>
+            <Text style={styles.subtitle}>Start your 30-day free trial today</Text>
 
             {/* Billing Toggle */}
             <BillingToggle
@@ -341,7 +341,7 @@ export default function PaywallScreen() {
 
             {/* Trial Disclosure */}
             <Text style={styles.trialDisclosure}>
-              After your 7-day free trial, you will be charged the selected plan price per{' '}
+              After your 30-day free trial, you will be charged the selected plan price per{' '}
               {trialPeriod}. Cancel anytime.
             </Text>
 
