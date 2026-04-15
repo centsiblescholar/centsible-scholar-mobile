@@ -1,4 +1,4 @@
-import { useEffect, useRef, ReactNode } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { InteractionManager } from 'react-native';
 import { getRevenueCatApiKey } from '../constants/revenuecatConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,12 +22,15 @@ interface RevenueCatProviderProps {
 
 export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
   const { user } = useAuth();
-  const isConfigured = useRef(false);
+  // Use state (not ref) so the logIn effect re-runs when configure completes.
+  const [isConfigured, setIsConfigured] = useState(false);
+  const configuring = useRef(false);
 
   // Configure SDK after initial render completes to avoid crash-on-launch
   // if the native module throws during the critical first-frame window.
   useEffect(() => {
-    if (isConfigured.current) return;
+    if (configuring.current) return;
+    configuring.current = true;
 
     const apiKey = getRevenueCatApiKey();
     if (apiKey.includes('REPLACE_WITH_REAL_KEY')) {
@@ -51,7 +54,8 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
         }
 
         Purchases.configure({ apiKey });
-        isConfigured.current = true;
+        setIsConfigured(true);
+        console.log('[RevenueCat] SDK configured successfully');
       } catch (error) {
         console.warn('RevenueCat: Failed to configure SDK:', error);
       }
@@ -60,17 +64,21 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
     return () => task.cancel();
   }, []);
 
-  // Identify user when auth state changes
+  // Identify user when auth state changes OR when SDK finishes configuring.
+  // Previously this was a ref check that ran once and bailed out if configure
+  // hadn't finished yet — causing purchases to happen as anonymous users.
   useEffect(() => {
-    if (!isConfigured.current) return;
+    if (!isConfigured) return;
 
     const syncUser = async () => {
       try {
         const { default: Purchases } = await getPurchases();
         if (user) {
-          await Purchases.logIn(user.id);
+          const { customerInfo } = await Purchases.logIn(user.id);
+          console.log('[RevenueCat] Logged in as', user.id, '| entitlements:', Object.keys(customerInfo.entitlements.active));
         } else {
           await Purchases.logOut();
+          console.log('[RevenueCat] Logged out');
         }
       } catch (error) {
         console.warn('RevenueCat user sync error:', error);
@@ -78,7 +86,7 @@ export function RevenueCatProvider({ children }: RevenueCatProviderProps) {
     };
 
     syncUser();
-  }, [user?.id]);
+  }, [user?.id, isConfigured]);
 
   return <>{children}</>;
 }
