@@ -126,6 +126,24 @@ async function createStudent(
 
   if (error) {
     console.error('Error creating student:', error);
+    // Try to extract the real error message from the edge function response.
+    // supabase.functions.invoke sets `error` for non-2xx status codes, but
+    // the response body (with the real message) may still be in `data`.
+    const serverMessage = data?.error;
+    if (serverMessage) {
+      throw new StudentCreationError(serverMessage, error);
+    }
+    // FunctionsHttpError has a context property with the response
+    if (error.context && typeof error.context.json === 'function') {
+      try {
+        const body = await error.context.json();
+        if (body?.error) {
+          throw new StudentCreationError(body.error, error);
+        }
+      } catch (_) {
+        // Couldn't parse response body — fall through to generic message
+      }
+    }
     throw new StudentCreationError(
       'Failed to create student. Please try again.',
       error
