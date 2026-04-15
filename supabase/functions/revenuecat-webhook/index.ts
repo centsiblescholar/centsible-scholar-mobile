@@ -76,6 +76,14 @@ function msToISO(ms: number | null | undefined): string | null {
   return new Date(ms).toISOString()
 }
 
+// Validate that a string is a valid UUID (Supabase user_id format).
+// RevenueCat sends `$RCAnonymousID:...` when the SDK wasn't identified with
+// a real user — these MUST be rejected before hitting the UUID column.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isValidUUID(value: string): boolean {
+  return UUID_RE.test(value)
+}
+
 // ─── Event Handlers ───────────────────────────────────────────────────────────
 
 // Handles INITIAL_PURCHASE, RENEWAL, UNCANCELLATION, and PRODUCT_CHANGE
@@ -93,6 +101,17 @@ async function handleSubscriptionActive(
 
   if (!userId) {
     logStep('Missing app_user_id, skipping event')
+    return
+  }
+
+  if (!isValidUUID(userId)) {
+    logStep('CRITICAL: app_user_id is not a valid UUID — RevenueCat SDK was not identified with Supabase user ID', {
+      app_user_id: userId,
+      productId,
+      store,
+      originalTransactionId,
+    })
+    // Don't throw — we return 200 to prevent retries, but log loudly so we catch this in monitoring
     return
   }
 
@@ -659,6 +678,21 @@ serve(async (request: Request) => {
 
       case 'PRODUCT_CHANGE': {
         logStep('Processing PRODUCT_CHANGE', { appUserId: event.app_user_id })
+        await handleSubscriptionActive(supabaseAdmin, event)
+        break
+      }
+
+      case 'TRANSFER': {
+        // TRANSFER fires when RevenueCat moves a purchase from one user to
+        // another (e.g. anonymous → identified). The event contains both
+        // `transferred_from` and `transferred_to` arrays. The current event
+        // payload's `app_user_id` is the NEW owner. Treat it like an
+        // INITIAL_PURCHASE so the subscription record lands under the correct
+        // Supabase user_id.
+        logStep('Processing TRANSFER as subscription active', {
+          appUserId: event.app_user_id,
+          productId: event.product_id,
+        })
         await handleSubscriptionActive(supabaseAdmin, event)
         break
       }
