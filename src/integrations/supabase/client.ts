@@ -240,9 +240,13 @@ export async function signInWithGoogle() {
  * For social sign-ups: ensure the user gets parent role metadata and a parent profile.
  * Only runs for new users who don't have user_type set yet.
  *
- * CRITICAL: supabase.auth.updateUser() returns { data, error } — it does NOT throw.
- * We must check the error return. Without user_type metadata, AuthContext will
- * sign the user out with "missing role information."
+ * NOTE: The handle_new_user DB trigger now creates the parent profile and sets
+ * user_type for social sign-ups server-side. This function is a BEST-EFFORT
+ * backup — it must NOT throw, because AuthContext's detectRoleFromProfiles()
+ * will find the trigger-created profile regardless.
+ *
+ * Previously this threw on updateUser() failure, which raced with AuthContext's
+ * onAuthStateChange handler and caused "missing role information" sign-outs.
  */
 async function ensureSocialSignUpProfile(
   user: any,
@@ -252,37 +256,33 @@ async function ensureSocialSignUpProfile(
   // If user already has user_type, they're an existing user — skip
   if (user.user_metadata?.user_type) return;
 
-  // Set parent role metadata — MUST check for errors
-  const { error: updateError } = await supabase.auth.updateUser({
-    data: {
-      user_type: 'parent',
-      first_name: firstName || '',
-      last_name: lastName || '',
-    },
-  });
-
-  if (updateError) {
-    console.error('Failed to set user_type metadata:', updateError.message);
-    // Retry once after short delay (session may not be ready yet)
-    await new Promise((r) => setTimeout(r, 1000));
-    const { error: retryError } = await supabase.auth.updateUser({
+  // Best-effort: try to set parent role metadata so subsequent logins are faster.
+  // The DB trigger already created the profile, so failure here is NOT fatal.
+  try {
+    const { error: updateError } = await supabase.auth.updateUser({
       data: {
         user_type: 'parent',
         first_name: firstName || '',
         last_name: lastName || '',
       },
     });
-    if (retryError) {
-      console.error('Retry failed to set user_type metadata:', retryError.message);
-      throw new Error('Unable to complete account setup. Please try again.');
+
+    if (updateError) {
+      console.warn('Best-effort updateUser failed (non-fatal):', updateError.message);
     }
+  } catch (err) {
+    console.warn('Best-effort updateUser threw (non-fatal):', err);
   }
 
-  // Create parent profile if it doesn't exist
-  await ensureParentProfile(
-    user.id,
-    user.email || '',
-    firstName || '',
-    lastName || ''
-  );
+  // Best-effort: ensure parent profile exists (trigger should have created it)
+  try {
+    await ensureParentProfile(
+      user.id,
+      user.email || '',
+      firstName || '',
+      lastName || ''
+    );
+  } catch (err) {
+    console.warn('Best-effort ensureParentProfile failed (non-fatal):', err);
+  }
 }
