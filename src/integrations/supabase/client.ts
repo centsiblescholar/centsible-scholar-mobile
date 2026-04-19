@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 import { Database } from './types';
 
 // Lazy-load native auth modules to avoid TurboModule crashes on iPad
@@ -107,52 +107,75 @@ export async function signUpWithEmail(
 }
 
 /**
- * Fallback: ensure parent_profiles record exists after signup.
- * The handle_new_user trigger should create it, but for social sign-ups
- * (Apple/Google) the trigger does NOT create a profile because Apple/Google
- * metadata doesn't include user_type. This function is critical for social
- * sign-ups — not just a "safety net."
+ * Ensure a parent_profiles row exists for the given user.
+ *
+ * Idempotent and safe to call repeatedly: if the row already exists (e.g.
+ * the DB trigger created it, or a previous call succeeded), this is a no-op.
+ *
+ * Returns `true` if a parent_profiles row exists after the call — either it
+ * was already there, or the INSERT (or a duplicate-key race) succeeded.
+ * Returns `false` only on genuine DB failures after all retries are exhausted.
+ *
+ * This is the AUTHORITATIVE client-side mechanism for parent profile creation.
+ * Prior versions deferred to the `handle_new_user` DB trigger, but that
+ * trigger has historically been unreliable for social sign-ups (Apple/Google)
+ * due to a NULL-comparison bug in its source. The app MUST NOT depend on the
+ * trigger for correctness.
  */
 export async function ensureParentProfile(
   userId: string,
   email: string,
   firstName: string,
   lastName: string
-) {
-  try {
-    const { data } = await supabase
-      .from('parent_profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
+): Promise<boolean> {
+  // Fast path: already exists
+  const { data: existing, error: selectError } = await supabase
+    .from('parent_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
 
-    if (!data) {
-      const { error } = await supabase.from('parent_profiles').insert({
-        user_id: userId,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        onboarding_completed: false,
-      });
-      if (error) {
-        console.warn('ensureParentProfile insert failed, retrying after delay:', error.message);
-        // RLS may not be ready yet for new social sign-up sessions — retry
-        await new Promise((r) => setTimeout(r, 1500));
-        const { error: retryError } = await supabase.from('parent_profiles').insert({
-          user_id: userId,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          onboarding_completed: false,
-        });
-        if (retryError) {
-          console.warn('ensureParentProfile retry also failed:', retryError.message);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('ensureParentProfile unexpected error:', err);
+  if (existing) return true;
+  if (selectError) {
+    console.warn('ensureParentProfile: select error (will still attempt insert):', selectError.message);
   }
+
+  // Insert with retry: RLS policies may require session replication to settle
+  // immediately after sign-up, and the DB trigger may be racing with us.
+  const delaysMs = [0, 1000, 2500];
+  for (let attempt = 0; attempt < delaysMs.length; attempt++) {
+    if (delaysMs[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+    }
+
+    const { error } = await supabase.from('parent_profiles').insert({
+      user_id: userId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      onboarding_completed: false,
+    });
+
+    if (!error) return true;
+
+    // Postgres unique_violation — the DB trigger beat us to it. That's success.
+    if (error.code === '23505') return true;
+
+    console.warn(
+      `ensureParentProfile insert attempt ${attempt + 1}/${delaysMs.length} failed:`,
+      error.message,
+      error.code ?? ''
+    );
+  }
+
+  // Final check: maybe the trigger (or another tab) inserted while we were retrying
+  const { data: finalCheck } = await supabase
+    .from('parent_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !!finalCheck;
 }
 
 /**
@@ -237,28 +260,44 @@ export async function signInWithGoogle() {
 }
 
 /**
- * For social sign-ups: ensure the user gets parent role metadata and a parent profile.
- * Only runs for new users who don't have user_type set yet.
+ * For social sign-ups (Apple/Google): ensure the user has a parent profile.
  *
- * NOTE: The handle_new_user DB trigger now creates the parent profile and sets
- * user_type for social sign-ups server-side. This function is a BEST-EFFORT
- * backup — it must NOT throw, because AuthContext's detectRoleFromProfiles()
- * will find the trigger-created profile regardless.
+ * This function is AUTHORITATIVE for social-provider account setup. The
+ * `handle_new_user` DB trigger has historically failed to create profiles
+ * for Apple/Google users due to a NULL-comparison bug
+ * (`v_role != 'student'` evaluates to NULL, not TRUE, when role is NULL).
+ * Therefore this function MUST successfully create a parent_profiles row,
+ * regardless of trigger state.
  *
- * Previously this threw on updateUser() failure, which raced with AuthContext's
- * onAuthStateChange handler and caused "missing role information" sign-outs.
+ * Role is derived from the profile tables in AuthContext, so the
+ * `user_type` metadata update below is a hint/optimization only — it is NOT
+ * required for correctness. Failure to update metadata is non-fatal.
  */
 async function ensureSocialSignUpProfile(
-  user: any,
+  user: User,
   firstName?: string | null,
   lastName?: string | null
-) {
-  // If user already has user_type, they're an existing user — skip
-  if (user.user_metadata?.user_type) return;
+): Promise<void> {
+  // Authoritative: create the parent profile if it doesn't exist.
+  const created = await ensureParentProfile(
+    user.id,
+    user.email || '',
+    firstName || '',
+    lastName || ''
+  );
 
-  // Best-effort: try to set parent role metadata so subsequent logins are faster.
-  // The DB trigger already created the profile, so failure here is NOT fatal.
-  try {
+  if (!created) {
+    // Real DB failure — log loudly. AuthContext will attempt its own recovery
+    // before showing an error to the user.
+    console.error(
+      'ensureSocialSignUpProfile: failed to ensure parent_profiles row for',
+      user.id
+    );
+  }
+
+  // Best-effort: update metadata so the user's JWT carries user_type on next
+  // refresh. Purely a cache/hint — AuthContext no longer depends on it.
+  if (!user.user_metadata?.user_type) {
     const { error: updateError } = await supabase.auth.updateUser({
       data: {
         user_type: 'parent',
@@ -266,23 +305,11 @@ async function ensureSocialSignUpProfile(
         last_name: lastName || '',
       },
     });
-
     if (updateError) {
-      console.warn('Best-effort updateUser failed (non-fatal):', updateError.message);
+      console.warn(
+        'ensureSocialSignUpProfile: metadata update failed (non-critical):',
+        updateError.message
+      );
     }
-  } catch (err) {
-    console.warn('Best-effort updateUser threw (non-fatal):', err);
-  }
-
-  // Best-effort: ensure parent profile exists (trigger should have created it)
-  try {
-    await ensureParentProfile(
-      user.id,
-      user.email || '',
-      firstName || '',
-      lastName || ''
-    );
-  } catch (err) {
-    console.warn('Best-effort ensureParentProfile failed (non-fatal):', err);
   }
 }
