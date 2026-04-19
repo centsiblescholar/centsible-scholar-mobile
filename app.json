@@ -62,7 +62,7 @@
         "backgroundColor": "#2DB88A"
       },
       "package": "com.centsiblescholar.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": []
